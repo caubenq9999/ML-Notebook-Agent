@@ -132,9 +132,21 @@ def run_research(
         web_source_counter += 1
         source_id = f"web_{web_source_counter:02d}"
         matched_url = raw_results[0].get("url", "unknown") if raw_results else "unknown"
-        sources.append(Source(source_id=source_id, type="web_search", path_or_url=matched_url))
+        # SourceType chỉ nhận "kb_file" | "web" | "paper" | "textbook".
+        sources.append(Source(source_id=source_id, type="web", path_or_url=matched_url))
         citations.append(Citation(concept=concept, source_id=source_id))
         covered.append(concept)
+
+    # ResearchBundle không có cách biểu diễn hợp lệ trạng thái "0 concept"
+    # (key_concepts bắt buộc có ít nhất 1 phần tử). 0 concept grounded nghĩa
+    # là research thất bại thật sự -- báo lỗi rõ ràng để main.py xử lý,
+    # không âm thầm trả về một bundle rỗng/giả.
+    if not covered:
+        raise RuntimeError(
+            f"run_research('{topic}'): không tìm được concept nào có nguồn thật "
+            f"(KB rỗng và web_search không grounded được concept nào). "
+            f"unresolved_concepts={unresolved or extra_wanted_concepts}"
+        )
 
     bundle_kwargs = dict(
         topic=topic,
@@ -142,12 +154,13 @@ def run_research(
         key_concepts=covered,
         citations=citations,
     )
-    try:
+
+  
+    if "unresolved_concepts" in getattr(ResearchBundle, "model_fields", {}):
         bundle = ResearchBundle(**bundle_kwargs, unresolved_concepts=unresolved)
-    except TypeError:
-        # Hỗ trợ schema cũ chưa có unresolved_concepts.
+    else:
         logger.info(
-            "ResearchBundle của Hoàng không có field unresolved_concepts "
+            "Schema ResearchBundle hiện tại không có field unresolved_concepts "
             "-- bỏ qua, chỉ log ở đây: %s", unresolved,
         )
         bundle = ResearchBundle(**bundle_kwargs)

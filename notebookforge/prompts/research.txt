@@ -31,14 +31,23 @@ QUẢN LÝ CONTEXT KHI GỌI WEB_SEARCH:
 {
   "topic": "<chủ đề>",
   "sources": [
-    {"source_id": "<id duy nhất>", "type": "kb_file" | "web_search", "path_or_url": "<đường dẫn hoặc URL>"}
+    {"source_id": "<id duy nhất>", "type": "kb_file" | "web" | "paper" | "textbook", "path_or_url": "<đường dẫn hoặc URL>"}
   ],
   "key_concepts": ["<concept 1>", "<concept 2>", ...],
   "citations": [
-    {"concept": "<concept>", "source_id": "<source_id tương ứng>"}
+    {"concept": "<concept>", "source_id": "<source_id tương ứng>", "quote": "<trích dẫn ngắn, nếu có>", "locator": "<heading/dòng trong nguồn, nếu có>"}
   ],
   "unresolved_concepts": ["<concept không tìm được nguồn đủ tin cậy>", ...]
 }
+
+Ghi chú:
+- type chỉ nhận đúng 4 giá trị: "kb_file" | "web" | "paper" | "textbook".
+- quote/locator là 2 field tùy chọn trong citation, giúp việc chấm điểm
+  groundedness chính xác hơn -- điền nếu có bằng chứng rõ ràng, bỏ trống
+  nếu không, không bịa.
+- key_concepts KHÔNG được rỗng. Nếu không tìm được nguồn thật cho bất kỳ
+  concept nào (cả KB lẫn web_search), coi đây là research thất bại và báo
+  lỗi rõ ràng — tuyệt đối không trả về một ResearchBundle rỗng/giả.
 
 Lưu ý: citations là list các cặp {concept, source_id} nối từng khái niệm cụ
 thể với đúng nguồn của nó — KHÔNG phải một list URL rời rạc không có ngữ
