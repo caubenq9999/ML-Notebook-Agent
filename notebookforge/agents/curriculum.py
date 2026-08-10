@@ -4,7 +4,6 @@ agents/curriculum.py
 
 from __future__ import annotations      # Hoãn việc đánh giá các type hint (class,...) khi chúng chưa được định nghĩa
 import json                             # Thư viện thao tác với JSON
-import os                               # Thư viện thao tác với hệ điều hành
 import re                               # Tìm kiếm, lọc, kiểm tra định dạng và thay thế chuỗi theo pattern        
 import sys
 from pathlib import Path
@@ -18,9 +17,10 @@ sys.path.append(str(ROOT_DIR))
 
 from schemas import LearnerProfile, LearningPath, Module, ResearchBundle
 
+from llm_client import call_json
+
 # Gọi model để tạo "LearningPath" dưới dạng JSON
 PROMPT_PATH_CURRICULUM = ROOT_DIR / "prompts" / "curriculum.txt"
-MODEL_NAME = "gemini-2.0-flash"
 MAX_LLM_RETRIES = 3  # Số lần thử lại nếu LLM trả JSON sai định dạng
 
 
@@ -53,36 +53,8 @@ def build_prompt_curriculum(bundle : ResearchBundle, profile : LearnerProfile, l
     # Trả về prompt
     return prompt
 
-
-# --------------------
-# 2. Gọi LLM (Gemini)
-# --------------------
-
-# vs.code -> Gửi prompt + API key -> Model Gemini-2.0-flash xử lý trên hạ tầng Google
-# -> Model gửi respone dạng JSON về vs.code
-
-def call_gemini(prompt: str) -> str:
-    # Lấy biến môi trường GEMINI_API_KEY từ hệ điều hành
-    api_key = os.environ.get("GEMINI_API_KEY")
-
-    # Dùng api_client (genai.Client) theo đúng chuẩn SDK mới
-    from google import genai
-    from google.genai import types
-
-    client = genai.Client(api_key = api_key)
-
-    response = client.models.generate_content(
-        model = MODEL_NAME,  # "gemini-2.0-flash"
-        contents = prompt,
-        config = types.GenerateContentConfig(
-            temperature = 0.3,
-            response_mime_type = "application/json",
-        ),
-    )
-    return response.text
-
 # --------------
-# 3. Xử lý JSON
+# 2. Xử lý JSON
 # --------------
 # Biến đổi response.text từ Gemini sang dạng dictionary trong Python
 def processing_json(raw_text: str) -> dict:
@@ -115,7 +87,7 @@ def processing_json(raw_text: str) -> dict:
 
 
 # -------------------------------------------------------
-# 4. Validate và tự động điều chỉnh cho khớp constraints
+# 3. Validate và tự động điều chỉnh cho khớp constraints
 # -------------------------------------------------------
 def validate_and_adjust(data: dict, profile: LearnerProfile) -> tuple[dict, list[str]]:
     """
@@ -171,7 +143,7 @@ def validate_and_adjust(data: dict, profile: LearnerProfile) -> tuple[dict, list
 
 
 # -------------
-# 5. Hàm chính
+# 4. Hàm chính
 # -------------
 def run_curriculum(
     bundle : ResearchBundle,
@@ -186,7 +158,11 @@ def run_curriculum(
 
         # Dùng prompt để LLM tạo LearningPath dưới dạng JSON
         prompt_make_LearningPath = build_prompt_curriculum(bundle, profile, last_error)
-        LearningPath_raw = call_gemini(prompt_make_LearningPath)
+        LearningPath_raw, meta = call_json(
+            prompt = prompt_make_LearningPath,
+            schema = LearningPath,
+            session_id = profile.session_id,
+        )
 
         try:
             data = processing_json(LearningPath_raw)
