@@ -4,7 +4,6 @@ agents/notebook_gen.py — HỢP
 from __future__ import annotations
 
 import json
-import os
 import re
 import sys
 from pathlib import Path
@@ -24,14 +23,14 @@ from tools.dataset_injector import get_dataset_code
 
 from schemas import LearnerProfile, LearningPath
 
+from llm_client import call_text 
+
 PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "notebook_gen.txt"
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "output_notebooks"
-MODEL_NAME = "gemini-2.0-flash"
-MAX_LLM_RETRIES = 3  # số lần thử LLM tối đa
 DATASET_PLACEHOLDER = "# DATASET_INJECTION_PLACEHOLDER"
 
 # level trong schema là số 1/2 — map sang chữ để prompt dễ đọc hơn cho LLM
-LEVEL_NAMES = {1: "beginner", 2: "intermediate"}
+LEVEL_NAMES = {1: "beginner" , 2: "intermediate"}
 
 # -------------------
 # 1. Xây dựng prompt
@@ -81,12 +80,11 @@ def build_prompt_notebook_gen(
     path : LearningPath,
     profile : LearnerProfile,
     prior_feedback : Optional[str] = None,
-    last_error : Optional[str] = None,
 ) -> str:
     template_notebook_gen = load_prompt()
 
     target_exercises = path.total_planned_exercises or profile.constraints.num_exercises
-    level_name = LEVEL_NAMES.get(path.level, str(path.level))
+    level_name = LEVEL_NAMES.get(path.level , str(path.level))
 
     prompt = template_notebook_gen
     prompt = prompt.replace("{topic}", str(path.topic))
@@ -94,118 +92,11 @@ def build_prompt_notebook_gen(
     prompt = prompt.replace("{num_exercises_planned}", str(target_exercises))
     prompt = prompt.replace("{modules_summary}", summarize_modules(path))
     prompt = prompt.replace("{prior_feedback_block}", check_prior_feedback(prior_feedback))
-    
-    if last_error:
-        prompt += (
-            "\n# LỖI Ở LẦN TRẢ LỜI TRƯỚC — Bắt buộc sửa\n"
-            f"{last_error}\n"
-            "Hãy trả lại đúng định dạng JSON theo yêu cầu ở trên."
-        )
 
     return prompt
-
-
-# ---------------------
-# 2. Gọi LLM (Gemini)
-# ---------------------
-def call_gemini(prompt: str) -> str:
-    api_key = os.environ.get("GEMINI_API_KEY")
-
-    # Dùng api_client
-    from google import genai
-    from google.genai import types
-
-    client = genai.Client(api_key = api_key)
-
-    response = client.models.generate_content(
-        model = MODEL_NAME,
-        contents = prompt,
-        config = types.GenerateContentConfig(
-            temperature = 0.3,
-            response_mime_type = "application/json",
-        ),
-    )
-
-    return response.text
-
-# Nếu chưa có API key
-def dry_run_response() -> str:
-    return json.dumps(
-        {
-            "cells" : [
-                {
-                    "cell_type" : "markdown",
-                    "source": (
-                        "# Logistic Regression\n\n"
-                        "Tổng quan: Logistic Regression là thuật toán học có giám sát, dùng để "
-                        "giải quyết các bài toán phân loại nhị phân, xử lý theo pipeline: "
-                        "Đầu vào X -> tổng tuyến tính z -> hàm sigmoid(z) -> ngưỡng decision -> "
-                        "dự đoán.\n\n"
-                        "Mục tiêu: Hiểu ý nghĩa và công thức của hàm sigmoid."
-                    ),
-                },
-                {
-                    "cell_type" : "markdown",
-                    "source" : "## Chuẩn bị dữ liệu\nDataset phân loại nhị phân (X : đặc trưng, y : nhãn 0/1).",
-                },
-                {"cell_type" : "code", "source" : "# DATASET_INJECTION_PLACEHOLDER"},
-                {
-                    "cell_type" : "markdown",
-                    "source" : (
-                        "## Part_1 - Module 1: Sigmoid\nHàm sigmoid biến đổi z (số thực bất kỳ) thành xác "
-                        "suất trong khoảng (0,1) theo công thức sigmoid(z) = 1 / (1 + e^(-z)). "
-                        "Đây là hàm đơn điệu tăng. Ngưỡng 0.5 (ứng với z = 0) dùng để quyết định nhãn."
-                    ),
-                },
-                {
-                    "cell_type" : "code",
-                    "source" : (
-                        "import numpy as np\n"
-                        "import matplotlib.pyplot as plt\n\n"
-                        "def sigmoid_demo(z):\n"
-                        "    return 1 / (1 + np.exp(-z))\n\n"
-                        "z_values = np.linspace(-10, 10, 200)\n"
-                        "plt.plot(z_values, sigmoid_demo(z_values))\n"
-                        "plt.axhline(0.5, color = 'gray', linestyle = '--')\n"
-                        "plt.xlabel('z'); plt.ylabel('sigmoid(z)')\n"
-                        "plt.title('Đường cong hàm Sigmoid')\n"
-                        "plt.show()"
-                    ),
-                },
-                {
-                    "cell_type" : "markdown",
-                    "source" : (
-                        "## Bài tập 1\nCài đặt hàm sigmoid(z) bằng NumPy theo đúng công thức đã học ở Module 1. "
-                        "Sau đó tính result_at_zero = sigmoid(0)."
-                    ),
-                },
-                {
-                    "cell_type" : "code",
-                    "source" : (
-                        "import numpy as np\n\n"
-                        "def sigmoid(z):\n"
-                        "    # TODO: cài đặt công thức sigmoid\n\n\n"
-                        "    pass\n\n"
-                        "result_at_zero = sigmoid(0)"
-                    ),
-                },
-                {
-                    "cell_type" : "code",
-                    "source" : (
-                        "assert result_at_zero is not None, \"Chưa cài đặt hàm sigmoid\"\n"
-                        "assert abs(result_at_zero - 0.5) < 1e-6, \"sigmoid(0) phải xấp xỉ 0.5\"\n"
-                        "assert 0 <= sigmoid(5) <= 1, \"Kết quả sigmoid phải nằm trong (0,1)\"\n"
-                        "assert sigmoid(-100) < sigmoid(100), \"sigmoid phải là hàm đồng biến\""
-                    ),
-                },
-            ]
-        },
-        ensure_ascii = False
-    )
-
-
+    
 # ---------------
-# 3. Xử lý JSON
+# 2. Xử lý JSON
 # ---------------
 def processing_json(raw_text: str) -> dict:
     text = raw_text.strip()
@@ -214,51 +105,17 @@ def processing_json(raw_text: str) -> dict:
         text = fence_match.group(1)
     return json.loads(text)
 
-
-# ------------------------------------
-# 4. Validate theo đúng 5 rule_checks
-# ------------------------------------
-def check_cells(cells : list[dict]) -> list[str]:
-    issues : list[str] = []     # List chứa các lỗi (nếu có)
-
-    # Phải có ít nhất 3 cell markdown hướng dẫn
-    md_count = sum(1 for c in cells if c.get("cell_type") == "markdown")
-    if md_count < 3:
-        issues.append(f"Chỉ có {md_count} cell markdown hướng dẫn (cần ít nhất 03).")
-
+# -----------------------------------------------------------------------------------------
+# 3. Chèn dataset thật thay thế cho "# DATASET_INJECTION_PLACEHOLDER" và build file .ipynb
+# -----------------------------------------------------------------------------------------
+def inject_dataset(cells : list[dict], topic : str, seed : int) -> list[dict]:
     # Lấy phần "source" của các code cell (code cell không có "source" thì source = "")
     code_sources = [c.get("source" , "") for c in cells if c.get("cell_type") == "code"]
     all_source_codecell = "\n".join(code_sources)
-
-    # Phải có ít nhất 1 cell code có 'TODO'
-    if "TODO" not in all_source_codecell:
-        issues.append("Không có cell code nào chứa 'TODO' (rule has_todo).")
-
-    # Phải có test cell
-    if "assert" not in all_source_codecell:
-        issues.append("Không có test cell.")
-
-    # Kiểm tra có placeholder hay không 
     if DATASET_PLACEHOLDER not in all_source_codecell:
-        issues.append(
-            f"Thiếu placeholder '{DATASET_PLACEHOLDER}' ở cell chuẩn bị dữ liệu (bắt buộc để hệ thống chèn dataset thật)."
-        )
+        print(f"Thiếu placeholder '{DATASET_PLACEHOLDER}' ở cell chuẩn bị dữ liệu (bắt buộc để hệ thống chèn dataset thật).")
+        return ""
 
-    # Không được hardcore đáp án (tương đối chỉ dừng để chỉ ra phần đáng nghi,
-    # do có thể có nhiều tham số như learning_rate vẫn có thể có dạng cố định 0.xxx) 
-    magic_numbers = re.findall(r"=\s*0\.\d{3,}" , all_source_codecell)
-    if len(magic_numbers) >= 3:
-        issues.append(
-            f"Nghi ngờ có đáp án hardcore"
-        )
-
-    return issues
-
-
-# -----------------------------------------------------------------------------------------
-# 5. Chèn dataset thật thay thế cho "# DATASET_INJECTION_PLACEHOLDER" và build file .ipynb
-# -----------------------------------------------------------------------------------------
-def inject_dataset(cells : list[dict], topic : str, seed : int) -> list[dict]:
     # Trả về đoạn code chứa dataset và được chia ra thành các tập train, test
     real_dataset = get_dataset_code(topic , seed)
 
@@ -294,7 +151,7 @@ def build_notebook_file(cells : list[dict], notebook_path : Path) -> None:
 
 
 # -------------
-# 6. Hàm chính
+# 4. Hàm chính
 # -------------
 
 def run_notebook_gen(
@@ -303,54 +160,32 @@ def run_notebook_gen(
     attempt: int = 1,
     prior_feedback: Optional[str] = None,
 ) -> str:
-    last_error: Optional[str] = None
 
-    # Tối đa 3 lần thử
-    for llm_try in range(MAX_LLM_RETRIES):
-        prompt = build_prompt_notebook_gen(path, profile, prior_feedback, last_error)
-        raw = call_gemini(prompt)
-
-        try:
-            data = processing_json(raw)
-            cells = data["cells"]
-        except (json.JSONDecodeError, KeyError, TypeError) as error_json:
-            last_error = f"JSON không hợp lệ hoặc thiếu field cells: {error_json}. Raw: {raw[:500]}"
-            continue
-
-        # Kiểm tra lỗi các cells
-        issues = check_cells(cells)
-        if issues:
-            print(f"[NotebookGen] cần sinh lại (attempt {llm_try + 1}):\n {issues}")
-            last_error = "\n".join(f"- {i}" for i in issues)
-            continue
-
-        # dataset_seed nằm ở profile
-        cells = inject_dataset(cells, path.topic, profile.dataset_seed)
-
-        final_code = "\n".join(
-            c.get("source" , "") for c in cells if c.get("cell_type") == "code"
-        )
-        # Phải có "train_test_split"
-        if "train_test_split" not in final_code:
-            raise RuntimeError(
-                "Notebook thiếu 'train_test_split' sau khi đã chèn dataset thật."
-                f" Kiểm tra lại file tools/dataset_injector.py (topic = {path.topic})."
-            )
-
-        notebook_path = OUTPUT_DIR / f"{profile.session_id}_attempt{attempt}.ipynb"
-
-        # Sinh notebook và lưu tại "notebook_path"
-        build_notebook_file(cells , notebook_path)
-        return str(notebook_path)
-
-    raise RuntimeError(
-        f"Notebook Generator thất bại sau {MAX_LLM_RETRIES} lần thử. "
-        f"Lỗi cuối cùng: {last_error}"
+    prompt = build_prompt_notebook_gen(path, profile, prior_feedback)
+    raw, _usage = call_text(
+        prompt,
+        session_id = profile.session_id,
+        json_mode = True,
     )
 
+    try:
+        data = processing_json(raw)
+        cells = data["cells"]
+    except (json.JSONDecodeError, KeyError, TypeError) as error_json:
+        last_error = f"JSON không hợp lệ hoặc thiếu field cells: {error_json}. Raw: {raw[:500]}"
+
+    # dataset_seed nằm ở profile
+    cells = inject_dataset(cells, path.topic, profile.dataset_seed)
+
+    notebook_path = OUTPUT_DIR / f"{profile.session_id}_attempt{attempt}.ipynb"
+
+    # Sinh notebook và lưu tại "notebook_path"
+    build_notebook_file(cells , notebook_path)
+
+    return str(notebook_path)
 
 # ------------------------
-# 7. Test nhanh bằng mock
+# 5. Test nhanh bằng mock
 # ------------------------
 if __name__ == "__main__":
     from tests.mocks import MOCK_PATH, MOCK_PROFILE

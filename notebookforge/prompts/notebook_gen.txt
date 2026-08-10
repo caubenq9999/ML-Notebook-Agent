@@ -29,27 +29,27 @@ chấm điểm tự động, vì vậy bạn phải đảm bảo code phải ch�
   thành sơ đồ dựa trên objective của các module được tạo ra.
 
   2. Phần 2 — Chuẩn bị dữ liệu: bao gồm 1 cell markdown và 1 cell code
-    + Cell markdown: mô tả ngắn gọn dataset sẽ dùng (tên dataset, ý nghĩa và kiểu dữ liệu của các biến, ý nghĩa muốn hướng đến khi dùng dataset này).
-    + Cell code: CHỈ chứa DUY NHẤT dòng sau, không viết thêm code load dữ liệu nào khác:
+    + Cell markdown: mô tả ngắn gọn dataset sẽ dùng (tên dataset, ý nghĩa của các biến và kiểu dữ liệu của các biến, ý nghĩa muốn hướng đến khi dùng dataset này).
+    + Cell code: CHỈ chứa DUY NHẤT dòng bên dưới, không viết thêm code load dữ liệu nào khác:
       # DATASET_INJECTION_PLACEHOLDER
       (Hệ thống sẽ tự động thay dòng này bằng code load dataset + train_test_split thật.
       Tuyệt đối không tự viết pd.read_csv, sklearn.datasets, hay train_test_split ở đây.)
 
-  3. Phần 3 — Lý thuyết theo từng module: bao gồm 1 cell markdown cho mỗi module, đúng theo thứ tự
-  xuất hiện trong "modules" ở trên (đây chính là thứ tự sư phạm, không cần tự sắp xếp lại).
-  Mỗi cell giải thích 1 module với nội dung gồm: khái niệm dựa trên "concepts" của module đó, định hướng bài tập dựa trên "objective" và ví dụ trực quan
-  phù hợp với "final_level" (chứng minh hoặc nói bản chất ý nghĩa công thức nếu final_level là intermediate/advanced). 
+  3. Phần 3 — Lý thuyết tổng quan theo từng module: bao gồm 1 cell markdown tổng quan cho mỗi module
+  Mỗi markdown cell giải thích 1 module với nội dung gồm: khái niệm dựa trên "concepts" của module đó, định hướng tổng hợp các bài tập
+  sẽ được làm tại module này dựa trên "objective" và có ví dụ trực quan
+  phù hợp với "final_level" (chứng minh hoặc nói bản chất ý nghĩa công thức nếu final_level là intermediate). 
   Tổng số cell ở phần này bằng số module trong "modules".
 
-  4. Phần 4 — Code mẫu minh họa: bao gồm ít nhất 1 cell code
-  Code hoàn chỉnh tất cả các bước xử lý yêu cầu bài toán ứng với một thuật toán ML trên dataset tương ứng.
+  4. Phần 4 — Code mẫu minh họa: bao gồm ít nhất 1 cell code để code mẫu cho 1 module
+  Code hoàn chỉnh tất cả các bước xử lý yêu cầu bài toán được đặt ra từ markdown cell tổng quan của module tương ứng và là cell nằm ngay bên dưới markdown cell tổng quan đó.
   Code mẫu chạy được, dùng các biến X_train, X_test, y_train, y_test (đã có sẵn từ Phần 2 sau khi
-  hệ thống chèn code thật), minh họa thuật toán chính của topic hoạt động thế nào.
+  hệ thống chèn code thật).
 
-  5. Phần 5 — Bài tập thực hành: đúng "num_exercises_planned" bài, mỗi bài gồm 1 cell markdown
+  5. Phần 5 — Bài tập thực hành: đúng số bài để thực hành các bài với tiêu đề trong "planned_exercises" với module tương ứng, mỗi bài gồm 1 cell markdown
   mô tả yêu cầu + 1 cell code.
-  ƯU TIÊN CAO NHẤT: nếu module tương ứng có "Bài tập có sẵn" (exercise_id, prompt,
-  expected_check_ý_nghĩa) trong phần DỮ LIỆU ĐẦU VÀO, PHẢI dùng đúng nội dung "prompt" đó làm
+  Nếu module tương ứng có "Bài tập có sẵn" (exercise_id, prompt,expected_check_ý_nghĩa)
+  trong phần DỮ LIỆU ĐẦU VÀO, phải dùng đúng nội dung "prompt" đó làm
   đề bài (có thể diễn đạt lại cho rõ ràng hơn nhưng không đổi yêu cầu), không tự nghĩ đề khác.
   Chỉ khi module KHÔNG có "Bài tập có sẵn" thì mới tự thiết kế bài tập phù hợp với "concepts" của
   module đó.
@@ -65,13 +65,21 @@ chấm điểm tự động, vì vậy bạn phải đảm bảo code phải ch�
   một khoảng hợp lý (ví dụ > 0.5, >= 0, trong đoạn [0,1]).
 
 *RÀNG BUỘC KHÁC:
+ 
+  - Có markdown hướng dẫn trước mỗi bài, có chỗ TODO cho học viên tự làm, có assert để học viên tự kiểm tra
+  không lộ đáp án sẵn trong code, có tách train/test
+  
+  - Các module được sắp xếp đúng theo thứ tự xuất hiện trong "modules" ở trên 
+  (đây chính là thứ tự sư phạm, không cần tự sắp xếp lại).
 
   - Không hardcode kết quả số liệu (không có dòng nào dạng bien = 0.xxx nếu con số đó đóng 
   vai trò "đáp án" thay vì tham số kỹ thuật như random_state).
-  - Code phải là Python hợp lệ, được dùng các thư viện: scikit-learn, pandas, numpy, matplotlib.
+
   - Độ khó phù hợp final_level (beginner: giải thích trực giác, tránh công thức nặng;
-    intermediate/advanced: có thể đi sâu hơn).
+    intermediate có thể đi sâu hơn).
+
   - Nếu có "prior_feedback" ở phần trước, phải sửa đúng lỗi đó.
+
   - BẮT BUỘC LIÊN KẾT CHỦ ĐỀ: mỗi bài tập ở Phần 5 và cell test tương ứng ở Phần 6 PHẢI trực
     tiếp vận dụng đúng "concepts" của module đã dạy ở Phần 3 trước đó — không được lấy đề bài
     từ một khái niệm nằm ngoài phạm vi những gì notebook vừa dạy. Ví dụ SAI: dạy "sigmoid" ở
@@ -98,24 +106,24 @@ chấm điểm tự động, vì vậy bạn phải đảm bảo code phải ch�
   ]
 
   Output mẫu:
-{
-  "cells": [
-    {"cell_type": "markdown", "source": "# Logistic Regression\n\nTổng quan: Logistic Regression là thuật toán học có giám sát, dùng để giải quyết các bài toán Phân loại (Classification), phổ biến nhất là Phân loại nhị phân (Binary Classification), được xử lý theo pipeline: Đầu vào X -> tổng tuyến tính z -> hàm sigmoid(z) -> ngưỡng decision -> dự đoán.\n\nMục tiêu: Giải thích được vì sao dùng sigmoid thay vì đường thẳng."},
-    {"cell_type": "markdown", "source": "## Chuẩn bị dữ liệu\nDataset phân loại nhị phân (X: đặc trưng đầu vào, y: nhãn 0/1)."},
-    {"cell_type": "code", "source": "# DATASET_INJECTION_PLACEHOLDER"},
-    {"cell_type": "markdown", "source": "## Module m1: Trực giác về sigmoid\nHàm sigmoid biến đổi tổng tuyến tính z (một số thực bất kỳ) thành xác suất trong khoảng (0,1) theo công thức sigmoid(z) = 1 / (1 + e^(-z)). Đây là hàm đơn điệu tăng, dạng chữ S. Ngưỡng 0.5 (ứng với z=0) dùng để quyết định nhãn dự đoán."},
-    {"cell_type": "code", "source": "import numpy as np\nimport matplotlib.pyplot as plt\n\ndef sigmoid_demo(z):\n    return 1 / (1 + np.exp(-z))\n\nz_values = np.linspace(-10, 10, 200)\nplt.plot(z_values, sigmoid_demo(z_values))\nplt.axhline(0.5, color='gray', linestyle='--')\nplt.xlabel('z')\nplt.ylabel('sigmoid(z)')\nplt.title('Đường cong hàm Sigmoid')\nplt.show()"},
-    {"cell_type": "markdown", "source": "## Bài tập m1_ex1: Cài đặt hàm sigmoid\nViết hàm sigmoid(z) bằng numpy, không dùng thư viện có sẵn."},
-    {"cell_type": "code", "source": "import numpy as np\n\ndef sigmoid(z):\n    # TODO: cài đặt công thức sigmoid: 1 / (1 + e^(-z))\n    pass\n\nresult_at_zero = sigmoid(0)"},
-    {"cell_type": "code", "source": "assert result_at_zero is not None, \"Chưa cài đặt hàm sigmoid\"\nassert abs(result_at_zero - 0.5) < 1e-9"}
-  ]
-}
+  {
+    "cells": [
+      {"cell_type": "markdown", "source": "# Logistic Regression\n\nTổng quan: Logistic Regression là thuật toán học có giám sát, dùng để giải quyết các bài toán Phân loại (Classification), phổ biến nhất là Phân loại nhị phân (Binary Classification), được xử lý theo pipeline: Đầu vào X -> tổng tuyến tính z -> hàm sigmoid(z) -> ngưỡng decision -> dự đoán.\n\nMục tiêu: Giải thích được vì sao dùng sigmoid thay vì đường thẳng."},
+      {"cell_type": "markdown", "source": "## Chuẩn bị dữ liệu\nDataset phân loại nhị phân (X: đặc trưng đầu vào, y: nhãn 0/1)."},
+      {"cell_type": "code", "source": "# DATASET_INJECTION_PLACEHOLDER"},
+      {"cell_type": "markdown", "source": "## Module m1: Trực giác về sigmoid\nHàm sigmoid biến đổi tổng tuyến tính z (một số thực bất kỳ) thành xác suất trong khoảng (0,1) theo công thức sigmoid(z) = 1 / (1 + e^(-z)). Đây là hàm đơn điệu tăng, dạng chữ S. Ngưỡng 0.5 (ứng với z=0) dùng để quyết định nhãn dự đoán."},
+      {"cell_type": "code", "source": "import numpy as np\nimport matplotlib.pyplot as plt\n\ndef sigmoid_demo(z):\n    return 1 / (1 + np.exp(-z))\n\nz_values = np.linspace(-10, 10, 200)\nplt.plot(z_values, sigmoid_demo(z_values))\nplt.axhline(0.5, color='gray', linestyle='--')\nplt.xlabel('z')\nplt.ylabel('sigmoid(z)')\nplt.title('Đường cong hàm Sigmoid')\nplt.show()"},
+      {"cell_type": "markdown", "source": "## Bài tập m1_ex1: Cài đặt hàm sigmoid\nViết hàm sigmoid(z) bằng numpy, không dùng thư viện có sẵn."},
+      {"cell_type": "code", "source": "import numpy as np\n\ndef sigmoid(z):\n    # TODO: cài đặt công thức sigmoid: 1 / (1 + e^(-z))\n    pass\n\nresult_at_zero = sigmoid(0)"},
+      {"cell_type": "code", "source": "assert result_at_zero is not None, \"Chưa cài đặt hàm sigmoid\"\nassert abs(result_at_zero - 0.5) < 1e-9"}
+    ]
+  }
 
-Lưu ý: đề bài ở Phần 5 lấy nguyên "prompt" của exercise_id="m1_ex1", và cell test ở Phần 6 bám
-đúng "expected_check_ý_nghĩa" đã cho — không tự bịa đề khác, không lấy khái niệm ngoài phạm vi
-module m1.
+  Tương tự thế làm cho tất cả các module trong modules, trực quan nhất:
+  Tổng quan chủ đề và bài tập module truyền đạt (markdown cell) -> code mẫu giải quyết các bài toán đặt ra trong module (code cell_type)
+  -> Câu hỏi, yêu cầu bài tập 1 (markdown cell) -> Phần code cho bài tập 1 (có # TODO) (code cell) -> đánh giá assert bài tập 1 (code cell)
+  -> Câu hỏi, yêu cầu bài tập 2 (markdown cell) -> Phần code cho bài tập 2 (có # TODO) (code cell) -> đánh giá assert bài tập 1 (code cell) .... với các bài tập còn lại
 
 Bây giờ hãy tạo notebook đầy đủ cho dữ liệu đầu vào ở phần "DỮ LIỆU ĐẦU VÀO" bên trên,
-đúng 6 phần, đúng thứ tự. KHÔNG trả về file .ipynb hay bất kỳ cấu trúc nbformat nào (không có
-"metadata", "nbformat_minor", "outputs", "execution_count"...) — chỉ trả về đúng JSON object
+đúng 6 phần, đúng thứ tự. KHÔNG trả về file .ipynb hay bất kỳ cấu trúc nbformat nào chỉ trả về đúng JSON object
 {"cells": [...]} như đã yêu cầu ở mục "ĐỊNH DẠNG KẾT QUẢ" bên trên.
