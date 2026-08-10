@@ -91,13 +91,11 @@ def _sources_and_citations_from_kb(entries: List[KBEntry]) -> tuple[List[Source]
     return sources, citations, covered, ungrounded
 
 
-def run_research(
-    topic: str,
-    *,
-    web_search_fn: Optional[WebSearchFn] = None,
-    extra_wanted_concepts: Optional[List[str]] = None,
-) -> ResearchBundle:
-    """Tạo ResearchBundle từ Knowledge Base và web search."""
+def run_research(topic: str) -> ResearchBundle:
+    #Tạo ResearchBundle từ Knowledge Base và web search.
+    web_search_fn: Optional[WebSearchFn] = None
+    extra_wanted_concepts: Optional[List[str]] = None
+
     kb_entries = read_kb_files(topic)
     sources, citations, covered, ungrounded = _sources_and_citations_from_kb(kb_entries)
 
@@ -137,10 +135,7 @@ def run_research(
         citations.append(Citation(concept=concept, source_id=source_id))
         covered.append(concept)
 
-    # ResearchBundle không có cách biểu diễn hợp lệ trạng thái "0 concept"
-    # (key_concepts bắt buộc có ít nhất 1 phần tử). 0 concept grounded nghĩa
-    # là research thất bại thật sự -- báo lỗi rõ ràng để main.py xử lý,
-    # không âm thầm trả về một bundle rỗng/giả.
+   
     if not covered:
         raise RuntimeError(
             f"run_research('{topic}'): không tìm được concept nào có nguồn thật "
