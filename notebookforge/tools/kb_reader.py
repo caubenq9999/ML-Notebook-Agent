@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import re
@@ -189,6 +187,22 @@ def concept_is_grounded(concept: str, entry: KBEntry) -> bool:
         re.search(rf"\b{re.escape(t)}\b", entry.body, re.IGNORECASE)
         for t in tokens
     )
+
+
+def find_concept_in_kb(concept: str, entries: List[KBEntry]) -> Optional[KBEntry]:
+    """Tìm concept (chưa chắc đã khai trong key_concepts) bằng cách quét sparse
+    keyword match (regex, không phải semantic/dense) qua nội dung từng file KB
+    đã đọc sẵn. Dùng chung logic với concept_is_grounded, chỉ khác là áp dụng
+    cho MỌI entry chứ không chỉ entry đã khai đúng concept đó trong frontmatter.
+
+    Trả về entry đầu tiên khớp, hoặc None nếu không file nào có. Việc này giúp
+    những concept lấy từ ngoài (vd LLM đề xuất theo LearnerProfile) được ưu
+    tiên tìm trong KB nội bộ trước, đúng quy tắc "KB trước, web_search sau".
+    """
+    for entry in entries:
+        if concept_is_grounded(concept, entry):
+            return entry
+    return None
 
 
 if __name__ == "__main__":

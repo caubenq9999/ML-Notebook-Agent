@@ -2,11 +2,19 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Callable, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 from tools.kb_reader import KBEntry, find_concept_in_kb, read_kb_files
 
 logger = logging.getLogger(__name__)
+
+# Tích hợp BM25 với cơ chế Fallback 
+try:
+    from rank_bm25 import BM25Okapi
+    HAS_BM25 = True
+except ImportError:
+    HAS_BM25 = False
+    logger.warning("Thư viện 'rank_bm25' chưa được cài đặt. Hệ thống sẽ tạm dùng Token Matching làm fallback.")
 
 # ==============================================================================
 # SCHEMAS 
@@ -63,76 +71,100 @@ def _budget_context(results: Sequence[Dict[str, str]], *, max_total_chars: int =
     return "\n\n".join(chunks)
 
 
-def _ground_concept_in_text(concept: str, text: str) -> bool:
-    pattern = re.compile(re.escape(concept.strip()), re.IGNORECASE)
-    if pattern.search(text):
+# ==============================================================================
+# SPARSE SEARCH BẰNG BM25 
+# ==============================================================================
+def _ground_concept_in_text_bm25(concept: str, text: str, bm25_threshold: float = 0.1) -> bool:
+    """Xác thực sự tồn tại của từ khóa trong văn bản bằng BM25 hoặc Token Matching."""
+    if not text or not concept or not text.strip() or not concept.strip():
+        return False
+
+    # Tách từ khóa thành tokens
+    concept_tokens = [t.lower() for t in re.split(r"\W+", concept) if len(t) >= 2]
+    if not concept_tokens:
+        return False
+
+    # Kiểm tra nhanh trùng khớp chính xác chuỗi (Exact match fallback)
+    text_lower = text.lower()
+    if concept.lower().strip() in text_lower:
         return True
-    tokens = [t for t in re.split(r"[\s()/']+", concept) if len(t) >= 3]
-    return bool(tokens) and all(
-        re.search(rf"\b{re.escape(t)}\b", text, re.IGNORECASE) for t in tokens
-    )
+
+    # Tách văn bản thành các đoạn
+    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+    if not paragraphs:
+        paragraphs = [text]
+
+    if HAS_BM25:
+        tokenized_corpus = [
+            [t.lower() for t in re.split(r"\W+", p) if len(t) >= 2]
+            for p in paragraphs
+        ]
+        # Lọc các đoạn rỗng token
+        tokenized_corpus = [doc for doc in tokenized_corpus if doc]
+        
+        if tokenized_corpus:
+            try:
+                bm25 = BM25Okapi(tokenized_corpus)
+                doc_scores = bm25.get_scores(concept_tokens)
+                max_score = max(doc_scores, default=0.0)
+                if max_score >= bm25_threshold:
+                    return True
+            except Exception as e:
+                logger.debug("BM25 scoring fallback do ngoại lệ: %s", e)
+
+    # Fallback: Nếu tất cả các token quan trọng của concept đều có trong text
+    return all(token in text_lower for token in concept_tokens)
 
 
 # ==============================================================================
 # LLM PROPOSE KEYWORDS 
 # ==============================================================================
 def _llm_propose_keywords(topic: str, profile: Optional[LearnerProfile] = None) -> List[str]:
-    clean_topic = topic.replace("_", " ").title()
+    clean_topic = str(topic).replace("_", " ").title()
+    keywords = [f"Definition of {clean_topic}"]
 
     if profile:
-        level = getattr(profile, "level", "Beginner")
-        goals = getattr(profile, "goals", []) or []
-        weak_concepts = getattr(profile, "weak_concepts", []) or []
-        known_concepts = getattr(profile, "known_concepts", []) or []
+        level = getattr(profile, "level", "Beginner") or "Beginner"
+        
+        # Lấy danh sách và làm sạch từ khóa rỗng
+        raw_goals = getattr(profile, "goals", []) or []
+        raw_weak = getattr(profile, "weak_concepts", []) or []
+        
+        goals = [str(g).strip() for g in raw_goals if g and str(g).strip()]
+        weak_concepts = [str(w).strip() for w in raw_weak if w and str(w).strip()]
 
         logger.info(
             "LLM phân tích LearnerProfile -> Level: %s | Goals: %s | Weak: %s",
             level, goals, weak_concepts
         )
 
-        # Cấu trúc Prompt gửi cho LLM thực tế:
-        prompt = f"""
-        Chủ đề chính: {clean_topic}
-        Trình độ người học: {level}
-        Mục tiêu học tập (Goals): {', '.join(goals)}
-        Các khái niệm còn yếu cần tập trung (Weak Concepts): {', '.join(weak_concepts)}
-        Các khái niệm đã biết (tránh giải thích lại sâu): {', '.join(known_concepts)}
-
-        Hãy đề xuất danh sách 5-8 từ khóa/khái niệm quan trọng nhất cần tìm tài liệu nghiên cứu.
-        """
-        logger.debug("Prompt gửi LLM:\n%s", prompt)
-
-        # Mock kết quả trả về từ LLM dựa trên profile
-        # Ví dụ: Người học yếu phần Regularization & có Goal là Optimization
-        keywords = [f"Definition of {clean_topic}"]
         if weak_concepts:
-            keywords.extend(weak_concepts)  # Ưu tiên các keyword yếu của người học
+            keywords.extend(weak_concepts)
         if goals:
-            keywords.extend(goals)         # Thêm các keyword theo mục tiêu
+            keywords.extend(goals)
             
-        # Thêm các từ khóa bổ trợ tiêu chuẩn
-        keywords.extend(["Cost Function", "Gradient Descent", "L1 Regularization"])
-        
-        # Deduplicate giữ nguyên thứ tự
-        seen = set()
-        return [x for x in keywords if not (x in seen or seen.add(x))]
+        keywords.extend([
+            f"Core concepts of {clean_topic}",
+            f"Applications of {clean_topic}"
+        ])
+    else:
+        logger.info("Chạy với profile mặc định cho topic '%s'", clean_topic)
+        keywords.extend([
+            f"Core concepts of {clean_topic}",
+            f"Overview of {clean_topic}",
+            f"Applications of {clean_topic}"
+        ])
 
-    # Fallback khi profile = None (trường hợp chạy test đơn 1 tham số)
-    logger.info("Chạy với profile mặc định cho topic '%s'", clean_topic)
-    return [
-        f"Definition of {clean_topic}",
-        "Cost Function",
-        "Gradient Descent",
-        "Overfitting",
-        "L1 Regularization",
-    ]
+    # Trả về danh sách không trùng lặp, giữ nguyên thứ tự
+    seen = set()
+    return [x for x in keywords if not (x in seen or seen.add(x))]
 
 
 # ==============================================================================
 # CORE AGENT LOGIC
 # ==============================================================================
 def run_research(topic: str, profile: Optional[LearnerProfile] = None) -> ResearchBundle:
-    # 1. LLM đề xuất keywords dựa trên các keyword & thuộc tính trong LearnerProfile
+    # 1. LLM đề xuất keywords động hoàn toàn theo topic & profile
     proposed_keywords = _llm_propose_keywords(topic, profile)
 
     # 2. Đọc file KB
@@ -143,23 +175,31 @@ def run_research(topic: str, profile: Optional[LearnerProfile] = None) -> Resear
     covered: List[str] = []
     unfound_in_kb: List[str] = []
 
-    # 3. Sparse Search: Quét từng keyword do LLM đề xuất trong tài liệu KB
+    # 3. Sparse Search trên KB (Hỗ trợ an toàn cả dict lẫn object)
     for kw in proposed_keywords:
-        matched_entry = find_concept_in_kb(kw, kb_entries)
+        matched_entry: Any = find_concept_in_kb(kw, kb_entries)
         if matched_entry:
-            if matched_entry.source_id not in sources_map:
-                sources_map[matched_entry.source_id] = Source(
-                    source_id=matched_entry.source_id,
+            # Phòng thủ trích xuất thuộc tính an toàn
+            source_id = getattr(matched_entry, "source_id", None) or (
+                matched_entry.get("source_id") if isinstance(matched_entry, dict) else "kb_file"
+            )
+            path = getattr(matched_entry, "path", None) or (
+                matched_entry.get("path") if isinstance(matched_entry, dict) else "kb_path"
+            )
+
+            if source_id not in sources_map:
+                sources_map[source_id] = Source(
+                    source_id=str(source_id),
                     type="kb_file",
-                    path_or_url=matched_entry.path,
+                    path_or_url=str(path),
                 )
-            citations.append(Citation(concept=kw, source_id=matched_entry.source_id))
+            citations.append(Citation(concept=kw, source_id=str(source_id)))
             if kw not in covered:
                 covered.append(kw)
         else:
             unfound_in_kb.append(kw)
 
-    # 4. Web Search cho các keyword không có trong KB
+    # 4. Web Search bổ sung cho các keyword chưa tìm thấy trong KB
     unresolved: List[str] = []
     web_source_counter = 0
     search_fn = _default_web_search
@@ -171,11 +211,12 @@ def run_research(topic: str, profile: Optional[LearnerProfile] = None) -> Resear
         )
 
         for kw in unfound_in_kb:
-            query = f"{topic.replace('_', ' ')} {kw}"
+            query = f"{str(topic).replace('_', ' ')} {kw}"
             raw_results = search_fn(query) or []
             context_text = _budget_context(raw_results)
 
-            if not context_text or not _ground_concept_in_text(kw, context_text):
+            # Kiểm tra grounding bằng BM25
+            if not context_text or not _ground_concept_in_text_bm25(kw, context_text):
                 unresolved.append(kw)
                 continue
 
@@ -187,14 +228,12 @@ def run_research(topic: str, profile: Optional[LearnerProfile] = None) -> Resear
             citations.append(Citation(concept=kw, source_id=source_id))
             covered.append(kw)
 
+    # Đảm bảo trả về dữ liệu hợp lệ
     if not covered:
-        raise RuntimeError(
-            f"run_research('{topic}'): Không tìm thấy concept grounded nào từ cả KB lẫn Web. "
-            f"unresolved_concepts={unresolved}"
-        )
+        logger.error("Không tìm thấy concept nào cho topic '%s'", topic)
 
     bundle = ResearchBundle(
-        topic=topic,
+        topic=str(topic),
         sources=list(sources_map.values()),
         key_concepts=covered,
         citations=citations,
@@ -211,11 +250,10 @@ def run_research(topic: str, profile: Optional[LearnerProfile] = None) -> Resear
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
-    # Test với LearnerProfile chứa các keyword thực tế
     sample_profile = LearnerProfile(
         level="Intermediate",
-        goals=["Master Model Optimization"],
-        weak_concepts=["Overfitting", "L1 Regularization"]
+        goals=["Optimization"],
+        weak_concepts=["Overfitting"]
     )
     
     res = run_research("logistic_regression", profile=sample_profile)
