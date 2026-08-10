@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Callable, Dict, List, Optional, Sequence
-from tools.kb_reader import KBEntry, concept_is_grounded, read_kb_files
+from typing import Callable, Dict, List, Sequence, Optional
+
+from tools.kb_reader import KBEntry, find_concept_in_kb, read_kb_files
 
 logger = logging.getLogger(__name__)
 
-# Research schema
-
+# SCHEMAS
 try:
     from schemas import Citation, ResearchBundle, Source  # type: ignore
 except ImportError:
@@ -16,7 +16,7 @@ except ImportError:
 
     class Source(BaseModel):  # type: ignore[no-redef]
         source_id: str
-        type: str  # Source type
+        type: str  # "kb_file" | "web" | "paper" | "textbook"
         path_or_url: str
 
     class Citation(BaseModel):  # type: ignore[no-redef]
@@ -33,19 +33,15 @@ except ImportError:
 
 MAX_CONTEXT_CHARS = 6000
 MAX_SNIPPET_CHARS_PER_RESULT = 800
-
 WebSearchFn = Callable[[str], Sequence[Dict[str, str]]]
 
 
 def _default_web_search(query: str) -> Sequence[Dict[str, str]]:
-    logger.info(
-        query,
-    )
+    logger.info("Thực hiện Web Search query: '%s'", query)
     return []
 
 
 def _budget_context(results: Sequence[Dict[str, str]], *, max_total_chars: int = MAX_CONTEXT_CHARS) -> str:
-    """Giới hạn độ dài context từ kết quả tìm kiếm."""
     chunks: List[str] = []
     used = 0
     for i, r in enumerate(results):
@@ -69,106 +65,100 @@ def _ground_concept_in_text(concept: str, text: str) -> bool:
     )
 
 
-def _sources_and_citations_from_kb(entries: List[KBEntry]) -> tuple[List[Source], List[Citation], List[str], List[str]]:
-    """Tạo sources và citations từ Knowledge Base."""
-    sources: List[Source] = []
-    citations: List[Citation] = []
-    covered: List[str] = []
-    ungrounded: List[str] = []
+def _llm_propose_keywords(topic: str) -> List[str]:
 
-    for entry in entries:
-        sources.append(
-            Source(source_id=entry.source_id, type="kb_file", path_or_url=entry.path)
-        )
-        for concept in entry.key_concepts:
-            if concept_is_grounded(concept, entry):
-                citations.append(Citation(concept=concept, source_id=entry.source_id))
-                if concept not in covered:
-                    covered.append(concept)
-            else:
-                ungrounded.append(f"{concept} (khai trong {entry.source_id}, không thấy trong nội dung)")
-
-    return sources, citations, covered, ungrounded
+    logger.info("LLM đang phân tích topic '%s' để đề xuất keywords...", topic)
+    clean_topic = topic.replace("_", " ").title()
+    
+    # Đoạn này sau sẽ thay bằng call LLM thực tế
+    return [
+        f"Definition of {clean_topic}",
+        "Cost Function",
+        "Gradient Descent",
+        "Overfitting",
+        "L1 Regularization",
+    ]
 
 
 def run_research(topic: str) -> ResearchBundle:
-    #Tạo ResearchBundle từ Knowledge Base và web search.
-    web_search_fn: Optional[WebSearchFn] = None
-    extra_wanted_concepts: Optional[List[str]] = None
+    # 1. LLM đề xuất danh sách keywords động cho topic
+    proposed_keywords = _llm_propose_keywords(topic)
 
+    # 2. Đọc các file KB của topic
     kb_entries = read_kb_files(topic)
-    sources, citations, covered, ungrounded = _sources_and_citations_from_kb(kb_entries)
 
-    if ungrounded:
-        logger.warning(
-            "run_research('%s'): %d concept bị loại vì không grounded: %s",
-            topic, len(ungrounded), ungrounded,
-        )
+    sources_map: Dict[str, Source] = {}
+    citations: List[Citation] = []
+    covered: List[str] = []
+    unfound_in_kb: List[str] = []
 
-    if not kb_entries:
-        logger.warning(
-            "run_research('%s'): chưa có file KB hợp lệ trong kb/%s/. "
-            "Toàn bộ phụ thuộc vào web_search (nếu có).",
-            topic, topic,
-        )
+    # 3. Sparse Search: Tìm keywords trong nội dung KB bằng find_concept_in_kb
+    for kw in proposed_keywords:
+        matched_entry = find_concept_in_kb(kw, kb_entries)
+        if matched_entry:
+            if matched_entry.source_id not in sources_map:
+                sources_map[matched_entry.source_id] = Source(
+                    source_id=matched_entry.source_id,
+                    type="kb_file",
+                    path_or_url=matched_entry.path,
+                )
+            citations.append(Citation(concept=kw, source_id=matched_entry.source_id))
+            if kw not in covered:
+                covered.append(kw)
+        else:
+            unfound_in_kb.append(kw)
 
-    search_fn = web_search_fn or _default_web_search
+    # 4. Web Search cho các keywords chưa có trong KB
     unresolved: List[str] = []
     web_source_counter = 0
+    search_fn = _default_web_search
 
-    for concept in (extra_wanted_concepts or []):
-        if concept in covered:
-            continue
-        query = f"{topic.replace('_', ' ')} {concept}"
-        raw_results = search_fn(query) or []
-        context_text = _budget_context(raw_results)
+    if unfound_in_kb:
+        logger.warning(
+            "run_research('%s'): %d keywords không thấy trong KB, chuyển qua Web Search: %s",
+            topic, len(unfound_in_kb), unfound_in_kb,
+        )
 
-        if not context_text or not _ground_concept_in_text(concept, context_text):
-            unresolved.append(concept)
-            continue
+        for kw in unfound_in_kb:
+            query = f"{topic.replace('_', ' ')} {kw}"
+            raw_results = search_fn(query) or []
+            context_text = _budget_context(raw_results)
 
-        web_source_counter += 1
-        source_id = f"web_{web_source_counter:02d}"
-        matched_url = raw_results[0].get("url", "unknown") if raw_results else "unknown"
-        # SourceType chỉ nhận "kb_file" | "web" | "paper" | "textbook".
-        sources.append(Source(source_id=source_id, type="web", path_or_url=matched_url))
-        citations.append(Citation(concept=concept, source_id=source_id))
-        covered.append(concept)
+            if not context_text or not _ground_concept_in_text(kw, context_text):
+                unresolved.append(kw)
+                continue
 
-   
+            web_source_counter += 1
+            source_id = f"web_{web_source_counter:02d}"
+            matched_url = raw_results[0].get("url", "unknown") if raw_results else "unknown"
+
+            sources_map[source_id] = Source(source_id=source_id, type="web", path_or_url=matched_url)
+            citations.append(Citation(concept=kw, source_id=source_id))
+            covered.append(kw)
+
     if not covered:
         raise RuntimeError(
-            f"run_research('{topic}'): không tìm được concept nào có nguồn thật "
-            f"(KB rỗng và web_search không grounded được concept nào). "
-            f"unresolved_concepts={unresolved or extra_wanted_concepts}"
+            f"run_research('{topic}'): Không tìm thấy concept grounded nào từ cả KB lẫn Web. "
+            f"unresolved_concepts={unresolved}"
         )
 
-    bundle_kwargs = dict(
+    bundle = ResearchBundle(
         topic=topic,
-        sources=sources,
+        sources=list(sources_map.values()),
         key_concepts=covered,
         citations=citations,
+        unresolved_concepts=unresolved,
     )
-
-  
-    if "unresolved_concepts" in getattr(ResearchBundle, "model_fields", {}):
-        bundle = ResearchBundle(**bundle_kwargs, unresolved_concepts=unresolved)
-    else:
-        logger.info(
-            "Schema ResearchBundle hiện tại không có field unresolved_concepts "
-            "-- bỏ qua, chỉ log ở đây: %s", unresolved,
-        )
-        bundle = ResearchBundle(**bundle_kwargs)
 
     logger.info(
         "run_research('%s') -> %d sources, %d key_concepts, %d citations, %d unresolved",
-        topic, len(sources), len(covered), len(citations), len(unresolved),
+        topic, len(bundle.sources), len(covered), len(citations), len(unresolved),
     )
     return bundle
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    result = run_research("logistic_regression")
-    dump = result.model_dump_json(indent=2) if hasattr(result, "model_dump_json") else result
-    print(dump)
+    res = run_research("logistic_regression")
+    print("\nKết quả chạy thử:")
+    print(res.model_dump_json(indent=2) if hasattr(res, "model_dump_json") else res)
