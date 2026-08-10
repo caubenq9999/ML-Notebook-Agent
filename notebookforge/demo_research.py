@@ -80,10 +80,6 @@ def _mock_llm_propose_keywords(topic: str) -> List[str]:
     """LLM đề xuất: 2 từ CÓ trong KB, 2 từ KHÔNG CÓ trong KB"""
     return ["Cost Function", "Gradient Descent", "Overfitting", "L1 Regularization"]
 
-def mock_web_search(query: str):
-    logger.info(f"[Web Search] Kích hoạt tìm kiếm qua Web cho: '{query}'")
-    return [{"url": "https://wiki.org/l1_regularization", "snippet": "L1 Regularization is used for feature selection and preventing Overfitting."}]
-
 def run_research_demo(topic: str) -> ResearchBundle:
     proposed_concepts = _mock_llm_propose_keywords(topic)
     kb_entries = mock_read_kb_files(topic)
@@ -108,19 +104,11 @@ def run_research_demo(topic: str) -> ResearchBundle:
         else:
             unfound_in_kb.append(concept)
 
-    # Web search cho các từ không có trong KB
+    # Đưa các từ không có trong KB thẳng vào unresolved_concepts
     unresolved: List[str] = []
     if unfound_in_kb:
-        logger.info(f"Các khái niệm thiếu trong KB: {unfound_in_kb} -> Đang tìm trên Web...")
-        for concept in unfound_in_kb:
-            results = mock_web_search(concept)
-            if results:
-                source_id = "web_01"
-                sources_map[source_id] = Source(source_id=source_id, type="web", path_or_url=results[0]["url"])
-                citations.append(Citation(concept=concept, source_id=source_id))
-                covered.append(concept)
-            else:
-                unresolved.append(concept)
+        logger.warning(f"Các khái niệm thiếu trong KB: {unfound_in_kb} -> Đẩy vào unresolved_concepts")
+        unresolved.extend(unfound_in_kb)
 
     return ResearchBundle(
         topic=topic,
@@ -132,7 +120,7 @@ def run_research_demo(topic: str) -> ResearchBundle:
 
 if __name__ == "__main__":
     print("\n" + "="*60)
-    print("🚀 CHẠY DEMO KẾT HỢP KB_READER & DYNAMIC LLM SEARCH")
+    print("🚀 CHẠY DEMO KẾT HỢP KB_READER & DYNAMIC LLM SEARCH (NO WEB SEARCH)")
     print("="*60 + "\n")
     bundle = run_research_demo("logistic_regression")
     print("\n📦 KẾT QUẢ OUTPUT RESEARCH BUNDLE:")
