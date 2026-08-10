@@ -1,5 +1,8 @@
-def get_dataset_code(topic: str, seed: int = 42) -> str:
+def get_dataset_code(topic: str, seed: int = None) -> str:
     """Hàm này trả về str đưa vào cell đầu của notebook và tự tạo dataset mẫu."""
+
+    if seed is None:
+        seed = random.randint(1, 10000)
 
     topic_clean = (
         topic.lower().strip()
