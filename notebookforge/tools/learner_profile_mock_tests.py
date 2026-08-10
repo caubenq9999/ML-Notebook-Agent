@@ -12,12 +12,9 @@ mock_profile_logistic_beginner = LearnerProfile(
     level_final=1,  # Nhưng điểm Quiz thấp nên bị hạ xuống Beginner (Level 1)
     quiz_score=1,
     constraints=Constraints(
-        duration_minutes=30,
-        is_custom_duration=False,
+        duration_minutes=40,
         num_exercises=3,
-        include_visualization=True,
-        preferred_framework="Scikit-learn",
-        level_adjustment_reason="Hạ từ Level 2 xuống 1 do điểm Quiz thấp (1/5).",
+        #preferred_framework="Scikit-learn",
     ),
 )
 
@@ -30,12 +27,9 @@ mock_profile_tree_intermediate = LearnerProfile(
     level_final=2,
     quiz_score=4,
     constraints=Constraints(
-        duration_minutes=45,
-        is_custom_duration=False,
+        duration_minutes=60,
         num_exercises=4,
-        include_visualization=True,
-        preferred_framework="Pure Python",  # Muốn học tự viết code giải thuật
-        level_adjustment_reason="Giữ nguyên Level 2 (Điểm Quiz tốt: 4/5).",
+        #preferred_framework="Pure Python",  # Muốn học tự viết code giải thuật
     ),
 )
 
@@ -48,12 +42,9 @@ mock_profile_kmeans_fasttrack = LearnerProfile(
     level_final=1,
     quiz_score=3,
     constraints=Constraints(
-        duration_minutes=15,  # Học nhanh trong 15 phút
-        is_custom_duration=False,
+        duration_minutes=80,  # Học nhanh trong 15 phút
         num_exercises=2,
-        include_visualization=False,
-        preferred_framework="Scikit-learn",
-        level_adjustment_reason="Giữ nguyên Level 1 dựa trên kết quả Quiz (3/5).",
+        #preferred_framework="Scikit-learn",
     ),
 )
 
@@ -66,12 +57,9 @@ mock_profile_custom = LearnerProfile(
     level_final=1,
     quiz_score=5,
     constraints=Constraints(
-        duration_minutes="Tuỳ chọn",
-        is_custom_duration=True,
+        duration_minutes="110",
         num_exercises=5,
-        include_visualization=True,
-        preferred_framework="PyTorch",
-        level_adjustment_reason="Giữ nguyên Level 1 (Điểm Quiz tốt: 5/5).",
+        #preferred_framework="PyTorch",
     ),
 )
 
