@@ -28,7 +28,7 @@ try:
 except ImportError:
     from pydantic import BaseModel, Field, computed_field, model_validator
 
-    SCHEMA_VERSION = "1.0.0"
+    SCHEMA_VERSION = "2.0.0"
 
     class Source(BaseModel):
         source_id: str = Field(..., min_length=1, description="vd: kb_01")
@@ -95,10 +95,14 @@ except ImportError:
 # ==============================================================================
 # LLM PROPOSE KEYWORDS
 # ==============================================================================
-def _llm_propose_keywords(topic: str, profile: Optional[LearnerProfile] = None) -> List[str]:
-    clean_topic = str(topic).replace("_", " ").title()
+def _llm_propose_keywords(
+    topic: str, 
+    profile: Optional[LearnerProfile] = None,
+    kb_entries: Optional[List[Any]] = None
+) -> List[str]:
     keywords = []
 
+    # 1. Trích xuất từ Profile học viên
     if profile:
         raw_goals = getattr(profile, "goals", []) or []
         raw_weak = getattr(profile, "weak_concepts", []) or []
@@ -111,10 +115,23 @@ def _llm_propose_keywords(topic: str, profile: Optional[LearnerProfile] = None) 
         if goals:
             keywords.extend(goals)
 
-    # Dự phòng nếu profile không cung cấp từ khóa
-    if not keywords:
-        keywords = [clean_topic, "Cost Function", "Gradient Descent", "Overfitting"]
+    # 2. Bổ sung các khái niệm từ KB nếu danh sách profile quá ngắn
+    if kb_entries:
+        for entry in kb_entries:
+            body = getattr(entry, "body", "") or (entry.get("body", "") if isinstance(entry, dict) else "")
+            # Quét các heading (# Concept) trong file markdown KB
+            found_headers = re.findall(r"^#{1,3}\s+(.+)$", body, re.MULTILINE)
+            for h in found_headers:
+                clean_h = h.strip()
+                if clean_h and clean_h not in keywords:
+                    keywords.append(clean_h)
 
+    # Fallback mặc định nếu không tìm thấy gì
+    if not keywords:
+        clean_topic = str(topic).replace("_", " ").title()
+        keywords = [clean_topic, "Cost Function", "Gradient Descent", "Overfitting", "L1 Regularization"]
+
+    # Deduplicate giữ nguyên thứ tự
     seen = set()
     return [x for x in keywords if not (x in seen or seen.add(x))]
 
@@ -123,17 +140,19 @@ def _llm_propose_keywords(topic: str, profile: Optional[LearnerProfile] = None) 
 # CORE AGENT LOGIC
 # ==============================================================================
 def run_research(topic: str, profile: Optional[LearnerProfile] = None) -> ResearchBundle:
-    # 1. LLM đề xuất keywords
-    proposed_keywords = _llm_propose_keywords(topic, profile)
-
-    # 2. Đọc file KB
+    # 1. Đọc danh sách file KB
     kb_entries = read_kb_files(topic)
+
+    # 2. Đề xuất keywords (kết hợp Profile + Toàn bộ KB)
+    proposed_keywords = _llm_propose_keywords(topic, profile, kb_entries)
 
     sources_map: Dict[str, Source] = {}
     citations: List[Citation] = []
     unresolved: List[str] = []
+    prerequisites: List[str] = ["Linear Algebra", "Python Basics", "Numpy & Pandas"]
+    common_pitfalls: List[str] = ["Data Leakage", "Multicollinearity", "Overfitting"]
 
-    # 3. Tra cứu trên KB
+    # 3. Tra cứu từng khái niệm trên KB
     for kw in proposed_keywords:
         matched_entry: Any = find_concept_in_kb(kw, kb_entries)
         if matched_entry:
@@ -154,13 +173,15 @@ def run_research(topic: str, profile: Optional[LearnerProfile] = None) -> Resear
         else:
             unresolved.append(kw)
 
-    # 4. Tạo ResearchBundle chuẩn Schema
+    # 4. Tạo ResearchBundle đầy đủ tất cả các trường Schema
     bundle = ResearchBundle(
         topic=str(topic),
         sources=list(sources_map.values()),
-        key_concepts=proposed_keywords,  # MUST: Truyền TOÀN BỘ khái niệm đề xuất
+        key_concepts=proposed_keywords,
         citations=citations,
         unresolved_concepts=unresolved,
+        prerequisites=prerequisites,
+        common_pitfalls=common_pitfalls,
     )
 
     return bundle
