@@ -2,15 +2,17 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Callable, Dict, List, Sequence, Optional
+from typing import Callable, Dict, List, Optional, Sequence
 
 from tools.kb_reader import KBEntry, find_concept_in_kb, read_kb_files
 
 logger = logging.getLogger(__name__)
 
-# SCHEMAS
+# ==============================================================================
+# SCHEMAS 
+# ==============================================================================
 try:
-    from schemas import Citation, ResearchBundle, Source  # type: ignore
+    from schemas import Citation, LearnerProfile, ResearchBundle, Source  # type: ignore
 except ImportError:
     from pydantic import BaseModel, Field
 
@@ -22,6 +24,12 @@ except ImportError:
     class Citation(BaseModel):  # type: ignore[no-redef]
         concept: str
         source_id: str
+
+    class LearnerProfile(BaseModel):  # type: ignore[no-redef]
+        level: Optional[str] = "Beginner"
+        goals: Optional[List[str]] = Field(default_factory=list)
+        weak_concepts: Optional[List[str]] = Field(default_factory=list)
+        known_concepts: Optional[List[str]] = Field(default_factory=list)
 
     class ResearchBundle(BaseModel):  # type: ignore[no-redef]
         topic: str
@@ -37,7 +45,7 @@ WebSearchFn = Callable[[str], Sequence[Dict[str, str]]]
 
 
 def _default_web_search(query: str) -> Sequence[Dict[str, str]]:
-    logger.info("Thực hiện Web Search query: '%s'", query)
+    logger.info("Thực hiện Web Search cho query: '%s'", query)
     return []
 
 
@@ -65,12 +73,52 @@ def _ground_concept_in_text(concept: str, text: str) -> bool:
     )
 
 
-def _llm_propose_keywords(topic: str) -> List[str]:
-
-    logger.info("LLM đang phân tích topic '%s' để đề xuất keywords...", topic)
+# ==============================================================================
+# LLM PROPOSE KEYWORDS 
+# ==============================================================================
+def _llm_propose_keywords(topic: str, profile: Optional[LearnerProfile] = None) -> List[str]:
     clean_topic = topic.replace("_", " ").title()
-    
-    # Đoạn này sau sẽ thay bằng call LLM thực tế
+
+    if profile:
+        level = getattr(profile, "level", "Beginner")
+        goals = getattr(profile, "goals", []) or []
+        weak_concepts = getattr(profile, "weak_concepts", []) or []
+        known_concepts = getattr(profile, "known_concepts", []) or []
+
+        logger.info(
+            "LLM phân tích LearnerProfile -> Level: %s | Goals: %s | Weak: %s",
+            level, goals, weak_concepts
+        )
+
+        # Cấu trúc Prompt gửi cho LLM thực tế:
+        prompt = f"""
+        Chủ đề chính: {clean_topic}
+        Trình độ người học: {level}
+        Mục tiêu học tập (Goals): {', '.join(goals)}
+        Các khái niệm còn yếu cần tập trung (Weak Concepts): {', '.join(weak_concepts)}
+        Các khái niệm đã biết (tránh giải thích lại sâu): {', '.join(known_concepts)}
+
+        Hãy đề xuất danh sách 5-8 từ khóa/khái niệm quan trọng nhất cần tìm tài liệu nghiên cứu.
+        """
+        logger.debug("Prompt gửi LLM:\n%s", prompt)
+
+        # Mock kết quả trả về từ LLM dựa trên profile
+        # Ví dụ: Người học yếu phần Regularization & có Goal là Optimization
+        keywords = [f"Definition of {clean_topic}"]
+        if weak_concepts:
+            keywords.extend(weak_concepts)  # Ưu tiên các keyword yếu của người học
+        if goals:
+            keywords.extend(goals)         # Thêm các keyword theo mục tiêu
+            
+        # Thêm các từ khóa bổ trợ tiêu chuẩn
+        keywords.extend(["Cost Function", "Gradient Descent", "L1 Regularization"])
+        
+        # Deduplicate giữ nguyên thứ tự
+        seen = set()
+        return [x for x in keywords if not (x in seen or seen.add(x))]
+
+    # Fallback khi profile = None (trường hợp chạy test đơn 1 tham số)
+    logger.info("Chạy với profile mặc định cho topic '%s'", clean_topic)
     return [
         f"Definition of {clean_topic}",
         "Cost Function",
@@ -80,11 +128,14 @@ def _llm_propose_keywords(topic: str) -> List[str]:
     ]
 
 
-def run_research(topic: str) -> ResearchBundle:
-    # 1. LLM đề xuất danh sách keywords động cho topic
-    proposed_keywords = _llm_propose_keywords(topic)
+# ==============================================================================
+# CORE AGENT LOGIC
+# ==============================================================================
+def run_research(topic: str, profile: Optional[LearnerProfile] = None) -> ResearchBundle:
+    # 1. LLM đề xuất keywords dựa trên các keyword & thuộc tính trong LearnerProfile
+    proposed_keywords = _llm_propose_keywords(topic, profile)
 
-    # 2. Đọc các file KB của topic
+    # 2. Đọc file KB
     kb_entries = read_kb_files(topic)
 
     sources_map: Dict[str, Source] = {}
@@ -92,7 +143,7 @@ def run_research(topic: str) -> ResearchBundle:
     covered: List[str] = []
     unfound_in_kb: List[str] = []
 
-    # 3. Sparse Search: Tìm keywords trong nội dung KB bằng find_concept_in_kb
+    # 3. Sparse Search: Quét từng keyword do LLM đề xuất trong tài liệu KB
     for kw in proposed_keywords:
         matched_entry = find_concept_in_kb(kw, kb_entries)
         if matched_entry:
@@ -108,7 +159,7 @@ def run_research(topic: str) -> ResearchBundle:
         else:
             unfound_in_kb.append(kw)
 
-    # 4. Web Search cho các keywords chưa có trong KB
+    # 4. Web Search cho các keyword không có trong KB
     unresolved: List[str] = []
     web_source_counter = 0
     search_fn = _default_web_search
@@ -151,7 +202,7 @@ def run_research(topic: str) -> ResearchBundle:
     )
 
     logger.info(
-        "run_research('%s') -> %d sources, %d key_concepts, %d citations, %d unresolved",
+        "run_research('%s') Hoàn tất -> %d sources, %d key_concepts, %d citations, %d unresolved",
         topic, len(bundle.sources), len(covered), len(citations), len(unresolved),
     )
     return bundle
@@ -159,6 +210,14 @@ def run_research(topic: str) -> ResearchBundle:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    res = run_research("logistic_regression")
-    print("\nKết quả chạy thử:")
+
+    # Test với LearnerProfile chứa các keyword thực tế
+    sample_profile = LearnerProfile(
+        level="Intermediate",
+        goals=["Master Model Optimization"],
+        weak_concepts=["Overfitting", "L1 Regularization"]
+    )
+    
+    res = run_research("logistic_regression", profile=sample_profile)
+    print("\n[MOCK OUTPUT RESEARCH BUNDLE]:")
     print(res.model_dump_json(indent=2) if hasattr(res, "model_dump_json") else res)
