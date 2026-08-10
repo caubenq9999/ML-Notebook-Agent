@@ -153,11 +153,12 @@ TOPIC_LABELS = {
     "k_means": "K-MEANS CLUSTERING",
 }
 
-FRAMEWORK_LABELS = {
-    "scikit_learn" : "Scikit-learn",
+# TÍNH NĂNG CÓ THỂ PHÁT TRIỂN THÊM NẾU CÓ THỜI GIAN
+"""FRAMEWORK_LABELS = {
+    "scikit_learn" : "Scikit-learn", 
     "pure_python": 'Pure Python',
     "pytorch" : 'PyTorch'
-}
+}"""
 
 def calculate_final_level(level_declared: int, quiz_score: int) -> tuple[int, str]:
     """Logic tính level_final và ghi nhận lý do traceback."""
@@ -206,75 +207,84 @@ st.sidebar.caption(f"**Created At:** {st.session_state.created_at}")
 
 # --- PHASE 1: THÔNG TIN CƠ BẢN ---
 st.subheader("1. Cài đặt bài học")
-col1, col2 = st.columns(2)
 
-with col1:
-    # Truyền trực tiếp danh sách keys của TOPIC_LABELS vào options
+with st.expander("Tùy chỉnh Notebook", expanded=True):
+  # Hàng 1: Chọn Topic & Trình độ
+  col1, col2 = st.columns(2)
+
+  with col1:
     topic = st.selectbox(
         "Chọn topic:",
         options=list(TOPIC_LABELS.keys()),
-        format_func=lambda key: TOPIC_LABELS[key]  # Lấy nhãn tương ứng từ dictionary
+        format_func=lambda key: TOPIC_LABELS[key],
     )
 
-with col2:
+  with col2:
     st.write("**Trình độ:**")
-    
-    # 1. Khởi tạo / Lấy trạng thái toggle từ session_state
+
     if "is_intermediate" not in st.session_state:
-        st.session_state.is_intermediate = False
+      st.session_state.is_intermediate = False
 
-    # 2. Định nghĩa Style màu sắc
-    # Side chọn: Đổi màu xanh + phát sáng (text-shadow)
-    # Side không chọn: Màu trắng chuẩn (#FFFFFF) mờ nhẹ (opacity: 0.5)
     if st.session_state.is_intermediate:
-        # Bên trái (Beginner) off -> Màu trắng mờ
-        left_style = "color: #FFFFFF; font-weight: normal; opacity: 1;"
-        # Bên phải (Intermediate) on -> Màu Xanh Dương (#00A2FF) nổi bật
-        right_style = "color: #00A2FF; font-weight: bold; opacity: 1.0; text-shadow: 0 0 10px rgba(0, 162, 255, 0.6);"
+      left_style = "color: #FFFFFF; font-weight: normal; opacity: 1;"
+      right_style = (
+          "color: #00A2FF; font-weight: bold; opacity: 1.0; text-shadow: 0 0"
+          " 10px rgba(0, 162, 255, 0.6);"
+      )
     else:
-        # Bên trái (Beginner) on -> Màu Xanh Lá (#00FF88) nổi bật
-        left_style = "color: #00FF88; font-weight: bold; opacity: 1.0; text-shadow: 0 0 10px rgba(0, 255, 136, 0.6);"
-        # Bên phải (Intermediate) off -> Màu trắng mờ
-        right_style = "color: #FFFFFF; font-weight: normal; opacity: 1;"
+      left_style = (
+          "color: #00FF88; font-weight: bold; opacity: 1.0; text-shadow: 0 0"
+          " 10px rgba(0, 255, 136, 0.6);"
+      )
+      right_style = "color: #FFFFFF; font-weight: normal; opacity: 1;"
 
-    # 3. Layout 3 cột: [Beginner] [Toggle] [Intermediate]
     t_col1, t_col2, t_col3 = st.columns([1, 0.3, 1.2])
 
     with t_col1:
-        st.markdown(f"<div style='text-align: right; padding-top: 5px; {left_style}'>1 - Beginner</div>", unsafe_allow_html=True)
+      st.markdown(
+          f"<div style='text-align: right; padding-top: 5px;"
+          f" {left_style}'>1 - Beginner</div>",
+          unsafe_allow_html=True,
+      )
 
     with t_col2:
-        is_intermediate = st.toggle(
-            "level_toggle", 
-            value=st.session_state.is_intermediate, 
-            label_visibility="collapsed",
-            key="is_intermediate"
-        )
+      is_intermediate = st.toggle(
+          "level_toggle",
+          value=st.session_state.is_intermediate,
+          label_visibility="collapsed",
+          key="is_intermediate",
+      )
 
     with t_col3:
-        st.markdown(f"<div style='text-align: left; padding-top: 5px; {right_style}'>2 - Intermediate</div>", unsafe_allow_html=True)
+      st.markdown(
+          f"<div style='text-align: left; padding-top: 5px;"
+          f" {right_style}'>2 - Intermediate</div>",
+          unsafe_allow_html=True,
+      )
 
-    # 4. Gán giá trị level_declared (1 hoặc 2)
     level_declared = 2 if is_intermediate else 1
 
-# Constraints mở rộng
-with st.expander("Tùy chỉnh Notebook", expanded=True):
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        duration_minutes = st.selectbox("Thời lượng (phút):", ['Tuỳ chọn', 15, 30, 45, 60, 120], index=0)
-    with c2:
-        num_exercises = st.slider("Số bài tập thực hành:", min_value=1, max_value=5, value=3)
-    with c3:
-        include_viz = st.checkbox("Sử dụng Matplotlib/Seaborn EDA", value=False)
+  st.write("")  # Khoảng đệm giữa hai hàng
 
-    selected_framework_key = st.radio(
-        "Framework ưu tiên:", 
-        options=list(FRAMEWORK_LABELS.keys()),
-        format_func=lambda k: FRAMEWORK_LABELS[k],
-        horizontal=True, 
-        index=None
+  # Hàng 2: Thời lượng & Số bài tập
+  c1, c2 = st.columns(2)
+  with c1:
+    duration_minutes = st.slider(
+        "Thời lượng (phút):", min_value=60, max_value=120, value=60, step=10
     )
-    preferred_framework = FRAMEWORK_LABELS[selected_framework_key] if selected_framework_key else None
+  with c2:
+    num_exercises = st.slider(
+        "Số bài tập thực hành:", min_value=1, max_value=5, value=3
+    )
+
+    #selected_framework_key = st.radio(
+    #    "Framework ưu tiên:", 
+    #    options=list(FRAMEWORK_LABELS.keys()),
+    #    format_func=lambda k: FRAMEWORK_LABELS[k],
+    #    horizontal=True, 
+    #    index=None
+    #)
+    #preferred_framework = FRAMEWORK_LABELS[selected_framework_key] if selected_framework_key else None
 
 # --- PHASE 2: QUIZ 5 CÂU ---
 st.subheader("2. Câu hỏi đánh giá")
@@ -313,16 +323,10 @@ if submit_quiz:
     # Tính level_final & Lý do
     level_final, adjustment_reason = calculate_final_level(level_declared, quiz_score)
 
-    # Đóng gói constraints dict
-    is_custom_duration = (duration_minutes == 'Tuỳ chọn')
-
     constraints = {
         "duration_minutes": duration_minutes,
-        "is_custom_duration": is_custom_duration,
         "num_exercises": num_exercises,
-        "include_visualization": include_viz,
-        "preferred_framework": preferred_framework,
-        "level_adjustment_reason": adjustment_reason,  # Dùng cho traceback
+        #"preferred_framework": preferred_framework,
     }
 
     # Đóng gói Profile Object
@@ -341,17 +345,17 @@ if submit_quiz:
     level_name = "Beginner" if level_final == 1 else "Intermediate"
 
     st.info(f"""
-    📌 **Đề tài của bạn:** {TOPIC_LABELS[topic]}  
-    🎯 **Cấp độ xếp hạng:** {level_name}
+    📌 **Chủ đề bạn chọn:** {TOPIC_LABELS[topic]}  
+    🎯 **Cấp độ của bạn:** {level_name}
     """)
 
     # Hiển thị kết quả Traceability cho người dùng/tester xem
     st.json(profile_data)
 
-    """if level_final < level_declared:
-        st.warning(f"⚠️ **Thông báo điều chỉnh:** {adjustment_reason}")
-    else:
-        st.info(f"ℹ️ **Thông tin level:** {adjustment_reason}")"""
+    # if level_final < level_declared:
+    #     st.warning(f"⚠️ **Thông báo điều chỉnh:** {adjustment_reason}")
+    # else:
+    #     st.info(f"ℹ️ **Thông tin level:** {adjustment_reason}")
 
     # Khi nối với main.py/api.py của Hoàng:
     # learner_profile = LearnerProfile(**profile_data)
