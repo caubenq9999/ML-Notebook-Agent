@@ -18,10 +18,8 @@ sys.path.append(str(ROOT_DIR))
 
 from schemas import LearnerProfile, LearningPath, Module, ResearchBundle
 
-
 # Gọi model để tạo "LearningPath" dưới dạng JSON
 PROMPT_PATH_CURRICULUM = ROOT_DIR / "prompts" / "curriculum.txt"
-#PROMPT_PATH = Path(__file__).resolve().parent / "curriculum.txt"
 MODEL_NAME = "gemini-2.0-flash"
 MAX_LLM_RETRIES = 3  # Số lần thử lại nếu LLM trả JSON sai định dạng
 
@@ -29,15 +27,12 @@ MAX_LLM_RETRIES = 3  # Số lần thử lại nếu LLM trả JSON sai định d
 # -------------------
 # 1. Xây dựng prompt
 # -------------------
-
 # Đọc nội dung prompt từ file curriculum.txt
 def load_prompt() -> str:
     return PROMPT_PATH_CURRICULUM.read_text(encoding = "utf-8")
 
-
 # Hàm tạo prompt để yêu cầu LLM trả về LearningPath
 def build_prompt_curriculum(bundle : ResearchBundle, profile : LearnerProfile, last_error : Optional[str] = None) -> str:
-
     # lưu prompt từ file curriculum.txt 
     template = load_prompt()
     prompt = template.replace("{topic}",str(bundle.topic))
@@ -69,8 +64,6 @@ def build_prompt_curriculum(bundle : ResearchBundle, profile : LearnerProfile, l
 def call_gemini(prompt : str) -> str:
     # Lấy biến môi trường GEMINI_API_KEY từ hệ điều hành
     api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        return dry_run_response()
 
     # Nếu có API key:
     import google.generativeai as genai
@@ -78,7 +71,7 @@ def call_gemini(prompt : str) -> str:
     genai.configure(api_key = api_key)
     model = genai.GenerativeModel(MODEL_NAME)       # gemini-2.0-flash
 
-    # Gửi request cho 
+    # Gửi request cho model
     response = model.generate_content(
         prompt,
         generation_config = {
@@ -88,62 +81,9 @@ def call_gemini(prompt : str) -> str:
     )
     return response.text
 
-
-# Nếu chưa có API key (lấy MOCK_PATH từ file mocks.py)
-def dry_run_response() -> str:
-    return json.dumps(
-        {
-            "topic": "logistic_regression",
-            "level": 1,
-            "session_id": "test-001",
-            "modules": [
-                {
-                    "module_id": "m1",
-                    "title": "Hàm Sigmoid",
-                    "objective": (
-                        "Hiểu cách sigmoid biến đổi giá trị thực "
-                        "thành xác suất."
-                    ),
-                    "concepts": ["sigmoid"],
-                    "estimated_minutes": 20,
-                    "planned_exercises": [],
-                    "source_ids": ["kb_01"],
-                },
-                {
-                    "module_id": "m2",
-                    "title": "Log Loss",
-                    "objective": (
-                        "Hiểu cách log loss đo sai số "
-                        "của dự đoán."
-                    ),
-                    "concepts": ["log loss"],
-                    "estimated_minutes": 20,
-                    "planned_exercises": [],
-                    "source_ids": ["kb_01"],
-                },
-                {
-                    "module_id": "m3",
-                    "title": "Decision Boundary",
-                    "objective": (
-                        "Hiểu và giải thích được "
-                        "ranh giới quyết định."
-                    ),
-                    "concepts": ["decision boundary"],
-                    "estimated_minutes": 20,
-                    "planned_exercises": [],
-                    "source_ids": ["kb_02"],
-                },
-            ],
-            "notes": "Dry run curriculum.",
-        },
-        ensure_ascii = False,
-    )
-
-
 # --------------
 # 3. Xử lý JSON
 # --------------
-
 # Biến đổi response.text từ Gemini sang dạng dictionary trong Python
 def processing_json(raw_text: str) -> dict:
     # Loại bỏ dấu cách, xuống dòng, tab thừa
@@ -219,10 +159,11 @@ def validate_and_adjust(data: dict, profile: LearnerProfile) -> tuple[dict, list
 
     #--------------------------Kiểm tra số lượng bài tập--------------------------
     target_exercises = profile.constraints.num_exercises
-    if target_exercises is not None and data.get("num_exercises_planned") != target_exercises:
+    actual_exercises = sum(len(m.get("planned_exercises", [])) for m in modules)
+    if actual_exercises != target_exercises:
         warnings.append(
-            f"num_exercises_planned bị lệch ({data.get('num_exercises_planned')} != {target_exercises}). "
-            "Xử lý ở bước sau, KHÔNG tự sửa."
+            f"Tổng planned_exercises thực tế ({actual_exercises}) lệch với "
+            f"constraints.num_exercises ({target_exercises}). Xử lý ở bước sau, KHÔNG tự sửa."
         )
 
     # Trả về LearningPath sau khi điều chỉnh (nếu bị lệch) và danh sách các cảnh báo
@@ -232,8 +173,6 @@ def validate_and_adjust(data: dict, profile: LearnerProfile) -> tuple[dict, list
 # -------------
 # 5. Hàm chính
 # -------------
-
-
 def run_curriculum(
     bundle : ResearchBundle,
     profile : LearnerProfile,
@@ -262,6 +201,7 @@ def run_curriculum(
         try:
             data["session_id"] = profile.session_id
             data["level"] = profile.level_final
+            data["topic"] = profile.topic
             # Trả về class LearningPath theo đúng định dạng schema
             return LearningPath(**data)
         except ValidationError as error_validate:
