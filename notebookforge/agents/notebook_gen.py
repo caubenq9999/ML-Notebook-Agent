@@ -110,24 +110,23 @@ def build_prompt_notebook_gen(
 # ---------------------
 def call_gemini(prompt: str) -> str:
     api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        return dry_run_response()
 
-    # Chạy nếu đã có API key
-    import google.generativeai as genai
+    # Dùng api_client
+    from google import genai
+    from google.genai import types
 
-    genai.configure(api_key = api_key)
-    model = genai.GenerativeModel(MODEL_NAME)       # gemini-2.0-flash
-    response = model.generate_content(
-        prompt,
-        generation_config = {
-            "temperature" : 0.3,
-            "response_mime_type" : "application/json",
-        },
+    client = genai.Client(api_key = api_key)
+
+    response = client.models.generate_content(
+        model = MODEL_NAME,
+        contents = prompt,
+        config = types.GenerateContentConfig(
+            temperature = 0.3,
+            response_mime_type = "application/json",
+        ),
     )
 
     return response.text
-
 
 # Nếu chưa có API key
 def dry_run_response() -> str:
