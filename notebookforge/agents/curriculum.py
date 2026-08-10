@@ -61,23 +61,23 @@ def build_prompt_curriculum(bundle : ResearchBundle, profile : LearnerProfile, l
 # vs.code -> Gửi prompt + API key -> Model Gemini-2.0-flash xử lý trên hạ tầng Google
 # -> Model gửi respone dạng JSON về vs.code
 
-def call_gemini(prompt : str) -> str:
+def call_gemini(prompt: str) -> str:
     # Lấy biến môi trường GEMINI_API_KEY từ hệ điều hành
     api_key = os.environ.get("GEMINI_API_KEY")
 
-    # Nếu có API key:
-    import google.generativeai as genai
+    # Dùng api_client (genai.Client) theo đúng chuẩn SDK mới
+    from google import genai
+    from google.genai import types
 
-    genai.configure(api_key = api_key)
-    model = genai.GenerativeModel(MODEL_NAME)       # gemini-2.0-flash
+    client = genai.Client(api_key = api_key)
 
-    # Gửi request cho model
-    response = model.generate_content(
-        prompt,
-        generation_config = {
-            "temperature" : 0.3,  # Thấp, câu trả lời ít ngẫu nhiên nên ổn định hơn
-            "response_mime_type" : "application/json",     # trả respone ở dạng JSON
-        },
+    response = client.models.generate_content(
+        model = MODEL_NAME,  # "gemini-2.0-flash"
+        contents = prompt,
+        config = types.GenerateContentConfig(
+            temperature = 0.3,
+            response_mime_type = "application/json",
+        ),
     )
     return response.text
 
