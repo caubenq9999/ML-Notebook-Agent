@@ -111,6 +111,10 @@ def _llm_propose_keywords(topic: str, profile: Optional[LearnerProfile] = None) 
         if goals:
             keywords.extend(goals)
 
+    # Dự phòng nếu profile không cung cấp từ khóa
+    if not keywords:
+        keywords = [clean_topic, "Cost Function", "Gradient Descent", "Overfitting"]
+
     seen = set()
     return [x for x in keywords if not (x in seen or seen.add(x))]
 
@@ -148,15 +152,13 @@ def run_research(topic: str, profile: Optional[LearnerProfile] = None) -> Resear
                 )
             citations.append(Citation(concept=kw, source_id=str(source_id)))
         else:
-            # Không tìm thấy trong KB -> Đưa vào danh sách unresolved
             unresolved.append(kw)
 
-    # 4. Tạo ResearchBundle
-    # QUAN TRỌNG: key_concepts phải chứa TẤT CẢ proposed_keywords
+    # 4. Tạo ResearchBundle chuẩn Schema
     bundle = ResearchBundle(
         topic=str(topic),
         sources=list(sources_map.values()),
-        key_concepts=proposed_keywords,  # Đầy đủ tất cả khái niệm đề xuất
+        key_concepts=proposed_keywords,  # MUST: Truyền TOÀN BỘ khái niệm đề xuất
         citations=citations,
         unresolved_concepts=unresolved,
     )
