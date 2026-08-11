@@ -73,7 +73,7 @@ Learning, với nhiều năm kinh nghiệm xây dựng lộ trình học cá nh�
 
   3. "session_id" phải giữ nguyên session_id được cung cấp trong thông tin học viên.
 
-  4. "modules" phải là một danh sách có ít nhất 1 module.
+  4. "modules" phải là một danh sách PHẢI CÓ TỪ 4 - 6 module. (QUAN TRỌNG, ĐỌC KỸ)
 
   5. Mỗi module bắt buộc có:
     * module_id

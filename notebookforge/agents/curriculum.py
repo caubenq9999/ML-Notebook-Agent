@@ -21,7 +21,6 @@ from llm_client import call_json
 
 # Gọi model để tạo "LearningPath" dưới dạng JSON
 PROMPT_PATH_CURRICULUM = ROOT_DIR / "prompts" / "curriculum.txt"
-MAX_LLM_RETRIES = 3  # Số lần thử lại nếu LLM trả JSON sai định dạng
 
 
 # -------------------
@@ -32,7 +31,7 @@ def load_prompt() -> str:
     return PROMPT_PATH_CURRICULUM.read_text(encoding = "utf-8")
 
 # Hàm tạo prompt để yêu cầu LLM trả về LearningPath
-def build_prompt_curriculum(bundle : ResearchBundle, profile : LearnerProfile, last_error : Optional[str] = None) -> str:
+def build_prompt_curriculum(bundle : ResearchBundle, profile : LearnerProfile) -> str:
     # lưu prompt từ file curriculum.txt 
     template = load_prompt()
     prompt = template.replace("{topic}",str(bundle.topic))
@@ -41,53 +40,11 @@ def build_prompt_curriculum(bundle : ResearchBundle, profile : LearnerProfile, l
     prompt = prompt.replace("{duration_minutes}" , str(profile.constraints.duration_minutes))
     prompt = prompt.replace("{num_exercises}" , str(profile.constraints.num_exercises))
 
-    # Bổ sung thêm lỗi được phát hiện (nếu có) vào prompt
-    if last_error:
-        # Vòng retry nội bộ của tác nhân Curriculum (do LLM trả file JSON sai định dạng)
-        prompt += (
-            "\n# LỖI Ở LẦN TRẢ LỜI TRƯỚC — Bắt buộc sửa\n"
-            f"{last_error}\n"
-            "Hãy trả lại đúng định dạng JSON theo yêu cầu ở trên."
-        )
-
     # Trả về prompt
     return prompt
 
-# --------------
-# 2. Xử lý JSON
-# --------------
-# Biến đổi response.text từ Gemini sang dạng dictionary trong Python
-def processing_json(raw_text: str) -> dict:
-    # Loại bỏ dấu cách, xuống dòng, tab thừa
-    text = raw_text.strip()
-
-    """
-    Giải quyết vấn đề Markdown fence:
-    Gemini có thể trả về dạng
-        ``` json
-        {
-            <content>
-        }
-        ```
-    tìm:
-        + Markdown fence: dấu ``` + có 0 hoặc 1 từ 'json'
-        + Phần nội dung {...}: group(1)
-    """
-    fence_match = re.search(
-        r"```(?:json)?\s*(\{.*\})\s*```", 
-        text, 
-        re.DOTALL)
-    
-    # Nếu có Markdown fence thì chỉ giữa lại phần group(1)
-    if fence_match:
-        text = fence_match.group(1)
-
-    # Biến json thành dictionary
-    return json.loads(text)
-
-
 # -------------------------------------------------------
-# 3. Validate và tự động điều chỉnh cho khớp constraints
+# 2. Validate và tự động điều chỉnh cho khớp constraints
 # -------------------------------------------------------
 def validate_and_adjust(data: dict, profile: LearnerProfile) -> tuple[dict, list[str]]:
     """
@@ -125,10 +82,6 @@ def validate_and_adjust(data: dict, profile: LearnerProfile) -> tuple[dict, list
 
         data["total_estimated_minutes"] = sum(m["estimated_minutes"] for m in modules)
 
-    # Nếu người dùng không chọn thời gian học (target_minutes = None)
-    elif modules:
-        data["total_estimated_minutes"] = sum(m["estimated_minutes"] for m in modules)
-
     #--------------------------Kiểm tra số lượng bài tập--------------------------
     target_exercises = profile.constraints.num_exercises
     actual_exercises = sum(len(m.get("planned_exercises", [])) for m in modules)
@@ -143,59 +96,42 @@ def validate_and_adjust(data: dict, profile: LearnerProfile) -> tuple[dict, list
 
 
 # -------------
-# 4. Hàm chính
+# 3. Hàm chính
 # -------------
 def run_curriculum(
     bundle : ResearchBundle,
     profile : LearnerProfile,
 ) -> LearningPath:
-
-    # Lỗi khi tạo file JSON ở lần thử gần nhất
-    last_error: Optional[str] = None
-
-    # Tối đa 3 lần gọi LLM
-    for llm_try in range(MAX_LLM_RETRIES):
-
-        # Dùng prompt để LLM tạo LearningPath dưới dạng JSON
-        prompt_make_LearningPath = build_prompt_curriculum(bundle, profile, last_error)
-        LearningPath_raw, meta = call_json(
-            prompt = prompt_make_LearningPath,
-            schema = LearningPath,
-            session_id = profile.session_id,
-        )
-
-        try:
-            data = processing_json(LearningPath_raw)
-        except json.JSONDecodeError as error_json:
-            last_error = f"JSON không hợp lệ: {error_json}. LearningPath_raw: {LearningPath_raw[:500]}"
-            continue
-
-        data, warnings = validate_and_adjust(data, profile)
-        for w in warnings:
-            print(f"[Curriculum Agent] cảnh báo (attempt {llm_try + 1}) : {w}")
-
-        try:
-            data["session_id"] = profile.session_id
-            data["level"] = profile.level_final
-            data["topic"] = profile.topic
-            # Trả về class LearningPath theo đúng định dạng schema
-            return LearningPath(**data)
-        except ValidationError as error_validate:
-            last_error = f"Dữ liệu không khớp schema LearningPath: {error_validate}"
-            continue
-
-    # Hết lượt thử
-    raise RuntimeError(
-        f"Curriculum Agent thất bại sau {MAX_LLM_RETRIES} lần thử. "
-        f"Lỗi cuối cùng: {last_error}"
+    
+    # Dùng prompt để LLM tạo LearningPath dưới dạng JSON
+    prompt_make_LearningPath = build_prompt_curriculum(bundle, profile)
+    LearningPath_raw, meta = call_json(
+        prompt = prompt_make_LearningPath,
+        schema = LearningPath,
+        session_id = profile.session_id,
     )
 
+    data = LearningPath_raw.model_dump()
+
+    data, warnings = validate_and_adjust(data, profile)
+    for w in warnings:
+        print(f"[Curriculum Agent] cảnh báo : {w}")
+
+    try:
+        data["session_id"] = profile.session_id
+        data["level"] = profile.level_final
+        data["topic"] = profile.topic
+        # Trả về class LearningPath theo đúng định dạng schema
+        return LearningPath(**data)
+    except ValidationError as error_validate:
+        last_error = f"Dữ liệu không khớp schema LearningPath: {error_validate}"
+
 
 # ------------------------------------------------------------
-# 6. Test nhanh bằng mock — chạy: python -m agents.curriculum
+# 4. Test nhanh bằng mock — chạy: python -m agents.curriculum
 # ------------------------------------------------------------
 if __name__ == "__main__":
-    from tests.mocks import MOCK_BUNDLE, MOCK_PROFILE  # tests.mocks
+    from tests.mocks import MOCK_BUNDLE, MOCK_PROFILE
 
     path = run_curriculum(MOCK_BUNDLE, MOCK_PROFILE)
     print(path.model_dump_json(indent = 2))
