@@ -154,11 +154,11 @@ TOPIC_LABELS = {
 }
 
 # TÍNH NĂNG CÓ THỂ PHÁT TRIỂN THÊM NẾU CÓ THỜI GIAN
-"""FRAMEWORK_LABELS = {
-    "scikit_learn" : "Scikit-learn", 
-    "pure_python": 'Pure Python',
-    "pytorch" : 'PyTorch'
-}"""
+# FRAMEWORK_LABELS = {
+#     "scikit_learn" : "Scikit-learn", 
+#     "pure_python": 'Pure Python',
+#     "pytorch" : 'PyTorch'
+# }
 
 def calculate_final_level(level_declared: int, quiz_score: int) -> tuple[int, str]:
     """Logic tính level_final và ghi nhận lý do traceback."""
