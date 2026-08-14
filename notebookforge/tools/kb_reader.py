@@ -1,11 +1,22 @@
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
 import yaml
+
+logger = logging.getLogger(__name__)
+
+# Tích hợp BM25 Sparse Search
+try:
+    from rank_bm25 import BM25Okapi
+    HAS_BM25 = True
+except ImportError:
+    HAS_BM25 = False
+    logger.warning("Thư viện 'rank_bm25' chưa cài đặt. Hệ thống sẽ bỏ qua BM25.")
 
 KB_ROOT = Path(__file__).resolve().parent.parent / "kb"
 REQUIRED_FRONTMATTER_FIELDS = ("doc_id", "topic", "key_concepts")
@@ -39,6 +50,13 @@ class KBEntry:
         return MIN_WORDS <= self.word_count <= MAX_WORDS
 
 
+def _tokenize(text: str) -> List[str]:
+    """Tách từ đơn giản phục vụ BM25."""
+    if not text:
+        return []
+    return re.findall(r"\w+", text.lower())
+
+
 def _parse_frontmatter(text: str) -> tuple[dict, str]:
     match = _FRONTMATTER_RE.match(text)
     if not match:
@@ -57,15 +75,11 @@ def _parse_frontmatter(text: str) -> tuple[dict, str]:
 
 
 def _count_words(body: str) -> int:
-    # Bỏ code block ```...``` và bảng markdown dạng ký hiệu (---) khỏi việc
-    # đếm từ, vì đó là code/format mẫu chứ không phải văn bản giải thích.
     body_no_code = re.sub(r"```.*?```", "", body, flags=re.DOTALL)
     return len(body_no_code.split())
 
 
 def _resolve_source(meta: dict, body: str) -> tuple[str, str]:
-    # Trả về (source_url, source_label)
-
     if meta.get("source_url"):
         url = str(meta["source_url"]).strip()
         return url, url
@@ -96,8 +110,7 @@ def parse_kb_file(path: Path) -> KBEntry:
 
     source_url, source_label = _resolve_source(meta, body)
     if not source_url:
-        import logging
-        logging.getLogger(__name__).warning(
+        logger.warning(
             "%s: không tìm được URL nguồn (không có source_url, không có "
             "http(s) URL nào trong nội dung) -- source_label='%s'",
             path.name, source_label,
@@ -124,7 +137,6 @@ def parse_kb_file(path: Path) -> KBEntry:
 
 
 def read_kb_files(topic: str, *, enforce_word_range: bool = False) -> List[KBEntry]:
-    # Đọc toàn bộ file KB của 1 topic, sort theo source_id
     folder_name = topic.strip().lower().replace(" ", "_")
     topic_dir = KB_ROOT / folder_name
     if not topic_dir.exists():
@@ -145,8 +157,7 @@ def read_kb_files(topic: str, *, enforce_word_range: bool = False) -> List[KBEnt
             )
             continue
         if not entry.in_word_range:
-            import logging
-            logging.getLogger(__name__).info(
+            logger.info(
                 "%s: %d từ, ngoài khoảng khuyến nghị %d-%d (đã được nhóm "
                 "chấp thuận giữ nguyên, không phải lỗi).",
                 path.name, entry.word_count, MIN_WORDS, MAX_WORDS,
@@ -154,8 +165,7 @@ def read_kb_files(topic: str, *, enforce_word_range: bool = False) -> List[KBEnt
         entries.append(entry)
 
     if problems:
-        import logging
-        logging.getLogger(__name__).warning(
+        logger.warning(
             "read_kb_files('%s'): %d file có vấn đề: %s",
             topic, len(problems), problems,
         )
@@ -171,15 +181,12 @@ def list_available_topics() -> List[str]:
 
 
 def concept_is_grounded(concept: str, entry: KBEntry) -> bool:
-    #Kiểm tra concept có thực sự xuất hiện trong nội dung file KB không, trước khi agents/research.py cho phép tạo Citation.
-    
     needle = concept.strip()
     if not needle:
         return False
     pattern = re.compile(re.escape(needle), re.IGNORECASE)
     if pattern.search(entry.body):
         return True
-    # fallback: khớp theo từng token có nghĩa (>=3 ký tự), dùng word boundary
     tokens = [t for t in re.split(r"[\s()/']+", needle) if len(t) >= 3]
     if not tokens:
         return False
@@ -189,19 +196,41 @@ def concept_is_grounded(concept: str, entry: KBEntry) -> bool:
     )
 
 
-def find_concept_in_kb(concept: str, entries: List[KBEntry]) -> Optional[KBEntry]:
-    """Tìm concept (chưa chắc đã khai trong key_concepts) bằng cách quét sparse
-    keyword match (regex, không phải semantic/dense) qua nội dung từng file KB
-    đã đọc sẵn. Dùng chung logic với concept_is_grounded, chỉ khác là áp dụng
-    cho MỌI entry chứ không chỉ entry đã khai đúng concept đó trong frontmatter.
-
-    Trả về entry đầu tiên khớp, hoặc None nếu không file nào có. Việc này giúp
-    những concept lấy từ ngoài (vd LLM đề xuất theo LearnerProfile) được ưu
-    tiên tìm trong KB nội bộ trước, đúng quy tắc "KB trước, web_search sau".
+def find_concept_in_kb(concept: str, entries: List[KBEntry], bm25_threshold: float = 0.5) -> Optional[KBEntry]:
     """
+    Tìm kiếm khái niệm theo 3 bước:
+    1. Match chính xác trong YAML frontmatter (key_concepts)
+    2. Match bằng BM25 Full-text search trên toàn bộ body
+    3. Match regex theo token bằng concept_is_grounded
+    """
+    if not entries:
+        return None
+
+    clean_kw = concept.strip().lower()
+
+    # Tầng 1: Match trong key_concepts (YAML Frontmatter)
+    for entry in entries:
+        if any(clean_kw == c.strip().lower() for c in entry.key_concepts):
+            return entry
+
+    # Tầng 2: BM25 Full-text search
+    if HAS_BM25:
+        corpus = [_tokenize(e.body) for e in entries]
+        query_tokens = _tokenize(concept)
+        if corpus and query_tokens:
+            bm25 = BM25Okapi(corpus)
+            scores = bm25.get_scores(query_tokens)
+            best_idx = max(range(len(scores)), key=lambda i: scores[i])
+            max_score = scores[best_idx]
+            if max_score > bm25_threshold:
+                logger.info(f"BM25 match thành công '{concept}' trong '{entries[best_idx].source_id}' (Score: {max_score:.2f})")
+                return entries[best_idx]
+
+    # Tầng 3: Match Regex token fallback
     for entry in entries:
         if concept_is_grounded(concept, entry):
             return entry
+
     return None
 
 
