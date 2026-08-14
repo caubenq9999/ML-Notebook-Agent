@@ -1,9 +1,17 @@
 import uuid
 from datetime import datetime
 import streamlit as st
+import time
+import concurrent.futures
+import sys
+from pathlib import Path
 
-# Giả sử import từ schemas.py của Hoàng
-# from schemas import LearnerProfile
+# Thêm thư mục gốc (notebookforge) vào sys.path để import được schemas.py
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.append(str(ROOT_DIR))
+
+from schemas import Constraints, LearnerProfile
 
 # ---------------------------------------------------------
 # DATABASE QUIZ MẪU (Tách ra file JSON/Dict riêng được nếu cần)
@@ -174,7 +182,93 @@ def calculate_final_level(level_declared: int, quiz_score: int) -> tuple[int, st
 
     return level_final, reason
 
+# GIẢ LẬP VÀO PIPELINE CHẠY THỰC TẾ
+def run_pipeline_with_mock(profile_data: dict) -> str:
+    """
+    Hàm giả lập Pipeline chạy. 
+    Kiểm tra xem dict từ UI truyền sang có khớp 100% với LearnerProfile schema của Hoàng không.
+    """
+    # 🔍 Validate dữ liệu UI với Schema của Hoàng (Nếu sai field sẽ báo lỗi ngay tại đây)
+    profile = LearnerProfile(**profile_data)
+    
+    print(f"[DEBUG UI] Session ID: {profile.session_id}")
+    print(f"[DEBUG UI] Topic: {profile.topic} | Level Final: {profile.level_final}")
+    print(f"[DEBUG UI] Dataset Seed: {profile.dataset_seed}")
 
+    # Giả lập thời gian pipeline chạy
+    time.sleep(3) 
+    
+    # Trả về đường dẫn file notebook giả lập
+    return "notebooks/generated_output.ipynb"
+
+# HÀM ĐIỀU KHIỂN PIPELINE CÓ PROGRESS INDICATOR & TIMEOUT
+def execute_pipeline_with_progress(profile, timeout_seconds=180):
+    """
+    Chạy pipeline với giao diện cập nhật 5 bước tiến trình và xử lý Timeout.
+    - timeout_seconds: Mặc định 180 giây (3 phút).
+    """
+    steps = [
+        "🔍 **Bước 1/5:** Đang nghiên cứu chủ đề & thu thập tài liệu (Research Agent)...",
+        "📚 **Bước 2/5:** Đang thiết kế lộ trình bài học (Curriculum Agent)...",
+        "📝 **Bước 3/5:** Đang khởi tạo và viết nội dung Notebook (Notebook Gen)...",
+        "⚙️ **Bước 4/5:** Đang thực thi kiểm thử Notebook trong Sandbox (Executor)...",
+        "✅ **Bước 5/5:** Đang đánh giá chất lượng & chấm điểm (Verifier Agent)...",
+    ]
+
+    # Container hiển thị trạng thái động của Streamlit
+    with st.status("🚀 **Đang khởi tạo NotebookForge Pipeline...**", expanded=True) as status:
+        progress_bar = st.progress(0)
+        
+        # Sử dụng ThreadPoolExecutor để quản lý Timeout
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            # Bắt đầu chạy pipeline trong một Thread riêng
+            future = executor.submit(run_pipeline_with_mock, profile)
+            
+            start_time = time.time()
+            current_step = 0
+            
+            # Vòng lặp cập nhật UI liên tục trong khi chờ Pipeline hoàn thành
+            while future.running():
+                elapsed = time.time() - start_time
+                
+                # Kiểm tra điều kiện TIMEOUT (Vượt quá thời gian cho phép)
+                if elapsed > timeout_seconds:
+                    status.update(
+                        label="❌ **Hệ thống quá tải hoặc phản hồi chậm (Timeout)!**",
+                        state="error",
+                        expanded=True
+                    )
+                    st.error(
+                        f"⚠️ Quá trình khởi tạo vượt quá thời gian cho phép ({timeout_seconds} giây). "
+                        "Vui lòng thử lại hoặc giảm bớt số lượng bài tập thực hành!"
+                    )
+                    return None
+
+                # Giả lập cập nhật các bước tiến trình dựa trên thời gian trôi qua
+                # (Hoặc cập nhật theo status thực tế nếu backend hỗ trợ Generator/Callback)
+                calculated_step = min(int((elapsed / 10) * 5), 4) # Tùy chỉnh theo nhịp thực tế
+                if calculated_step != current_step:
+                    current_step = calculated_step
+                    status.update(label=steps[current_step])
+                    progress_bar.progress((current_step + 1) * 20)
+                
+                time.sleep(0.5) # Giảm tần suất re-render nhẹ cho CPU
+
+            # Lấy kết quả sau khi Thread hoàn thành thành công
+            try:
+                result_path = future.result()
+                progress_bar.progress(100)
+                status.update(
+                    label="🎉 **Đã hoàn thành tạo Notebook thành công!**",
+                    state="complete",
+                    expanded=False
+                )
+                return result_path
+            except Exception as e:
+                status.update(label="💥 **Xảy ra lỗi trong quá trình thực thi!**", state="error")
+                st.error(f"Lỗi chi tiết: {str(e)}")
+                return None
+            
 # ---------------------------------------------------------
 # UI MAIN APP
 # ---------------------------------------------------------
@@ -312,24 +406,21 @@ all_answered = all(answer is not None for answer in user_answers.values()) and l
 if not all_answered:
     st.warning("⚠️ Vui lòng hoàn thành tất cả các câu hỏi quiz bên trên để tiếp tục.")
 
-# Nút Tạo Notebook sẽ bị vô hiệu hóa (disabled) nếu chưa trả lời đủ
+# Nút Tạo Notebook sẽ bị vô hiệu hóa (disabled) nếu chưa trả lời đủ, đã thêm indicator và timemout
 submit_quiz = st.button("Tạo Notebook", type="primary", disabled=not all_answered)
 
-# --- PHASE 3: XỬ LÝ & TẠO LEANER PROFILE ---
+# --- PHASE 3: XỬ LÝ & TẠO LEANER PROFILE & CHẠY PIPELINE ---
 if submit_quiz:
-    # Tính điểm
+    # 1. Tính điểm Quiz & Level final
     quiz_score = sum(1 for idx, q_data in enumerate(questions) if user_answers[idx] == q_data["a"])
-
-    # Tính level_final & Lý do
     level_final, adjustment_reason = calculate_final_level(level_declared, quiz_score)
 
     constraints = {
         "duration_minutes": duration_minutes,
         "num_exercises": num_exercises,
-        #"preferred_framework": preferred_framework,
     }
 
-    # Đóng gói Profile Object
+    # 2. Đóng gói Profile Object
     profile_data = {
         "session_id": st.session_state.session_id,
         "created_at": st.session_state.created_at,
@@ -346,17 +437,35 @@ if submit_quiz:
 
     st.info(f"""
     📌 **Chủ đề bạn chọn:** {TOPIC_LABELS[topic]}  
-    🎯 **Cấp độ của bạn:** {level_name}
+    🎯 **Cấp độ xếp hạng:** {level_name}
     """)
 
-    # Hiển thị kết quả Traceability cho người dùng/tester xem
     st.json(profile_data)
+    st.divider()
 
-    # if level_final < level_declared:
-    #     st.warning(f"⚠️ **Thông báo điều chỉnh:** {adjustment_reason}")
-    # else:
-    #     st.info(f"ℹ️ **Thông tin level:** {adjustment_reason}")
+    # 3. KÍCH HOẠT CHẠY PIPELINE (VỊ TRÍ NỐI VỚI HOÀNG)
+    # Hiện tại chạy mock pipeline qua Progress Indicator 5 bước
+    notebook_result = execute_pipeline_with_progress(
+        profile=profile_data,
+        timeout_seconds=180
+    )
 
-    # Khi nối với main.py/api.py của Hoàng:
-    # learner_profile = LearnerProfile(**profile_data)
-    # generate(learner_profile)
+    if notebook_result:
+        st.balloons()
+        st.success(f"🎉 **Notebook của bạn đã sẵn sàng tại:** `{notebook_result}`")
+
+        try:
+            with open(notebook_result, "rb") as file:
+                st.download_button(
+                    label="📥 Tải xuống Notebook (.ipynb)",
+                    data=file,
+                    file_name=f"{topic}_lesson.ipynb",
+                    mime="application/x-ipynb+json",
+                    type="primary"
+                )
+        except FileNotFoundError:
+            st.warning("⚠️ Không tìm thấy file Notebook đầu ra để tải về.")
+
+        # Nối chính thức với main.py của Hoàng sau này:
+        # learner_profile = LearnerProfile(**profile_data)
+        # generate(learner_profile)
