@@ -1,8 +1,6 @@
 import random
 
-# Hàm `get_dataset_code` tuân thủ 100% theo `schemas.py` về tên hàm và tham số truyền vào:
-# 
-# Signature: get_dataset_code(topic: str, seed: int = None) -> list[dict]
+# Mục tiêu: get_dataset_code(topic: str, seed: int = None) -> list[dict]
 #
 # Dữ liệu trả về là một `list[dict]`, mỗi dict đại diện cho một bước (Load, EDA, Split) 
 # chứa 'title' (tiêu đề section) và 'code' (chuỗi Python code để inject).
