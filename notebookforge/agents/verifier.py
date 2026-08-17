@@ -1,152 +1,896 @@
-"""agents/verifier.py - HUY
-
-Verifier gồm 2 lớp:
-    (a) rule_checks  - 5 quy tắc Python thuần, không cần LLM   [Sprint 2.1]
-    (b) llm_scores   - Groq Llama 3.3 70B chấm 4 tiêu chí 1-5  [Sprint 2.2]
-
-average_score = trung bình 4 tiêu chí LLM. < 3.5 -> fail -> retry.
-"""
+"""Verifier rule-based + Groq LLM-as-a-Judge của Huy."""
 
 from __future__ import annotations
 
+import ast
+import io
 import json
+import os
 import re
+import tokenize
+from pathlib import Path
+from typing import Any, MutableSequence
 
-from schemas import (  # PASS_THRESHOLD lấy từ schemas, không tự khai lại
+from schemas import (
     PASS_THRESHOLD,
+    Decision,
     ExcRes,
+    LlmScores,
     ResearchBundle,
+    RuleChecks,
     VerifierReport,
 )
 
-# Tên biến kết quả đánh giá - gán thẳng số vào mấy biến này nghĩa là LLM ghi
-# sẵn đáp án thay vì để người học tự tính.
+
+DEFAULT_JUDGE_MODEL = "llama-3.3-70b-versatile"
+MAX_NOTEBOOK_CHARS = 40_000
+MIN_CELLS_BY_LEVEL = {1: 8, 2: 12, 3: 16}
+
+_CLUSTERING_TOPICS = frozenset(
+    {"kmeans", "k_means", "dbscan", "hierarchical_clustering"}
+)
+_TRAIN_CSV = re.compile(r"\btrain[\w-]*\.csv\b", re.I)
 _HARDCODE_PATTERN = (
-    r"\b(accuracy|acc|score|f1|precision|recall|silhouette|inertia)"
-    r"\s*=\s*[\d.]+"
+    r"(accuracy|acc|score|f1|precision|recall|silhouette|inertia)"
+    r"\w*\s*=\s*[\d.]+"
+)
+_MODULE_HEADING = re.compile(
+    r"(?im)^\s{0,3}#{1,6}\s*(?:module|m[oô]-?đun|phần)"
+    r"\s*([\w.-]+)?\s*[:.-]?\s*(.*)$"
+)
+_FEEDBACK_ITEM = re.compile(
+    r"\[CELL\s+\d+\]\s+.+?\bFIX:\s*.+?"
+    r"(?=(?:\s*\[CELL\s+\d+\])|\Z)",
+    re.I | re.S,
+)
+_SCORE_FIELDS = (
+    "executability",
+    "groundedness",
+    "difficulty_fit",
+    "pedagogical_order",
+)
+_EXTENDED_RULES = (
+    "has_visualization",
+    "has_demo_per_module",
+    "min_cells_by_level",
 )
 
-# 'assert' phải đứng đầu câu lệnh mới tính. \b để 'assert_frame_equal(...)'
-# không bị nhận nhầm là một assert.
-_ASSERT_PATTERN = r"^[ \t]*assert\b"
+# Sprint 2.2 đã sửa has_assert nên không còn miễn rule nào.
+_WAIVED_RULES: frozenset[str] = frozenset()
+
+
+class VerifierConfigurationError(RuntimeError):
+    """Thiếu cấu hình để gọi judge."""
+
+
+class JudgeResponseError(ValueError):
+    """Judge trả dữ liệu sai contract."""
+
+
+def _source(cell: dict) -> str:
+    value = cell.get("source", "")
+    return "".join(value) if isinstance(value, list) else str(value)
 
 
 def _strip_comments(text: str) -> str:
-    """Bỏ phần comment của từng dòng.
+    """Bỏ comment Python, giữ string và cấu trúc dòng."""
+    try:
+        tokens = tokenize.generate_tokens(io.StringIO(text).readline)
+        return tokenize.untokenize(
+            token for token in tokens if token.type != tokenize.COMMENT
+        )
+    except (IndentationError, tokenize.TokenError):
+        return "\n".join(line.split("#", 1)[0] for line in text.splitlines())
 
-    Cần thiết vì notebook do LLM sinh hay có code bị comment lại, ví dụ
-    '# assert abs(sigmoid(0) - 0.5) < 1e-9'. Đó là câu nhắc, không phải test
-    thật - tính vào là notebook không có assert nào vẫn qua cửa.
 
-    Cắt thô ở dấu '#' đầu tiên: dấu '#' nằm trong chuỗi cũng bị cắt oan, chấp
-    nhận được với rule check.
-    """
-    return "\n".join(line.split("#", 1)[0] for line in text.splitlines())
+def _mask_comments_strings(text: str) -> str:
+    try:
+        tokens = tokenize.generate_tokens(io.StringIO(text).readline)
+        return tokenize.untokenize(
+            token
+            for token in tokens
+            if token.type not in {tokenize.COMMENT, tokenize.STRING}
+        )
+    except (IndentationError, tokenize.TokenError):
+        return _strip_comments(text)
+
+
+def _tree(text: str) -> ast.AST | None:
+    cleaned = "\n".join(
+        "" if line.lstrip().startswith(("%", "!")) else line
+        for line in text.splitlines()
+    )
+    try:
+        return ast.parse(cleaned)
+    except SyntaxError:
+        return None
+
+
+def _call_name(call: ast.Call) -> str:
+    parts: list[str] = []
+    node: ast.AST = call.func
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if isinstance(node, ast.Name):
+        parts.append(node.id)
+    return ".".join(reversed(parts))
+
+
+def _topic_key(topic: str | None) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", (topic or "").lower()).strip("_")
+
+
+def _infer_level(nb: dict, explicit: int | None = None) -> int:
+    if explicit in MIN_CELLS_BY_LEVEL:
+        return int(explicit)
+    metadata = nb.get("metadata") or {}
+    forge = metadata.get("notebookforge") or {}
+    values = (
+        forge.get("level"),
+        forge.get("level_final"),
+        metadata.get("level"),
+        metadata.get("level_final"),
+    )
+    labels = {"beginner": 1, "intermediate": 2, "advanced": 3}
+    for value in values:
+        if isinstance(value, int) and value in MIN_CELLS_BY_LEVEL:
+            return value
+        if str(value).lower() in labels:
+            return labels[str(value).lower()]
+    # Hàm run_verifier chưa nhận LearnerProfile. Harness truyền level thật;
+    # khi gọi riêng dùng ngưỡng beginner để tránh fail oan.
+    return 1
+
+
+def _real_assert_count(text: str) -> int:
+    try:
+        return sum(
+            token.type == tokenize.NAME and token.string == "assert"
+            for token in tokenize.generate_tokens(io.StringIO(text).readline)
+        )
+    except (IndentationError, tokenize.TokenError):
+        return len(re.findall(r"^[ \t]*assert\b", _strip_comments(text), re.M))
 
 
 def count_asserts(nb: dict) -> int:
-    """Đếm số câu lệnh assert THẬT trong notebook.
-
-    Golden set có min_asserts cho từng case, harness dùng hàm này để đối chiếu.
-    """
+    """Đếm assert thực, không tính comment hoặc string."""
     return sum(
-        len(re.findall(_ASSERT_PATTERN, _strip_comments("".join(c["source"])), re.M))
-        for c in nb["cells"]
-        if c["cell_type"] == "code"
+        _real_assert_count(_source(cell))
+        for cell in nb.get("cells", [])
+        if cell.get("cell_type") == "code"
     )
 
 
-def rule_checks(nb: dict) -> dict:
-    """5 quy tắc, mỗi quy tắc pass hoặc fail."""
-    results = {}
-    cells = nb["cells"]
+def _calls_split(code: list[str]) -> bool:
+    for text in code:
+        parsed = _tree(text)
+        if parsed and any(
+            isinstance(node, ast.Call)
+            and _call_name(node).endswith("train_test_split")
+            for node in ast.walk(parsed)
+        ):
+            return True
+        if re.search(r"\btrain_test_split\s*\(", _mask_comments_strings(text)):
+            return True
+    return False
 
-    # Quy tắc 1: phải có ít nhất 3 cell markdown (hướng dẫn)
-    md_cells = [c for c in cells if c["cell_type"] == "markdown"]
-    results["has_instructions"] = len(md_cells) >= 3
 
-    code_texts = ["".join(c["source"]) for c in cells if c["cell_type"] == "code"]
-    # Quy tắc 3, 4, 5 chấm trên phần code đã bỏ comment. Riêng quy tắc 2 phải
-    # đọc bản gốc, vì TODO vốn dĩ nằm trong comment.
-    code_only = [_strip_comments(t) for t in code_texts]
+def _reads_train_csv(code: list[str]) -> bool:
+    """Chỉ nhận read_csv(train*.csv), không nhận to_csv hoặc prose."""
+    for text in code:
+        parsed = _tree(text)
+        if parsed:
+            for node in ast.walk(parsed):
+                if (
+                    not isinstance(node, ast.Call)
+                    or not _call_name(node).endswith("read_csv")
+                ):
+                    continue
+                values: list[ast.AST] = list(node.args[:1])
+                values.extend(
+                    keyword.value
+                    for keyword in node.keywords
+                    if keyword.arg in {"filepath_or_buffer", "path"}
+                )
+                if any(
+                    isinstance(value, ast.Constant)
+                    and isinstance(value.value, str)
+                    and _TRAIN_CSV.search(value.value)
+                    for value in values
+                ):
+                    return True
+        if re.search(
+            r"\bread_csv\s*\([^)]*['\"][^'\"]*train[\w-]*\.csv['\"]",
+            _strip_comments(text),
+            re.I | re.S,
+        ):
+            return True
+    return False
 
-    # Quy tắc 2: phải có ít nhất 1 code cell có TODO
-    results["has_todo"] = any("TODO" in t for t in code_texts)
 
-    # Quy tắc 3: phải có test cell với assert thật, không phải assert bị comment
-    results["has_assert"] = any(re.search(_ASSERT_PATTERN, t, re.M) for t in code_only)
+def _has_visualization(code: list[str]) -> bool:
+    plot_calls = {
+        "plot", "scatter", "bar", "barh", "hist", "boxplot", "violinplot",
+        "imshow", "matshow", "pie", "heatmap", "pairplot", "lineplot",
+        "countplot", "clustermap", "plot_tree",
+    }
+    display_classes = {
+        "ConfusionMatrixDisplay", "DecisionBoundaryDisplay",
+        "PrecisionRecallDisplay", "RocCurveDisplay",
+    }
+    for text in code:
+        parsed = _tree(text)
+        if parsed:
+            for node in ast.walk(parsed):
+                if not isinstance(node, ast.Call):
+                    continue
+                name = _call_name(node)
+                tail = name.rsplit(".", 1)[-1]
+                if tail in plot_calls or tail in display_classes:
+                    return True
+                if tail in {"from_estimator", "from_predictions"} and any(
+                    display in name for display in display_classes
+                ):
+                    return True
+        if re.search(
+            r"\.(?:plot|scatter|bar|hist|boxplot|imshow|heatmap|pairplot|plot_tree)\s*\(",
+            _mask_comments_strings(text),
+        ):
+            return True
+    return False
 
-    # Quy tắc 4: không được hardcode đáp án.
-    # Bắt theo TÊN BIẾN kết quả, không bắt theo hình dạng con số - bản cũ
-    # dùng r"=\s*0\.\d{3,}" bắt oan cả siêu tham số hợp lệ (tol=0.0001,
-    # learning_rate=0.001) mà lại để lọt 'acc = 0.85'.
-    # 'acc = accuracy_score(...)' không khớp vì sau dấu = không phải chữ số.
-    hardcoded = [
-        m
-        for t in code_only
-        for m in re.findall(_HARDCODE_PATTERN, t, flags=re.IGNORECASE)
+
+def _module_label(cell: dict) -> str | None:
+    metadata = cell.get("metadata") or {}
+    nested = metadata.get("notebookforge") or {}
+    module_id = metadata.get("module_id") or nested.get("module_id")
+    if module_id:
+        return str(module_id)
+    if cell.get("cell_type") == "markdown":
+        match = _MODULE_HEADING.search(_source(cell))
+        if match:
+            return (match.group(1) or match.group(2) or "module").strip()
+    return None
+
+
+def _complete_demo(cell: dict) -> bool:
+    if cell.get("cell_type") != "code":
+        return False
+    text = _source(cell)
+    if not text.strip() or re.search(r"\bTODO\b|NotImplementedError", text, re.I):
+        return False
+    parsed = _tree(text)
+    if parsed is None:
+        meaningful = _mask_comments_strings(text).strip()
+        return bool(meaningful and not re.fullmatch(r"(?:pass|\.\.\.)\s*", meaningful))
+    useful = (
+        ast.Assign, ast.AnnAssign, ast.AugAssign, ast.Call, ast.FunctionDef,
+        ast.AsyncFunctionDef, ast.ClassDef, ast.For, ast.While, ast.If,
+    )
+    return any(isinstance(node, useful) for node in ast.walk(parsed))
+
+
+def _module_sections(nb: dict) -> list[tuple[str, int, list[dict]]]:
+    sections: list[tuple[str, int, list[dict]]] = []
+    label: str | None = None
+    start = 0
+    section_cells: list[dict] = []
+    for index, cell in enumerate(nb.get("cells", [])):
+        new_label = _module_label(cell)
+        if new_label and new_label != label:
+            if label is not None:
+                sections.append((label, start, section_cells))
+            label, start, section_cells = new_label, index, []
+        if label is not None:
+            section_cells.append(cell)
+    if label is not None:
+        sections.append((label, start, section_cells))
+    return sections
+
+
+def _modules_have_demo(nb: dict) -> bool:
+    sections = _module_sections(nb)
+    return bool(sections) and all(
+        any(_complete_demo(cell) for cell in cells)
+        for _, _, cells in sections
+    )
+
+
+def rule_checks(
+    nb: dict,
+    topic: str | None = None,
+    level: int | None = None,
+) -> dict[str, bool]:
+    """Chấm đủ 8 rule Sprint 2.2."""
+    cells = nb.get("cells", [])
+    markdown = [cell for cell in cells if cell.get("cell_type") == "markdown"]
+    code = [_source(cell) for cell in cells if cell.get("cell_type") == "code"]
+    resolved_level = _infer_level(nb, level)
+    hardcoded = any(
+        re.search(_HARDCODE_PATTERN, _strip_comments(text), re.I)
+        for text in code
+    )
+    return {
+        "has_instructions": len(markdown) >= 3,
+        "has_todo": any(re.search(r"\bTODO\b", text, re.I) for text in code),
+        "has_assert": any(_real_assert_count(text) for text in code),
+        "no_hardcoded_answers": not hardcoded,
+        "has_train_test_split": (
+            _topic_key(topic) in _CLUSTERING_TOPICS
+            or _calls_split(code)
+            or _reads_train_csv(code)
+        ),
+        "has_visualization": _has_visualization(code),
+        "has_demo_per_module": _modules_have_demo(nb),
+        "min_cells_by_level": len(cells) >= MIN_CELLS_BY_LEVEL[resolved_level],
+    }
+
+
+def blocking_failures(checks: dict[str, bool]) -> list[str]:
+    return [
+        name
+        for name, passed in checks.items()
+        if not passed and name not in _WAIVED_RULES
     ]
-    results["no_hardcoded_answers"] = len(hardcoded) == 0
-
-    # Quy tắc 5: dataset phải có train/test split
-    results["has_train_test_split"] = any("train_test_split" in t for t in code_only)
-
-    return results
 
 
-def llm_judge(nb: dict, bundle: ResearchBundle) -> dict:
-    """[Sprint 2.2] Groq chấm 4 tiêu chí, trả dict điểm 1-5 + feedback.
-
-    Prompt: prompts/verifier.txt
-    """
-    raise NotImplementedError("TODO(Huy) Sprint 2.2: gọi judge_llm")
-
-
-def run_verifier(nb_path: str, exc: ExcRes, bundle: ResearchBundle) -> VerifierReport:
-    """Chấm điểm một notebook đã chạy.
-
-    Args:
-        nb_path: file .ipynb đã được Executor chạy.
-        exc: kết quả thực thi - status, traceback, failed_cell_index.
-            Notebook fail execution thì executability phải bị trừ nặng.
-        bundle: nguồn gốc kiến thức, để chấm groundedness (nội dung có bám
-            KB không hay LLM tự bịa).
-
-    Returns:
-        VerifierReport. Hoàng đọc average_score + decision để quyết định
-        retry; feedback quay ngược thành prior_feedback của vòng sau nên
-        phải cụ thể: "[CELL 7] lỗi X. FIX: cách sửa."
-    """
-    with open(nb_path, encoding="utf-8") as f:
-        nb = json.load(f)
-
-    checks = rule_checks(nb)
-    # TODO(Huy) Sprint 2.2: scores = llm_judge(nb, bundle) -> average_score
-    # TODO(Huy) Sprint 2.2: retry_history nối thêm attempt trước, dùng luôn
-    #     để xuất quality_report.md (Nam hiển thị cái này)
-    raise NotImplementedError("TODO(Huy) Sprint 2.2: ghép rule_checks + llm_judge")
+def decide(
+    checks: dict[str, bool],
+    average_score: float,
+    execution_succeeded: bool = True,
+) -> tuple[Decision, str | None]:
+    """Verifier quyết PASS/RETRY; main chỉ quyết hết lượt/hết cost."""
+    if not execution_succeeded:
+        return "RETRY", "Notebook thực thi lỗi nên chưa thể PASS."
+    failures = blocking_failures(checks)
+    if failures:
+        return "RETRY", "Các rule chưa đạt: " + ", ".join(failures)
+    if average_score < PASS_THRESHOLD:
+        return "RETRY", None
+    return "PASS", None
 
 
-# --- Self-test: chạy `python -m agents.verifier` từ thư mục gốc ----------
-# Notebook giả tối thiểu, để test rule_checks mà không cần chờ Hợp sinh
-# notebook thật hay chờ Hoàng làm tests/mocks.py.
+def _first_code_cell(nb: dict) -> int:
+    return next(
+        (
+            index
+            for index, cell in enumerate(nb.get("cells", []))
+            if cell.get("cell_type") == "code"
+        ),
+        0,
+    )
+
+
+def _hardcode_cell(nb: dict) -> int:
+    for index, cell in enumerate(nb.get("cells", [])):
+        if (
+            cell.get("cell_type") == "code"
+            and re.search(_HARDCODE_PATTERN, _strip_comments(_source(cell)), re.I)
+        ):
+            return index
+    return _first_code_cell(nb)
+
+
+def build_rule_feedback(
+    nb: dict,
+    failures: list[str],
+    level: int | None = None,
+) -> str | None:
+    """Feedback rule theo format [CELL n] lỗi. FIX: cách sửa."""
+    first_code = _first_code_cell(nb)
+    resolved_level = _infer_level(nb, level)
+    missing_demos = [
+        (label, start)
+        for label, start, cells in _module_sections(nb)
+        if not any(_complete_demo(cell) for cell in cells)
+    ]
+    messages: list[str] = []
+    for failure in failures:
+        if failure == "has_instructions":
+            messages.append(
+                f"[CELL {first_code}] Thiếu tối thiểu 3 cell markdown hướng dẫn. "
+                "FIX: thêm phần giải thích và yêu cầu bài tập trước code."
+            )
+        elif failure == "has_todo":
+            messages.append(
+                f"[CELL {first_code}] Không có chỗ để học viên tự làm. "
+                "FIX: để trống phần cần hoàn thành và đánh dấu '# TODO:'."
+            )
+        elif failure == "has_assert":
+            last_code = max(
+                (
+                    index
+                    for index, cell in enumerate(nb.get("cells", []))
+                    if cell.get("cell_type") == "code"
+                ),
+                default=first_code,
+            )
+            messages.append(
+                f"[CELL {last_code}] Không có assert thực thi để tự kiểm tra. "
+                "FIX: thêm ít nhất một assert kiểm tra kết quả bài tập."
+            )
+        elif failure == "no_hardcoded_answers":
+            index = _hardcode_cell(nb)
+            messages.append(
+                f"[CELL {index}] Có số gán sẵn vào biến kết quả, làm lộ đáp án. "
+                "FIX: tính kết quả từ dữ liệu hoặc output mô hình."
+            )
+        elif failure == "has_train_test_split":
+            messages.append(
+                f"[CELL {first_code}] Dữ liệu có nhãn chưa được tách để đánh giá. "
+                "FIX: gọi train_test_split(...) hoặc đọc tập train đã tách sẵn."
+            )
+        elif failure == "has_visualization":
+            messages.append(
+                f"[CELL {first_code}] Notebook chưa tạo biểu đồ minh hoạ. "
+                "FIX: thêm ít nhất một lệnh vẽ phù hợp và giải thích biểu đồ."
+            )
+        elif failure == "has_demo_per_module":
+            if missing_demos:
+                for label, index in missing_demos:
+                    messages.append(
+                        f"[CELL {index}] Module {label} chưa có code demo hoàn chỉnh. "
+                        "FIX: thêm code cell chạy được, không chứa TODO, để minh hoạ module."
+                    )
+            else:
+                messages.append(
+                    "[CELL 0] Không nhận diện được heading hoặc metadata module. "
+                    "FIX: đặt heading dạng '## Module 1: ...' và thêm demo từng module."
+                )
+        elif failure == "min_cells_by_level":
+            required = MIN_CELLS_BY_LEVEL[resolved_level]
+            messages.append(
+                f"[CELL 0] Notebook level {resolved_level} chỉ có "
+                f"{len(nb.get('cells', []))}/{required} cell tối thiểu. "
+                "FIX: bổ sung cell lý thuyết, demo và bài tập còn thiếu."
+            )
+    return " ".join(messages) or None
+
+
+def build_execution_feedback(exc: ExcRes) -> str | None:
+    """Chẩn đoán ExcRes, không để LLM đoán sai nguyên nhân NameError."""
+    if exc.success:
+        return None
+    if exc.timeout_hit:
+        cell = exc.errors[0].cell_index if exc.errors else max(exc.executed_cells - 1, 0)
+        return (
+            f"[CELL {cell}] Notebook vượt timeout thực thi. "
+            "FIX: giảm vòng lặp/tìm kiếm tham số và tránh tải dữ liệu khi chạy."
+        )
+
+    messages: list[str] = []
+    for error in exc.errors:
+        value = " ".join(error.evalue.split())
+        if error.ename == "NameError":
+            match = re.search(r"name ['\"]([^'\"]+)['\"] is not defined", value)
+            if match:
+                name = match.group(1)
+                fix = (
+                    f"define '{name}' in an earlier cell, or correct the variable "
+                    "name, then rerun cells in order"
+                )
+            else:
+                fix = "define the missing name before use, then rerun cells in order"
+        elif error.ename == "KeyError":
+            fix = "check df.columns and use the exact existing column name"
+        elif error.ename == "FileNotFoundError":
+            fix = "use the dataset path injected by the pipeline and verify it exists"
+        elif error.ename in {"ModuleNotFoundError", "ImportError"}:
+            fix = "replace the dependency with one available in the executor"
+        else:
+            fix = "correct the expression using the traceback, then rerun the notebook"
+        detail = f": {value}" if value else ""
+        messages.append(
+            f"[CELL {error.cell_index}] {error.ename}{detail}. FIX: {fix}."
+        )
+    if not messages:
+        messages.append(
+            "[CELL 0] Notebook chạy lỗi nhưng executor không trả chi tiết. "
+            "FIX: bảo đảm ExcRes.errors có ename, evalue và cell_index."
+        )
+    return " ".join(messages)
+
+
+def _notebook_content(nb: dict) -> str:
+    chunks: list[str] = []
+    used = 0
+    for index, cell in enumerate(nb.get("cells", [])):
+        header = f"\n[CELL {index} | {cell.get('cell_type', 'unknown')}]\n"
+        remaining = MAX_NOTEBOOK_CHARS - used - len(header)
+        if remaining <= 0:
+            chunks.append("\n[NOTEBOOK TRUNCATED]\n")
+            break
+        chunk = header + _source(cell)[:remaining]
+        chunks.append(chunk)
+        used += len(chunk)
+    return "".join(chunks)
+
+
+def _execution_summary(exc: ExcRes | None) -> str:
+    if exc is None:
+        return "Executor result unavailable."
+    value = {
+        "success": exc.success,
+        "total_cells": exc.total_cells,
+        "executed_cells": exc.executed_cells,
+        "timeout_hit": exc.timeout_hit,
+        "duration_seconds": exc.duration_seconds,
+        "errors": [
+            {
+                "cell_index": error.cell_index,
+                "ename": error.ename,
+                "evalue": error.evalue,
+                "traceback_tail": error.traceback_tail,
+            }
+            for error in exc.errors
+        ],
+    }
+    return json.dumps(value, ensure_ascii=False)
+
+
+def _research_summary(bundle: ResearchBundle) -> str:
+    value = {
+        "topic": bundle.topic,
+        "key_concepts": bundle.key_concepts,
+        "grounded_concepts": bundle.grounded_concepts,
+        "unresolved_concepts": bundle.unresolved_concepts,
+        "citations": [
+            {"concept": item.concept, "source_id": item.source_id}
+            for item in bundle.citations
+        ],
+    }
+    return json.dumps(value, ensure_ascii=False)
+
+
+def _extract_json(text: str) -> dict[str, Any]:
+    decoder = json.JSONDecoder()
+    for match in re.finditer(r"\{", text):
+        try:
+            value, _ = decoder.raw_decode(text[match.start():])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, dict):
+            return value
+    raise JudgeResponseError("judge không trả JSON object")
+
+
+def _validate_judge(payload: dict[str, Any]) -> dict[str, Any]:
+    allowed = {*_SCORE_FIELDS, "feedback", "ungrounded_claims"}
+    extra = sorted(set(payload) - allowed)
+    missing = [field for field in _SCORE_FIELDS if field not in payload]
+    if extra or missing:
+        raise JudgeResponseError(f"field thừa={extra}, field thiếu={missing}")
+
+    result: dict[str, Any] = {}
+    for field in _SCORE_FIELDS:
+        score = payload[field]
+        if isinstance(score, bool) or not isinstance(score, (int, float)):
+            raise JudgeResponseError(f"{field} phải là số")
+        if not 1 <= float(score) <= 5:
+            raise JudgeResponseError(f"{field} phải nằm trong [1, 5]")
+        result[field] = float(score)
+
+    feedback = payload.get("feedback")
+    if feedback is not None:
+        if not isinstance(feedback, str) or not feedback.strip():
+            raise JudgeResponseError("feedback phải là string không rỗng hoặc null")
+        matches = _FEEDBACK_ITEM.findall(feedback.strip())
+        def compact(value: str) -> str:
+            return re.sub(r"\s+", "", value)
+
+        if not matches or compact("".join(matches)) != compact(feedback.strip()):
+            raise JudgeResponseError("feedback sai format [CELL n] ... FIX: ...")
+        feedback = " ".join(" ".join(item.split()) for item in matches)
+    result["feedback"] = feedback
+
+    claims = payload.get("ungrounded_claims", [])
+    if not isinstance(claims, list) or not all(isinstance(item, str) for item in claims):
+        raise JudgeResponseError("ungrounded_claims phải là list string")
+    result["ungrounded_claims"] = [item.strip() for item in claims if item.strip()]
+    return result
+
+
+def _response_content(response: Any) -> str:
+    try:
+        content = response.choices[0].message.content
+    except (AttributeError, IndexError, TypeError) as error:
+        raise JudgeResponseError(
+            "Groq response không có choices[0].message.content"
+        ) from error
+    if not isinstance(content, str) or not content.strip():
+        raise JudgeResponseError("Groq response rỗng")
+    return content
+
+
+def llm_judge(
+    nb: dict,
+    bundle: ResearchBundle,
+    *,
+    exc: ExcRes | None = None,
+    client: Any | None = None,
+    model: str | None = None,
+    level: int | None = None,
+    prompt_path: str | Path | None = None,
+) -> dict[str, Any]:
+    """Gọi Groq, parse JSON chặt, retry một lần nếu model sai format."""
+    if client is None:
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            raise VerifierConfigurationError(
+                "Thiếu GROQ_API_KEY; chưa thể chạy LLM-as-a-Judge."
+            )
+        try:
+            from groq import Groq
+        except ImportError as error:
+            raise VerifierConfigurationError(
+                "Thiếu package groq; cài dependency trước khi chạy Verifier."
+            ) from error
+        client = Groq(api_key=api_key)
+
+    path = (
+        Path(prompt_path)
+        if prompt_path
+        else Path(__file__).parents[1] / "prompts" / "verifier.txt"
+    )
+    template = path.read_text(encoding="utf-8")
+    prompt = (
+        template.replace("{level}", str(_infer_level(nb, level)))
+        .replace("{exc_summary}", _execution_summary(exc))
+        .replace("{research_summary}", _research_summary(bundle))
+        .replace("{content}", _notebook_content(nb))
+    )
+    messages = [{"role": "user", "content": prompt}]
+    selected_model = model or os.getenv("GROQ_JUDGE_MODEL", DEFAULT_JUDGE_MODEL)
+    last_error: Exception | None = None
+    for attempt in range(2):
+        raw = ""
+        try:
+            response = client.chat.completions.create(
+                model=selected_model,
+                messages=messages,
+                temperature=0,
+                seed=42,
+                max_completion_tokens=1_200,
+                response_format={"type": "json_object"},
+            )
+            raw = _response_content(response)
+            result = _validate_judge(_extract_json(raw))
+            if exc is not None and not exc.success:
+                result["executability"] = min(result["executability"], 2.0)
+                if exc.timeout_hit:
+                    result["executability"] = 1.0
+            return result
+        except JudgeResponseError as error:
+            last_error = error
+            if attempt == 0:
+                messages = [
+                    *messages,
+                    {"role": "assistant", "content": raw},
+                    {
+                        "role": "user",
+                        "content": (
+                            f"JSON vừa rồi không hợp lệ: {error}. "
+                            "Trả lại đúng một JSON object theo schema."
+                        ),
+                    },
+                ]
+                continue
+        except Exception as error:
+            raise RuntimeError(f"Gọi Groq judge thất bại: {error}") from error
+    raise JudgeResponseError(f"judge sai format sau 2 lần: {last_error}")
+
+
+def _merge_feedback(*parts: str | None) -> str | None:
+    unique: list[str] = []
+    for part in parts:
+        if part and part.strip() and part.strip() not in unique:
+            unique.append(part.strip())
+    return " ".join(unique) or None
+
+
+def update_retry_history(
+    history: list[dict[str, Any]],
+    report: VerifierReport,
+    exc: ExcRes,
+    *,
+    extended_checks: dict[str, bool] | None = None,
+) -> list[dict[str, Any]]:
+    """Upsert attempt theo số; gọi lại không tạo dòng trùng."""
+    checks = report.rule_checks.model_dump(exclude_computed_fields=True)
+    if extended_checks:
+        checks.update(extended_checks)
+    item = {
+        "attempt": report.attempt,
+        "nb_path": report.nb_path,
+        "decision": report.decision,
+        "average_score": report.average_score,
+        "rule_checks": checks,
+        "llm_scores": report.llm_scores.model_dump(exclude_computed_fields=True),
+        "execution_success": exc.success,
+        "duration_seconds": exc.duration_seconds,
+        "cost_this_attempt": exc.cost_this_attempt,
+        "feedback": report.feedback,
+        "ungrounded_claims": report.ungrounded_claims,
+    }
+    by_attempt = {int(old["attempt"]): dict(old) for old in history}
+    by_attempt[report.attempt] = item
+    return [by_attempt[key] for key in sorted(by_attempt)]
+
+
+def render_quality_report(history: list[dict[str, Any]]) -> str:
+    """Render retry_history thành Markdown cho Streamlit."""
+    lines = [
+        "# NotebookForge Quality Report",
+        "",
+        "| Attempt | Execution | Rules | LLM average | Decision | Cost (USD) | Runtime (s) |",
+        "| ---: | :---: | :---: | ---: | :---: | ---: | ---: |",
+    ]
+    for item in history:
+        checks = item.get("rule_checks") or {}
+        lines.append(
+            "| {attempt} | {execution} | {passed}/{total} | {average:.3f} | "
+            "{decision} | {cost:.4f} | {runtime:.2f} |".format(
+                attempt=item.get("attempt", "?"),
+                execution="PASS" if item.get("execution_success") else "FAIL",
+                passed=sum(bool(value) for value in checks.values()),
+                total=len(checks),
+                average=float(item.get("average_score") or 0),
+                decision=item.get("decision", "?"),
+                cost=float(item.get("cost_this_attempt") or 0),
+                runtime=float(item.get("duration_seconds") or 0),
+            )
+        )
+    for item in history:
+        lines.extend(["", f"## Attempt {item.get('attempt', '?')}", ""])
+        feedback = str(
+            item.get("feedback") or "Không có lỗi cần sửa."
+        ).replace("\n", " ")
+        lines.append(f"- Feedback: {feedback}")
+        claims = item.get("ungrounded_claims") or []
+        if claims:
+            lines.append("- Ungrounded claims: " + "; ".join(map(str, claims)))
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_quality_report(
+    history: list[dict[str, Any]],
+    markdown_path: str | Path,
+) -> Path:
+    """Ghi Markdown và JSON sidecar để attempt sau upsert an toàn."""
+    path = Path(markdown_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(render_quality_report(history), encoding="utf-8")
+    sidecar = path.with_name(f"{path.stem}.history.json")
+    sidecar.write_text(
+        json.dumps(history, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return path
+
+
+def _load_history(markdown_path: Path) -> list[dict[str, Any]]:
+    sidecar = markdown_path.with_name(f"{markdown_path.stem}.history.json")
+    if not sidecar.exists():
+        return []
+    try:
+        value = json.loads(sidecar.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    return value if isinstance(value, list) else []
+
+
+def run_verifier(
+    nb_path: str,
+    exc: ExcRes,
+    bundle: ResearchBundle,
+    *,
+    judge_client: Any | None = None,
+    judge_model: str | None = None,
+    level: int | None = None,
+    retry_history: MutableSequence[dict[str, Any]] | None = None,
+    quality_report_path: str | Path | None = None,
+) -> VerifierReport:
+    """Chấm notebook và cập nhật quality_report.md cạnh notebook."""
+    with open(nb_path, encoding="utf-8") as file:
+        nb = json.load(file)
+
+    checks = rule_checks(nb, topic=bundle.topic, level=level)
+    failures = blocking_failures(checks)
+    judge = llm_judge(
+        nb,
+        bundle,
+        exc=exc,
+        client=judge_client,
+        model=judge_model,
+        level=level,
+    )
+    scores = LlmScores(**{field: judge[field] for field in _SCORE_FIELDS})
+    decision, _ = decide(
+        checks,
+        scores.average,
+        execution_succeeded=exc.success,
+    )
+    feedback = _merge_feedback(
+        build_execution_feedback(exc),
+        build_rule_feedback(nb, failures, level),
+        judge.get("feedback"),
+    )
+
+    # Schema của Hoàng hiện có 5 rule. Ba rule mới vẫn chặn PASS và được ghi
+    # trong notes/history; khi schema thêm field, chúng tự đi vào RuleChecks.
+    supported = set(RuleChecks.model_fields)
+    schema_checks = {
+        name: passed for name, passed in checks.items() if name in supported
+    }
+    missing_contract = [name for name in _EXTENDED_RULES if name not in supported]
+    notes = None
+    if missing_contract:
+        notes = "Extended rule checks: " + "; ".join(
+            f"{name}={'PASS' if checks[name] else 'FAIL'}"
+            for name in missing_contract
+        )
+
+    report = VerifierReport(
+        nb_path=nb_path,
+        attempt=exc.attempt,
+        rule_checks=RuleChecks(**schema_checks),
+        llm_scores=scores,
+        decision=decision,
+        feedback=feedback,
+        ungrounded_claims=judge.get("ungrounded_claims", []),
+        notes=notes,
+    )
+
+    markdown = (
+        Path(quality_report_path)
+        if quality_report_path
+        else Path(nb_path).with_name("quality_report.md")
+    )
+    base = list(retry_history) if retry_history is not None else _load_history(markdown)
+    history = update_retry_history(
+        base,
+        report,
+        exc,
+        extended_checks={name: checks[name] for name in _EXTENDED_RULES},
+    )
+    if retry_history is not None:
+        retry_history[:] = history
+    try:
+        write_quality_report(history, markdown)
+    except OSError as error:
+        report.notes = _merge_feedback(
+            report.notes,
+            f"Không ghi được quality report: {error}",
+        )
+    return report
+
+
 _SAMPLE_NB = {
     "cells": [
         {"cell_type": "markdown", "source": ["# Logistic Regression\n"]},
-        {"cell_type": "markdown", "source": ["## Module 1: Giới thiệu\n"]},
-        {"cell_type": "markdown", "source": ["## Module 2: Sigmoid\n"]},
+        {"cell_type": "markdown", "source": ["## Module 1: Chuẩn bị\n"]},
         {
             "cell_type": "code",
             "source": [
-                "from sklearn.model_selection import train_test_split\n",
                 "X_train, X_test, y_train, y_test = train_test_split(X, y)\n",
+                "print(X_train.shape)\n",
             ],
         },
-        {"cell_type": "code", "source": ["# TODO: điền công thức sigmoid\n"]},
-        {"cell_type": "code", "source": ["assert acc > 0.7\n"]},
-    ]
+        {"cell_type": "markdown", "source": ["## Module 2: Huấn luyện\n"]},
+        {"cell_type": "code", "source": ["model.fit(X_train, y_train)\n"]},
+        {"cell_type": "code", "source": ["# TODO: thử tham số khác\n"]},
+        {"cell_type": "code", "source": ["assert len(X_train) > 0\n"]},
+        {"cell_type": "code", "source": ["plt.plot([0, 1], [0, 1])\n"]},
+    ],
+    "metadata": {"notebookforge": {"level": 1}},
 }
 
+
 if __name__ == "__main__":
-    for rule, ok in rule_checks(_SAMPLE_NB).items():
-        print(f"{'PASS' if ok else 'FAIL'}  {rule}")
+    for rule, passed in rule_checks(
+        _SAMPLE_NB,
+        topic="logistic_regression",
+    ).items():
+        print(f"{'PASS' if passed else 'FAIL'}  {rule}")
