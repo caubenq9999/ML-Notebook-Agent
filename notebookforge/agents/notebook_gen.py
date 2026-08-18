@@ -378,26 +378,59 @@ def build_notebook_file(cells : list[dict], notebook_path : Path) -> None:
 # 4. Hàm chính
 # ===============
 
+# Xử lý JSON/ValidationError
+class NotebookGenerationError(Exception):
+    """Raised khi Notebook Gen Agent không tạo được JSON cells hợp lệ sau tất cả các lần thử."""
+MAX_NOTEBOOK_GEN_JSON_RETRY = 2
+
 def run_notebook_gen(
     path: LearningPath,
     profile: LearnerProfile,
     attempt: int = 1,
     prior_feedback: Optional[str] = None,
+    max_json_retry: int = MAX_NOTEBOOK_GEN_JSON_RETRY,
 ) -> str:
+    last_error: Optional[str] = None
+    cells: Optional[list[dict]] = None
 
-    # Lệnh prompt (Kèm prior_feedback để sửa nếu có)
-    prompt = build_prompt_notebook_gen(path, profile, prior_feedback)
-    raw, _usage = call_text(
-        prompt,
-        session_id = profile.session_id,
-        json_mode = True,
-    )
+    for gen_try in range(1, max_json_retry + 1):
+        # Lệnh prompt (kèm prior_feedback để sửa nếu có, và kèm lỗi JSON của lần thử
+        prompt = build_prompt_notebook_gen(path, profile, prior_feedback)
+        if last_error:
+            prompt += (
+                "\n\n<last_error>\n"
+                "Lần sinh JSON trước đã bị lỗi sau đây (không phải lỗi nội dung notebook, mà "
+                "là lỗi ĐỊNH DẠNG JSON trả về), hãy sửa lại cho đúng cấu trúc "
+                '{"cells": [...]} đã yêu cầu, không lặp lại lỗi cũ:\n'
+                f"{last_error}\n"
+                "</last_error>"
+            )
 
-    try:
-        data = processing_json(raw)
-        cells = data["cells"]
-    except (json.JSONDecodeError, KeyError, TypeError) as error_json:
-        last_error = f"JSON không hợp lệ hoặc thiếu field cells: {error_json}. Raw: {raw[:500]}"
+        raw = ""
+        try:
+            raw, _usage = call_text(
+                prompt,
+                session_id = profile.session_id,
+                json_mode = True,
+            )
+            data = processing_json(raw)
+            cells = data["cells"]
+            if not isinstance(cells, list) or len(cells) == 0:
+                raise ValueError("Field 'cells' rỗng hoặc không phải list")
+            break  # parse + validate thành công -> thoát vòng lặp retry
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as error_json:
+            last_error = f"{type(error_json).__name__}: {error_json}. Raw (rút gọn): {raw[:500]}"
+            print(
+                f"[Notebook Gen Agent] Lỗi JSON ở lần thử {gen_try}/{max_json_retry}: {last_error}"
+            )
+            cells = None
+
+    if cells is None:
+        # Hết số lần thử mà vẫn không có JSON hợp lệ -> raise rõ ràng
+        raise NotebookGenerationError(
+            f"Notebook Gen Agent thất bại sau {max_json_retry} lần thử tạo JSON cells hợp lệ "
+            f"Lỗi cuối cùng: {last_error}"
+        )
 
     for w in validate_cells(cells, path):
         print(f"[Notebook Gen Agent] cảnh báo : {w}")
