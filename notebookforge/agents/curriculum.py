@@ -14,8 +14,6 @@ from pydantic import ValidationError
 
 class CurriculumGenerationError(Exception):
     """Raised khi Curriculum Agent không tạo được LearningPath hợp lệ sau tất cả các lần thử."""
-MAX_CURRICULUM_JSON_RETRY = 2   # Số lần thử lại tối đa
-
 
 # Chạy được schemas.py ngay trong thư mục agents
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -335,57 +333,41 @@ def validate_and_adjust(data: dict, profile: LearnerProfile, bundle: Optional[Re
 def run_curriculum(
     bundle : ResearchBundle,
     profile : LearnerProfile,
-    max_retry : int = MAX_CURRICULUM_JSON_RETRY,
 ) -> LearningPath:
-    """
-    Nếu nội dung LLM trả về bị lỗi JSON/không khớp schema (ValidationError), 
-    tự retry tối đa `max_retry` lần — mỗi lần retry sẽ đính kèm lỗi
-    của lần trước vào prompt để LLM tự sửa. Nếu hết số lần thử mà vẫn lỗi, 
-    RAISE CurriculumGenerationError với đầy đủ thông tin lỗi cuối cùng, không trả về None.
-    """
-    last_error: Optional[str] = None
 
-    for curriculum_try in range(1, max_retry + 1):
-        prompt_make_LearningPath = build_prompt_curriculum(bundle, profile)
-        if last_error:
-            prompt_make_LearningPath += (
-                "\n\n<last_error>\n"
-                "Lần sinh JSON trước đã bị lỗi sau đây, hãy sửa lại cho đúng, không lặp lại lỗi cũ:\n"
-                f"{last_error}\n"
-                "</last_error>"
-            )
+    prompt_make_LearningPath = build_prompt_curriculum(bundle, profile)
 
-        # nếu LLM trả JSON sai định dạng hoặc thiếu field bắt buộc, 
-        # call_json có thể raise ValidationError/json.JSONDecodeError ngay tại đây
-        try:
-            LearningPath_raw, meta = call_json(
-                prompt = prompt_make_LearningPath,
-                schema = LearningPath,
-                session_id = profile.session_id,
-            )
-            data = LearningPath_raw.model_dump()
+    # nếu LLM trả JSON sai định dạng hoặc thiếu field bắt buộc, 
+    # call_json có thể raise ValidationError/json.JSONDecodeError ngay tại đây
+    try:
+        LearningPath_raw, meta = call_json(
+            prompt = prompt_make_LearningPath,
+            schema = LearningPath,
+            session_id = profile.session_id,
+        )
+        data = LearningPath_raw.model_dump()
 
-            data, warnings = validate_and_adjust(data, profile, bundle=bundle)
-            for w in warnings:
-                print(f"[Curriculum Agent] cảnh báo (lần thử {curriculum_try}/{max_retry}): {w}")
+        data, warnings = validate_and_adjust(data, profile, bundle=bundle)
+        for w in warnings:
+            print(f"[Curriculum Agent] cảnh báo: {w}")
 
-            data["session_id"] = profile.session_id
-            data["level"] = _normalize_level(profile.level_final)
-            data["topic"] = profile.topic
-            # Trả về class LearningPath theo đúng định dạng schema
-            return LearningPath(**data)
+        data["session_id"] = profile.session_id
+        data["level"] = _normalize_level(profile.level_final)
+        data["topic"] = profile.topic
+        # Trả về class LearningPath theo đúng định dạng schema
+        return LearningPath(**data)
 
-        except (ValidationError, json.JSONDecodeError, KeyError, TypeError, ValueError) as error_validate:
-            last_error = f"{type(error_validate).__name__}: {error_validate}"
-            print(
-                f"[Curriculum Agent] Lỗi JSON/schema ở lần thử {curriculum_try}/{max_retry}: {last_error}"
-            )
+    except (ValidationError, json.JSONDecodeError, KeyError, TypeError, ValueError) as error_validate:
+        error_message = f"{type(error_validate).__name__}: {error_validate}"
+        print(
+            f"[Curriculum Agent] Lỗi JSON: {error_message}"
+        )
 
-    # Không trả về None để biết đường sửa.
-    raise CurriculumGenerationError(
-        f"Curriculum Agent thất bại sau {max_retry} lần thử tạo LearningPath hợp lệ cho "
-        f"Lỗi cuối cùng: {last_error}"
-    )
+        # Không trả về None để biết đường sửa.
+        raise CurriculumGenerationError(
+            "Curriculum Agent tạo LearningPath không hợp lệ. "
+            f"Lỗi: {error_message}"
+        )
 
 
 # =============================================================
