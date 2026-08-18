@@ -26,6 +26,14 @@ from tools.kb_reader import (
     read_kb_files,
 )
 
+try:
+    from llm_client import call_text
+except ImportError:
+    logger = logging.getLogger(__name__)
+    logger.warning("Chưa tìm thấy llm_client.py!")
+    def call_text(prompt: str, session_id: str) -> Tuple[str, Any]:
+        raise NotImplementedError("Dùng llm_client của Hoàng.")
+
 logger = logging.getLogger(__name__)
 
 # =============================================================================
@@ -99,26 +107,6 @@ def cache_hash(topic: str, learner_profile: Optional[LearnerProfile] = None) -> 
     raw_payload = json.dumps(payload, sort_keys=True)
     return hashlib.sha256(raw_payload.encode("utf-8")).hexdigest()
 
-# =============================================================================
-# LOCAL LLM CLIENT (OLLAMA)
-# =============================================================================
-class LocalOllamaClient:
-    def __init__(self, model: str = "llama3.2"):
-        self.model = model
-        self.url = "http://localhost:11434/api/generate"
-
-    def generate(self, prompt: str) -> str:
-        try:
-            payload = {"model": self.model, "prompt": prompt, "stream": False}
-            response = requests.post(self.url, json=payload, timeout=60)
-            response.raise_for_status()
-            return response.json().get("response", "")
-        except Exception as e:
-            logger.error(f"Lỗi khi gọi Local Ollama: {e}")
-            raise
-
-llm_client = LocalOllamaClient()
-
 def _clean_llm_json(raw_response: str) -> str:
     text = raw_response.strip()
     text = re.sub(r"^```(?:json)?\s*", "", text)
@@ -152,8 +140,11 @@ def _stage2_llm_filtering(
     Ví dụ: ["Khái niệm A", "Khái niệm B"]
     """
 
+    # Truyền session_id và bóc tách tuple trả về từ hàm của Hoàng 
+    session_id = getattr(learner_profile, "session_id", "default_session") if learner_profile else "default_session"
+
     try:
-        raw_response = llm_client.generate(prompt)
+        raw_response, meta = call_text(prompt=prompt, session_id=session_id)
         clean_response = _clean_llm_json(raw_response)
         assessed_concepts = json.loads(clean_response)
 
@@ -251,7 +242,7 @@ def _fallback_web_search(concept: str) -> Optional[Dict[str, str]]:
     return {
         "source_id": f"web_{source_hash}",
         "url": target_url,
-        "type": "web_search",  # Đã gán ĐÚNG yêu cầu
+        "type": "web",  # <-- Đã fix lỗi string literal từ schemas.py
         "title": f"Wikipedia - {hit['title']}",
     }
 
@@ -297,6 +288,7 @@ def run_research(
 
     sources_map: Dict[str, Source] = {}
     citations: List[Citation] = []
+    unresolved_concepts: List[str] = []  # --- FIX 3: Thêm list chứa các khái niệm rớt đài
 
     # 3. TRÍCH XUẤT SOURCE VÀ CITATION
     for kw in final_concepts:
@@ -319,11 +311,13 @@ def run_research(
             if web_result:
                 source_id = web_result["source_id"]
                 path = web_result["url"]
-                source_type = web_result["type"] # Chắc chắn là "web_search"
+                source_type = web_result["type"] # Chắc chắn là "web" vì đã fix ở trên
                 title = web_result["title"]
                 locator = "Web Search Result"
                 quote_text = None
             else:
+                # --- FIX 3: Bắt những khái niệm thất bại vào danh sách
+                unresolved_concepts.append(kw)
                 continue
 
         if source_id not in sources_map:
@@ -339,6 +333,7 @@ def run_research(
     else:
         prerequisites, pitfalls = ["Đại số tuyến tính", "Python cơ bản"], ["Rò rỉ dữ liệu", "Quá khớp"]
 
+    # Truyền `unresolved_concepts` 
     bundle = ResearchBundle(
         topic=str(actual_topic),
         sources=list(sources_map.values()),
@@ -346,24 +341,25 @@ def run_research(
         citations=citations,
         prerequisites=prerequisites,
         common_pitfalls=pitfalls,
+        unresolved_concepts=unresolved_concepts,
     )
 
     _cache_set(h_key, bundle)
     return bundle
 
 
-# if __name__ == "__main__":
-#     from schemas import Constraints, LearnerProfile
+if __name__ == "__main__":
+    from schemas import Constraints, LearnerProfile
 
-#     print("\n================ [BỘ KIỂM TRẢ RESEARCH AGENT] ================")
-#     raw_topic = input("1. Nhập topic (vd: logisict, dt, kmeans, SVD) [Mặc định: SVD]: ").strip() or "SVD"
+    print("\n================ [BỘ KIỂM TRẢ RESEARCH AGENT] ================")
+    raw_topic = input("1. Nhập topic (vd: logisict, dt, kmeans, SVD) [Mặc định: SVD]: ").strip() or "SVD"
 
-#     user_profile = LearnerProfile(
-#         topic=raw_topic, level_declared=2, level_final=1, quiz_score=1,
-#         constraints=Constraints(duration_minutes=120), session_id="test_session",
-#     )
+    user_profile = LearnerProfile(
+        topic=raw_topic, level_declared=2, level_final=1, quiz_score=1,
+        constraints=Constraints(duration_minutes=120), session_id="test_session",
+    )
 
-#     print(f"\n[CACHE HASH GENERATED]: {cache_hash(raw_topic, user_profile)}")
-#     res = run_research(raw_topic, learner_profile=user_profile)
-#     print(res.model_dump_json(indent=2))
-#     print("==========================================================\n")
+    print(f"\n[CACHE HASH GENERATED]: {cache_hash(raw_topic, user_profile)}")
+    res = run_research(raw_topic, learner_profile=user_profile)
+    print(res.model_dump_json(indent=2))
+    print("==========================================================\n")
