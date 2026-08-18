@@ -5,8 +5,10 @@ from pathlib import Path
 import sys
 import time
 import uuid
+import pandas as pd
 import requests
 import streamlit as st
+import textwrap
 
 # Thêm thư mục gốc (notebookforge) vào sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -244,6 +246,7 @@ def calculate_final_level(
 
   return level_final, reason
 
+
 def get_mock_notebook_data(profile_data: dict) -> tuple[dict, dict]:
   """Tạo dữ liệu Notebook & Report giả lập khi Backend chưa sẵn sàng."""
   mock_notebook = {
@@ -286,6 +289,7 @@ def get_mock_notebook_data(profile_data: dict) -> tuple[dict, dict]:
   }
   return mock_notebook, mock_report
 
+
 def run_pipeline_via_fastapi(profile_data: dict) -> tuple[dict, dict] | None:
   """Gửi profile lên FastAPI qua POST /generate, sau đó Polling GET /report/{id}
 
@@ -316,7 +320,6 @@ def run_pipeline_via_fastapi(profile_data: dict) -> tuple[dict, dict] | None:
         status = str(report_data.get("status", "")).lower()
 
         if status in ["completed", "success"]:
-          # Lấy notebook & report từ response
           notebook = report_data.get("notebook") or report_data.get(
               "notebook_data"
           )
@@ -324,9 +327,11 @@ def run_pipeline_via_fastapi(profile_data: dict) -> tuple[dict, dict] | None:
               "quality_report"
           )
 
-          # Nếu Hoàng trả về JSON nhưng đặt sai tên key -> In JSON ra để xem
           if not notebook:
-            st.warning("⚠️ API trả về 'completed' nhưng không tìm thấy key 'notebook'. Đây là Data nhận được:")
+            st.warning(
+                "⚠️ API trả về 'completed' nhưng không tìm thấy key 'notebook'."
+                " Đây là Data nhận được:"
+            )
             st.json(report_data)
             st.info("🔄 Đang dùng Mock Data để tiếp tục render UI...")
             return get_mock_notebook_data(profile_data)
@@ -335,7 +340,8 @@ def run_pipeline_via_fastapi(profile_data: dict) -> tuple[dict, dict] | None:
 
         elif status in ["failed", "error"]:
           st.error(
-              f"Pipeline thất bại: {report_data.get('error_message', 'Lỗi thực thi')}"
+              "Pipeline thất bại:"
+              f" {report_data.get('error_message', 'Lỗi thực thi')}"
           )
           st.json(report_data)
           return None
@@ -412,34 +418,34 @@ def execute_pipeline_with_progress(profile, timeout_seconds=180):
 
         time.sleep(0.5)
 
-        try:
-          result_tuple = future.result()
-          if result_tuple is None:
-            status.update(
-                label=(
-                    "💥 **Xảy ra lỗi trong quá trình thực thi! (API trả về"
-                    " None)**"
-                ),
-                state="error",
-            )
-            return None
-
-          progress_bar.progress(100)
+      try:
+        result_tuple = future.result()
+        if result_tuple is None:
           status.update(
-              label="🎉 **Đã hoàn thành tạo Notebook thành công!**",
-              state="complete",
-              expanded=False,
+              label=(
+                  "💥 **Xảy ra lỗi trong quá trình thực thi! (API trả về"
+                  " None)**"
+              ),
+              state="error",
           )
-          return result_tuple
-        except Exception as e:
-          status.update(
-              label=f"💥 **Xảy ra lỗi Exception: {str(e)}**", state="error"
-          )
-          st.error(f"Lỗi chi tiết: {str(e)}")
-          import traceback
-
-          st.code(traceback.format_exc())  # In full traceback để debug
           return None
+
+        progress_bar.progress(100)
+        status.update(
+            label="🎉 **Đã hoàn thành tạo Notebook thành công!**",
+            state="complete",
+            expanded=False,
+        )
+        return result_tuple
+      except Exception as e:
+        status.update(
+            label=f"💥 **Xảy ra lỗi Exception: {str(e)}**", state="error"
+        )
+        st.error(f"Lỗi chi tiết: {str(e)}")
+        import traceback
+
+        st.code(traceback.format_exc())
+        return None
 
 
 # ---------------------------------------------------------
@@ -570,7 +576,9 @@ if not all_answered:
       "⚠️ Vui lòng hoàn thành tất cả các câu hỏi quiz bên trên để tiếp tục."
   )
 
-submit_quiz = st.button("Tạo Notebook", type="primary", disabled=not all_answered)
+submit_quiz = st.button(
+    "Tạo Notebook", type="primary", disabled=not all_answered
+)
 
 # --- PHASE 3: XỬ LÝ & TẠO LEANER PROFILE & CHẠY PIPELINE ---
 if submit_quiz:
@@ -601,13 +609,12 @@ if submit_quiz:
   st.success("Tạo Learner's Profile thành công!")
   level_name = "Beginner" if level_final == 1 else "Intermediate"
 
-  st.info(f"""
+  st.info(
+    textwrap.dedent(f"""
     📌 **Chủ đề bạn chọn:** {TOPIC_LABELS[topic]}  
     🎯 **Cấp độ xếp hạng:** {level_name}
-    """)
-
-  st.json(profile_data)
-  st.divider()
+    """).strip()
+    )   
 
   # KÍCH HOẠT CHẠY PIPELINE THẬT QUA FASTAPI
   notebook_result = execute_pipeline_with_progress(
@@ -616,29 +623,63 @@ if submit_quiz:
 
   if notebook_result:
     notebook_dict, report_data = notebook_result
+    st.session_state.notebook_dict = notebook_dict
+    st.session_state.report_data = report_data
+    st.session_state.current_topic = topic
 
-    st.balloons()
-    st.success("🎉 **Notebook của bạn đã được tạo thành công!**")
+# --- PHASE 4: HIỂN THỊ KẾT QUẢ KHI ĐÃ CÓ DATA ---
+if "notebook_dict" in st.session_state and st.session_state.notebook_dict:
+  st.balloons()
+  st.success("🎉 **Notebook của bạn đã được tạo thành công!**")
 
-    # Download Notebook JSON
-    notebook_json_bytes = json.dumps(
-        notebook_dict, ensure_ascii=False, indent=2
-    ).encode("utf-8")
-    st.download_button(
-        label="📥 Tải xuống Notebook (.ipynb)",
-        data=notebook_json_bytes,
-        file_name=f"{topic}_{st.session_state.session_id}.ipynb",
-        mime="application/x-ipynb+json",
-        type="primary",
-    )
+  # Download Notebook JSON
+  notebook_json_bytes = json.dumps(
+      st.session_state.notebook_dict, ensure_ascii=False, indent=2
+  ).encode("utf-8")
 
-    # Hiển thị Quality Report trực tiếp từ API
+  st.download_button(
+      label="📥 Tải xuống Notebook (.ipynb)",
+      data=notebook_json_bytes,
+      file_name=(
+          f"{st.session_state.get('current_topic', 'notebook')}_{st.session_state.session_id}.ipynb"
+      ),
+      mime="application/x-ipynb+json",
+      type="primary",
+  )
+
+  # Hiển thị Quality Report dưới dạng Bảng Excel
+  report_data = st.session_state.get("report_data")
+  if report_data:
     st.divider()
     with st.expander(
         "📊 **Báo cáo Đánh giá Chất lượng (Quality Report)**", expanded=True
     ):
       if isinstance(report_data, dict):
-        st.json(report_data)
+        rows = []
+        if "status" in report_data:
+          rows.append({
+              "Tiêu chí / Metric": "Status",
+              "Giá trị": str(report_data["status"]).upper(),
+          })
+
+        scores = report_data.get("scores", {})
+        if isinstance(scores, dict):
+          for metric, score in scores.items():
+            metric_name = metric.replace("_", " ").title()
+            rows.append({
+                "Tiêu chí / Metric": f"Score: {metric_name}",
+                "Giá trị": score,
+            })
+
+        if "feedback" in report_data:
+          rows.append({
+              "Tiêu chí / Metric": "Feedback",
+              "Giá trị": report_data["feedback"],
+          })
+
+        df_report = pd.DataFrame(rows)
+        st.table(df_report)
+
       elif isinstance(report_data, str):
         st.markdown(report_data)
       else:
