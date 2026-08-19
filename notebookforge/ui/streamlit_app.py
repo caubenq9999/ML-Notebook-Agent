@@ -3,19 +3,20 @@ from datetime import datetime
 import json
 from pathlib import Path
 import sys
+import textwrap
 import time
 import uuid
+
 import pandas as pd
 import requests
 import streamlit as st
-import textwrap
 
 # Thêm thư mục gốc (notebookforge) vào sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 FASTAPI_URL = "http://localhost:8000"  # Server FastAPI do Hoàng/Hợp quản lý
 
 if str(PROJECT_ROOT) not in sys.path:
-  sys.path.append(str(PROJECT_ROOT))
+    sys.path.append(str(PROJECT_ROOT))
 
 # ---------------------------------------------------------
 # DATABASE QUIZ MẪU
@@ -225,227 +226,233 @@ TOPIC_LABELS = {
 def calculate_final_level(
     level_declared: int, quiz_score: int
 ) -> tuple[int, str]:
-  """Logic tính level_final và ghi nhận lý do traceback."""
-  if quiz_score <= 2 and level_declared > 1:
-    level_final = level_declared - 1
-    reason = (
-        f"Hạ từ Level {level_declared} xuống {level_final} do điểm Quiz thấp"
-        f" ({quiz_score}/5)."
-    )
-  elif quiz_score >= 4 and level_declared < 3:
-    level_final = level_declared
-    reason = (
-        f"Giữ nguyên Level {level_declared} (Điểm Quiz tốt: {quiz_score}/5)."
-    )
-  else:
-    level_final = level_declared
-    reason = (
-        f"Giữ nguyên Level {level_declared} dựa trên kết quả Quiz"
-        f" ({quiz_score}/5)."
-    )
+    """Logic tính level_final và ghi nhận lý do traceback."""
+    if quiz_score <= 2 and level_declared > 1:
+        level_final = level_declared - 1
+        reason = (
+            f"Hạ từ Level {level_declared} xuống {level_final} do điểm Quiz thấp"
+            f" ({quiz_score}/5)."
+        )
+    elif quiz_score >= 4 and level_declared < 3:
+        level_final = level_declared
+        reason = (
+            f"Giữ nguyên Level {level_declared} (Điểm Quiz tốt: {quiz_score}/5)."
+        )
+    else:
+        level_final = level_declared
+        reason = (
+            f"Giữ nguyên Level {level_declared} dựa trên kết quả Quiz"
+            f" ({quiz_score}/5)."
+        )
 
-  return level_final, reason
+    return level_final, reason
 
 
 def get_mock_notebook_data(profile_data: dict) -> tuple[dict, dict]:
-  """Tạo dữ liệu Notebook & Report giả lập khi Backend chưa sẵn sàng."""
-  mock_notebook = {
-      "cells": [
-          {
-              "cell_type": "markdown",
-              "source": [
-                  f"# Notebook: {profile_data.get('topic', '').upper()}\n"
-                  f"**Level:** Level {profile_data.get('level_final')}\n"
-                  f"**Duration:** {profile_data.get('constraints', {}).get('duration_minutes')} mins"
-              ],
-          },
-          {
-              "cell_type": "code",
-              "execution_count": 1,
-              "source": [
-                  "# Khởi tạo môi trường\nimport pandas as pd\nimport numpy"
-                  " as np\nprint('Notebook generated successfully!')"
-              ],
-              "outputs": [],
-          },
-      ],
-      "metadata": {},
-      "nbformat": 4,
-      "nbformat_minor": 2,
-  }
+    """Tạo dữ liệu Notebook & Report giả lập khi Backend chưa sẵn sàng."""
+    mock_notebook = {
+        "cells": [
+            {
+                "cell_type": "markdown",
+                "source": [
+                    f"# Notebook: {profile_data.get('topic', '').upper()}\n",
+                    f"**Level:** Level {profile_data.get('level_final')}\n",
+                    (
+                        "**Duration:**"
+                        f" {profile_data.get('constraints', {}).get('duration_minutes')} mins"
+                    ),
+                ],
+            },
+            {
+                "cell_type": "code",
+                "execution_count": 1,
+                "source": [
+                    "# Khởi tạo môi trường\nimport pandas as pd\nimport numpy"
+                    " as np\nprint('Notebook generated successfully!')"
+                ],
+                "outputs": [],
+            },
+        ],
+        "metadata": {},
+        "nbformat": 4,
+        "nbformat_minor": 2,
+    }
 
-  mock_report = {
-      "status": "completed",
-      "scores": {
-          "executability": 1.0,
-          "groundedness": 0.9,
-          "difficulty_fit": 0.85,
-          "pedagogical_order": 0.9,
-      },
-      "feedback": (
-          "Fallback Mode: Dữ liệu Notebook được giả lập do Backend chưa trả"
-          " về kết quả đúng Schema."
-      ),
-  }
-  return mock_notebook, mock_report
+    mock_report = {
+        "status": "completed",
+        "scores": {
+            "executability": 1.0,
+            "groundedness": 0.9,
+            "difficulty_fit": 0.85,
+            "pedagogical_order": 0.9,
+        },
+        "feedback": (
+            "Fallback Mode: Dữ liệu Notebook được giả lập do Backend chưa trả"
+            " về kết quả đúng Schema."
+        ),
+    }
+    return mock_notebook, mock_report
 
 
 def run_pipeline_via_fastapi(profile_data: dict) -> tuple[dict, dict] | None:
-  """Gửi profile lên FastAPI qua POST /generate, sau đó Polling GET /report/{id}
+    """Gửi profile lên FastAPI qua POST /generate, sau đó Polling GET /report/{id}
 
-  để lấy kết quả Notebook và Quality Report thực tế.
-  """
-  try:
-    response = requests.post(
-        f"{FASTAPI_URL}/generate", json=profile_data, timeout=10
-    )
+    để lấy kết quả Notebook và Quality Report thực tế.
+    """
+    try:
+        response = requests.post(
+            f"{FASTAPI_URL}/generate", json=profile_data, timeout=10
+        )
 
-    if response.status_code not in [200, 202]:
-      st.warning(
-          f"⚠️ Server trả lỗi HTTP {response.status_code}: {response.text}."
-          " Đang dùng Mock Data..."
-      )
-      return get_mock_notebook_data(profile_data)
-
-    data = response.json()
-    task_id = data.get("task_id") or data.get("id")
-
-    POLL_INTERVAL = 3
-    MAX_RETRIES = 60
-
-    for _ in range(MAX_RETRIES):
-      res = requests.get(f"{FASTAPI_URL}/report/{task_id}", timeout=5)
-      if res.status_code == 200:
-        report_data = res.json()
-        status = str(report_data.get("status", "")).lower()
-
-        if status in ["completed", "success"]:
-          notebook = report_data.get("notebook") or report_data.get(
-              "notebook_data"
-          )
-          report = report_data.get("report") or report_data.get(
-              "quality_report"
-          )
-
-          if not notebook:
+        if response.status_code not in [200, 202]:
             st.warning(
-                "⚠️ API trả về 'completed' nhưng không tìm thấy key 'notebook'."
-                " Đây là Data nhận được:"
+                f"⚠️ Server trả lỗi HTTP {response.status_code}: {response.text}."
+                " Đang dùng Mock Data..."
             )
-            st.json(report_data)
-            st.info("🔄 Đang dùng Mock Data để tiếp tục render UI...")
             return get_mock_notebook_data(profile_data)
 
-          return notebook, report
+        data = response.json()
+        task_id = data.get("task_id") or data.get("id")
 
-        elif status in ["failed", "error"]:
-          st.error(
-              "Pipeline thất bại:"
-              f" {report_data.get('error_message', 'Lỗi thực thi')}"
-          )
-          st.json(report_data)
-          return None
+        POLL_INTERVAL = 3
+        MAX_RETRIES = 60
 
-      time.sleep(POLL_INTERVAL)
+        for _ in range(MAX_RETRIES):
+            res = requests.get(f"{FASTAPI_URL}/report/{task_id}", timeout=5)
+            if res.status_code == 200:
+                report_data = res.json()
+                status = str(report_data.get("status", "")).lower()
 
-    st.warning("⚠️ Timeout 3 phút từ FastAPI. Đang bật Mock Data...")
-    return get_mock_notebook_data(profile_data)
+                if status in ["completed", "success"]:
+                    notebook = report_data.get("notebook") or report_data.get(
+                        "notebook_data"
+                    )
+                    report = report_data.get("report") or report_data.get(
+                        "quality_report"
+                    )
 
-  except requests.exceptions.ConnectionError:
-    st.warning(
-        f"⚠️ Không kết nối được FastAPI tại `{FASTAPI_URL}`. Đang chạy chế độ"
-        " Demo (Mock Data)..."
-    )
-    return get_mock_notebook_data(profile_data)
-  except Exception as e:
-    st.error(f"❌ Lỗi Exception: {str(e)}")
-    return get_mock_notebook_data(profile_data)
+                    if not notebook:
+                        st.warning(
+                            "⚠️ API trả về 'completed' nhưng không tìm thấy key"
+                            " 'notebook'. Đây là Data nhận được:"
+                        )
+                        st.json(report_data)
+                        st.info("🔄 Đang dùng Mock Data để tiếp tục render UI...")
+                        return get_mock_notebook_data(profile_data)
+
+                    return notebook, report
+
+                elif status in ["failed", "error"]:
+                    st.error(
+                        "Pipeline thất bại:"
+                        f" {report_data.get('error_message', 'Lỗi thực thi')}"
+                    )
+                    st.json(report_data)
+                    return None
+
+            time.sleep(POLL_INTERVAL)
+
+        st.warning("⚠️ Timeout 3 phút từ FastAPI. Đang bật Mock Data...")
+        return get_mock_notebook_data(profile_data)
+
+    except requests.exceptions.ConnectionError:
+        st.warning(
+            f"⚠️ Không kết nối được FastAPI tại `{FASTAPI_URL}`. Đang chạy chế độ"
+            " Demo (Mock Data)..."
+        )
+        return get_mock_notebook_data(profile_data)
+    except Exception as e:
+        st.error(f"❌ Lỗi Exception: {str(e)}")
+        return get_mock_notebook_data(profile_data)
 
 
 def execute_pipeline_with_progress(profile, timeout_seconds=180):
-  """Chạy pipeline với giao diện cập nhật 5 bước tiến trình và xử lý Timeout."""
-  steps = [
-      (
-          "🔍 **Bước 1/5:** Đang nghiên cứu chủ đề & thu thập tài liệu (Research"
-          " Agent)..."
-      ),
-      "📚 **Bước 2/5:** Đang thiết kế lộ trình bài học (Curriculum Agent)...",
-      (
-          "📝 **Bước 3/5:** Đang khởi tạo và viết nội dung Notebook (Notebook"
-          " Gen)..."
-      ),
-      (
-          "⚙️ **Bước 4/5:** Đang thực thi kiểm thử Notebook trong Sandbox"
-          " (Executor)..."
-      ),
-      (
-          "✅ **Bước 5/5:** Đang đánh giá chất lượng & chấm điểm (Verifier"
-          " Agent)..."
-      ),
-  ]
+    """Chạy pipeline với giao diện cập nhật 5 bước tiến trình và xử lý Timeout."""
+    steps = [
+        (
+            "🔍 **Bước 1/5:** Đang nghiên cứu chủ đề & thu thập tài liệu (Research"
+            " Agent)..."
+        ),
+        "📚 **Bước 2/5:** Đang thiết kế lộ trình bài học (Curriculum Agent)...",
+        (
+            "📝 **Bước 3/5:** Đang khởi tạo và viết nội dung Notebook (Notebook"
+            " Gen)..."
+        ),
+        (
+            "⚙️ **Bước 4/5:** Đang thực thi kiểm thử Notebook trong Sandbox"
+            " (Executor)..."
+        ),
+        (
+            "✅ **Bước 5/5:** Đang đánh giá chất lượng & chấm điểm (Verifier"
+            " Agent)..."
+        ),
+    ]
 
-  with st.status(
-      "🚀 **Đang khởi tạo NotebookForge Pipeline...**", expanded=True
-  ) as status:
-    progress_bar = st.progress(0)
+    with st.status(
+        "🚀 **Đang khởi tạo NotebookForge Pipeline...**", expanded=True
+    ) as status:
+        progress_bar = st.progress(0)
 
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-      future = executor.submit(run_pipeline_via_fastapi, profile)
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(run_pipeline_via_fastapi, profile)
 
-      start_time = time.time()
-      current_step = 0
+            start_time = time.time()
+            current_step = 0
 
-      while future.running():
-        elapsed = time.time() - start_time
+            while future.running():
+                elapsed = time.time() - start_time
 
-        if elapsed > timeout_seconds:
-          status.update(
-              label="❌ **Hệ thống quá tải hoặc phản hồi chậm (Timeout)!**",
-              state="error",
-              expanded=True,
-          )
-          st.error(
-              "⚠️ Quá trình khởi tạo vượt quá thời gian cho phép"
-              f" ({timeout_seconds} giây). Vui lòng thử lại!"
-          )
-          return None
+                if elapsed > timeout_seconds:
+                    status.update(
+                        label=(
+                            "❌ **Hệ thống quá tải hoặc phản hồi chậm"
+                            " (Timeout)!**"
+                        ),
+                        state="error",
+                        expanded=True,
+                    )
+                    st.error(
+                        "⚠️ Quá trình khởi tạo vượt quá thời gian cho phép"
+                        f" ({timeout_seconds} giây). Vui lòng thử lại!"
+                    )
+                    return None
 
-        calculated_step = min(int((elapsed / 10) * 5), 4)
-        if calculated_step != current_step:
-          current_step = calculated_step
-          status.update(label=steps[current_step])
-          progress_bar.progress((current_step + 1) * 20)
+                calculated_step = min(int((elapsed / 10) * 5), 4)
+                if calculated_step != current_step:
+                    current_step = calculated_step
+                    status.update(label=steps[current_step])
+                    progress_bar.progress((current_step + 1) * 20)
 
-        time.sleep(0.5)
+                time.sleep(0.5)
 
-      try:
-        result_tuple = future.result()
-        if result_tuple is None:
-          status.update(
-              label=(
-                  "💥 **Xảy ra lỗi trong quá trình thực thi! (API trả về"
-                  " None)**"
-              ),
-              state="error",
-          )
-          return None
+            try:
+                result_tuple = future.result()
+                if result_tuple is None:
+                    status.update(
+                        label=(
+                            "💥 **Xảy ra lỗi trong quá trình thực thi! (API trả"
+                            " về None)**"
+                        ),
+                        state="error",
+                    )
+                    return None
 
-        progress_bar.progress(100)
-        status.update(
-            label="🎉 **Đã hoàn thành tạo Notebook thành công!**",
-            state="complete",
-            expanded=False,
-        )
-        return result_tuple
-      except Exception as e:
-        status.update(
-            label=f"💥 **Xảy ra lỗi Exception: {str(e)}**", state="error"
-        )
-        st.error(f"Lỗi chi tiết: {str(e)}")
-        import traceback
+                progress_bar.progress(100)
+                status.update(
+                    label="🎉 **Đã hoàn thành tạo Notebook thành công!**",
+                    state="complete",
+                    expanded=False,
+                )
+                return result_tuple
+            except Exception as e:
+                status.update(
+                    label=f"💥 **Xảy ra lỗi Exception: {str(e)}**", state="error"
+                )
+                st.error(f"Lỗi chi tiết: {str(e)}")
+                import traceback
 
-        st.code(traceback.format_exc())
-        return None
+                st.code(traceback.format_exc())
+                return None
 
 
 # ---------------------------------------------------------
@@ -473,8 +480,8 @@ st.markdown(
 )
 
 if "session_id" not in st.session_state:
-  st.session_state.session_id = str(uuid.uuid4())[:8]
-  st.session_state.created_at = datetime.now().isoformat()
+    st.session_state.session_id = str(uuid.uuid4())[:8]
+    st.session_state.created_at = datetime.now().isoformat()
 
 st.sidebar.caption(f"**Session ID:** `{st.session_state.session_id}`")
 st.sidebar.caption(f"**Created At:** {st.session_state.created_at}")
@@ -483,71 +490,71 @@ st.sidebar.caption(f"**Created At:** {st.session_state.created_at}")
 st.subheader("1. Cài đặt bài học")
 
 with st.expander("Tùy chỉnh Notebook", expanded=True):
-  col1, col2 = st.columns(2)
+    col1, col2 = st.columns(2)
 
-  with col1:
-    topic = st.selectbox(
-        "Chọn topic:",
-        options=list(TOPIC_LABELS.keys()),
-        format_func=lambda key: TOPIC_LABELS[key],
-    )
+    with col1:
+        topic = st.selectbox(
+            "Chọn topic:",
+            options=list(TOPIC_LABELS.keys()),
+            format_func=lambda key: TOPIC_LABELS[key],
+        )
 
-  with col2:
-    st.write("**Trình độ:**")
+    with col2:
+        st.write("**Trình độ:**")
 
-    if "is_intermediate" not in st.session_state:
-      st.session_state.is_intermediate = False
+        if "is_intermediate" not in st.session_state:
+            st.session_state.is_intermediate = False
 
-    if st.session_state.is_intermediate:
-      left_style = "color: #FFFFFF; font-weight: normal; opacity: 1;"
-      right_style = (
-          "color: #00A2FF; font-weight: bold; opacity: 1.0; text-shadow: 0 0"
-          " 10px rgba(0, 162, 255, 0.6);"
-      )
-    else:
-      left_style = (
-          "color: #00FF88; font-weight: bold; opacity: 1.0; text-shadow: 0 0"
-          " 10px rgba(0, 255, 136, 0.6);"
-      )
-      right_style = "color: #FFFFFF; font-weight: normal; opacity: 1;"
+        if st.session_state.is_intermediate:
+            left_style = "color: #FFFFFF; font-weight: normal; opacity: 1;"
+            right_style = (
+                "color: #00A2FF; font-weight: bold; opacity: 1.0; text-shadow: 0"
+                " 0 10px rgba(0, 162, 255, 0.6);"
+            )
+        else:
+            left_style = (
+                "color: #00FF88; font-weight: bold; opacity: 1.0; text-shadow: 0"
+                " 0 10px rgba(0, 255, 136, 0.6);"
+            )
+            right_style = "color: #FFFFFF; font-weight: normal; opacity: 1;"
 
-    t_col1, t_col2, t_col3 = st.columns([1, 0.3, 1.2])
+        t_col1, t_col2, t_col3 = st.columns([1, 0.3, 1.2])
 
-    with t_col1:
-      st.markdown(
-          f"<div style='text-align: right; padding-top: 5px;"
-          f" {left_style}'>1 - Beginner</div>",
-          unsafe_allow_html=True,
-      )
+        with t_col1:
+            st.markdown(
+                f"<div style='text-align: right; padding-top: 5px;"
+                f" {left_style}'>1 - Beginner</div>",
+                unsafe_allow_html=True,
+            )
 
-    with t_col2:
-      is_intermediate = st.toggle(
-          "level_toggle",
-          value=st.session_state.is_intermediate,
-          label_visibility="collapsed",
-          key="is_intermediate",
-      )
+        with t_col2:
+            is_intermediate = st.toggle(
+                "level_toggle",
+                value=st.session_state.is_intermediate,
+                label_visibility="collapsed",
+                key="is_intermediate",
+            )
 
-    with t_col3:
-      st.markdown(
-          f"<div style='text-align: left; padding-top: 5px;"
-          f" {right_style}'>2 - Intermediate</div>",
-          unsafe_allow_html=True,
-      )
+        with t_col3:
+            st.markdown(
+                f"<div style='text-align: left; padding-top: 5px;"
+                f" {right_style}'>2 - Intermediate</div>",
+                unsafe_allow_html=True,
+            )
 
-    level_declared = 2 if is_intermediate else 1
+        level_declared = 2 if is_intermediate else 1
 
-  st.write("")
+    st.write("")
 
-  c1, c2 = st.columns(2)
-  with c1:
-    duration_minutes = st.slider(
-        "Thời lượng (phút):", min_value=60, max_value=120, value=60, step=10
-    )
-  with c2:
-    num_exercises = st.slider(
-        "Số bài tập thực hành:", min_value=1, max_value=5, value=3
-    )
+    c1, c2 = st.columns(2)
+    with c1:
+        duration_minutes = st.slider(
+            "Thời lượng (phút):", min_value=60, max_value=120, value=60, step=10
+        )
+    with c2:
+        num_exercises = st.slider(
+            "Số bài tập thực hành:", min_value=1, max_value=5, value=3
+        )
 
 # --- PHASE 2: QUIZ 5 CÂU ---
 st.subheader("2. Câu hỏi đánh giá")
@@ -557,24 +564,24 @@ questions = QUIZ_BANK.get(topic, QUIZ_BANK["logistic_regression"])
 user_answers = {}
 
 for idx, q_data in enumerate(questions):
-  st.write(f"**Câu {idx + 1}:** {q_data['q']}")
-  user_answers[idx] = st.radio(
-      f"Chọn đáp án câu {idx + 1}:",
-      q_data["options"],
-      index=None,
-      key=f"{topic}_q_{idx}",
-      label_visibility="collapsed",
-  )
-  st.divider()
+    st.write(f"**Câu {idx + 1}:** {q_data['q']}")
+    user_answers[idx] = st.radio(
+        f"Chọn đáp án câu {idx + 1}:",
+        q_data["options"],
+        index=None,
+        key=f"{topic}_q_{idx}",
+        label_visibility="collapsed",
+    )
+    st.divider()
 
 all_answered = all(
     answer is not None for answer in user_answers.values()
 ) and len(user_answers) == len(questions)
 
 if not all_answered:
-  st.warning(
-      "⚠️ Vui lòng hoàn thành tất cả các câu hỏi quiz bên trên để tiếp tục."
-  )
+    st.warning(
+        "⚠️ Vui lòng hoàn thành tất cả các câu hỏi quiz bên trên để tiếp tục."
+    )
 
 submit_quiz = st.button(
     "Tạo Notebook", type="primary", disabled=not all_answered
@@ -582,105 +589,142 @@ submit_quiz = st.button(
 
 # --- PHASE 3: XỬ LÝ & TẠO LEANER PROFILE & CHẠY PIPELINE ---
 if submit_quiz:
-  quiz_score = sum(
-      1
-      for idx, q_data in enumerate(questions)
-      if user_answers[idx] == q_data["a"]
-  )
-  level_final, adjustment_reason = calculate_final_level(
-      level_declared, quiz_score
-  )
+    quiz_score = sum(
+        1
+        for idx, q_data in enumerate(questions)
+        if user_answers[idx] == q_data["a"]
+    )
+    level_final, adjustment_reason = calculate_final_level(
+        level_declared, quiz_score
+    )
 
-  constraints = {
-      "duration_minutes": duration_minutes,
-      "num_exercises": num_exercises,
-  }
+    constraints = {
+        "duration_minutes": duration_minutes,
+        "num_exercises": num_exercises,
+    }
 
-  profile_data = {
-      "session_id": st.session_state.session_id,
-      "created_at": st.session_state.created_at,
-      "topic": topic,
-      "level_declared": level_declared,
-      "level_final": level_final,
-      "quiz_score": quiz_score,
-      "constraints": constraints,
-  }
+    profile_data = {
+        "session_id": st.session_state.session_id,
+        "created_at": st.session_state.created_at,
+        "topic": topic,
+        "level_declared": level_declared,
+        "level_final": level_final,
+        "quiz_score": quiz_score,
+        "constraints": constraints,
+    }
 
-  st.success("Tạo Learner's Profile thành công!")
-  level_name = "Beginner" if level_final == 1 else "Intermediate"
+    st.success("Tạo Learner's Profile thành công!")
+    level_name = "Beginner" if level_final == 1 else "Intermediate"
 
-  st.info(
-    textwrap.dedent(f"""
-    📌 **Chủ đề bạn chọn:** {TOPIC_LABELS[topic]}  
-    🎯 **Cấp độ xếp hạng:** {level_name}
-    """).strip()
-    )   
+    st.info(
+        textwrap.dedent(f"""
+        📌 **Chủ đề bạn chọn:** {TOPIC_LABELS[topic]}  
+        🎯 **Cấp độ xếp hạng:** {level_name}
+        """).strip()
+    )
 
-  # KÍCH HOẠT CHẠY PIPELINE THẬT QUA FASTAPI
-  notebook_result = execute_pipeline_with_progress(
-      profile=profile_data, timeout_seconds=180
-  )
+    # KÍCH HOẠT CHẠY PIPELINE THẬT QUA FASTAPI
+    notebook_result = execute_pipeline_with_progress(
+        profile=profile_data, timeout_seconds=180
+    )
 
-  if notebook_result:
-    notebook_dict, report_data = notebook_result
-    st.session_state.notebook_dict = notebook_dict
-    st.session_state.report_data = report_data
-    st.session_state.current_topic = topic
+    if notebook_result:
+        notebook_dict, report_data = notebook_result
+        st.session_state.notebook_dict = notebook_dict
+        st.session_state.report_data = report_data
+        st.session_state.current_topic = topic
 
 # --- PHASE 4: HIỂN THỊ KẾT QUẢ KHI ĐÃ CÓ DATA ---
 if "notebook_dict" in st.session_state and st.session_state.notebook_dict:
-  st.balloons()
-  st.success("🎉 **Notebook của bạn đã được tạo thành công!**")
+    st.balloons()
+    st.success("🎉 **Notebook của bạn đã được tạo thành công!**")
 
-  # Download Notebook JSON
-  notebook_json_bytes = json.dumps(
-      st.session_state.notebook_dict, ensure_ascii=False, indent=2
-  ).encode("utf-8")
+    # Download Notebook JSON
+    notebook_json_bytes = json.dumps(
+        st.session_state.notebook_dict, ensure_ascii=False, indent=2
+    ).encode("utf-8")
 
-  st.download_button(
-      label="📥 Tải xuống Notebook (.ipynb)",
-      data=notebook_json_bytes,
-      file_name=(
-          f"{st.session_state.get('current_topic', 'notebook')}_{st.session_state.session_id}.ipynb"
-      ),
-      mime="application/x-ipynb+json",
-      type="primary",
-  )
+    st.download_button(
+        label="📥 Tải xuống Notebook (.ipynb)",
+        data=notebook_json_bytes,
+        file_name=(
+            f"{st.session_state.get('current_topic', 'notebook')}_{st.session_state.session_id}.ipynb"
+        ),
+        mime="application/x-ipynb+json",
+        type="primary",
+    )
 
-  # Hiển thị Quality Report dưới dạng Bảng Excel
-  report_data = st.session_state.get("report_data")
-  if report_data:
-    st.divider()
-    with st.expander(
-        "📊 **Báo cáo Đánh giá Chất lượng (Quality Report)**", expanded=True
-    ):
-      if isinstance(report_data, dict):
-        rows = []
-        if "status" in report_data:
-          rows.append({
-              "Tiêu chí / Metric": "Status",
-              "Giá trị": str(report_data["status"]).upper(),
-          })
+    # Hiển thị Quality Report
+    report_data = st.session_state.get("report_data")
+    if report_data:
+        st.divider()
+        with st.expander(
+            "📊 **Báo cáo Đánh giá Chất lượng (Quality Report)**", expanded=True
+        ):
+            if isinstance(report_data, dict):
+                rows = []
 
-        scores = report_data.get("scores", {})
-        if isinstance(scores, dict):
-          for metric, score in scores.items():
-            metric_name = metric.replace("_", " ").title()
-            rows.append({
-                "Tiêu chí / Metric": f"Score: {metric_name}",
-                "Giá trị": score,
-            })
+                # 1. Lấy danh sách điểm số từ scores và chuyển sang thang 5
+                scores = report_data.get("scores", {})
+                if isinstance(scores, dict):
+                    for metric, score in scores.items():
+                        metric_name = metric.replace("_", " ").title()
 
-        if "feedback" in report_data:
-          rows.append({
-              "Tiêu chí / Metric": "Feedback",
-              "Giá trị": report_data["feedback"],
-          })
+                        # Quy đổi sang thang điểm 5
+                        score_scale_5 = (
+                            round(score * 5, 2) if score <= 1.0 else score
+                        )
 
-        df_report = pd.DataFrame(rows)
-        st.table(df_report)
+                        rows.append({
+                            "Tiêu chí đánh giá": metric_name,
+                            "Điểm": f"{score_scale_5} / 5",
+                        })
 
-      elif isinstance(report_data, str):
-        st.markdown(report_data)
-      else:
-        st.write(report_data)
+                # 2. Hiển thị bảng điểm
+                if rows:
+                    df_report = pd.DataFrame(rows)
+
+                    # CSS căn giữa tiêu đề + nội dung cột điểm & cố định tỷ lệ cột
+                    st.markdown(
+                        """
+                        <style>
+                            /* Căn giữa toàn bộ hàng tiêu đề */
+                            div[data-testid="stTable"] table thead th {
+                                text-align: center !important;
+                            }
+                            /* Cột 1 (Tiêu chí): Rộng 70%, căn trái */
+                            div[data-testid="stTable"] table tbody td:nth-child(1) {
+                                width: 70% !important;
+                                text-align: left !important;
+                            }
+                            /* Cột 2 (Điểm): Rộng 30%, căn giữa */
+                            div[data-testid="stTable"] table tbody td:nth-child(2) {
+                                width: 30% !important;
+                                text-align: center !important;
+                            }
+                        </style>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+                    # Hiển thị bằng st.table
+                    st.table(df_report)
+                else:
+                    st.info("Không tìm thấy dữ liệu điểm đánh giá.")
+
+                # 3. Hiển thị Status và Feedback bên ngoài bảng (nếu có)
+                if "status" in report_data:
+                    st.caption(
+                        "**Trạng thái (Status):**"
+                        f" {str(report_data['status']).upper()}"
+                    )
+
+                if "feedback" in report_data:
+                    st.markdown(
+                        f"**Nhận xét (Feedback):** {report_data['feedback']}"
+                    )
+
+            elif isinstance(report_data, str):
+                st.markdown(report_data)
+            else:
+                st.write(report_data)
