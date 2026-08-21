@@ -26,6 +26,7 @@ from tools.kb_reader import (
     read_kb_files,
 )
 
+# --- FIX 1: Dùng cổng chuẩn llm_client của Hoàng ---
 try:
     from llm_client import call_text
 except ImportError:
@@ -140,7 +141,7 @@ def _stage2_llm_filtering(
     Ví dụ: ["Khái niệm A", "Khái niệm B"]
     """
 
-    # Truyền session_id và bóc tách tuple trả về từ hàm của Hoàng 
+    # --- FIX 2: Truyền session_id và bóc tách tuple trả về từ hàm của Hoàng ---
     session_id = getattr(learner_profile, "session_id", "default_session") if learner_profile else "default_session"
 
     try:
@@ -242,8 +243,10 @@ def _fallback_web_search(concept: str) -> Optional[Dict[str, str]]:
     return {
         "source_id": f"web_{source_hash}",
         "url": target_url,
-        "type": "web",  # <-- Đã fix lỗi string literal từ schemas.py
+        "type": "web",  
         "title": f"Wikipedia - {hit['title']}",
+        # --- CẬP NHẬT: Trả về đoạn text đã kéo được để không bị lãng phí dữ liệu ---
+        "snippet": validated_text, 
     }
 
 def _extract_quote_from_body(concept: str, body: str) -> Optional[str]:
@@ -314,7 +317,10 @@ def run_research(
                 source_type = web_result["type"] # Chắc chắn là "web" vì đã fix ở trên
                 title = web_result["title"]
                 locator = "Web Search Result"
-                quote_text = None
+                
+                # --- CẬP NHẬT: Gán quote_text từ snippet để cung cấp ngữ cảnh cho Agent ---
+                snippet = web_result.get("snippet", "")
+                quote_text = snippet[:200] if snippet else None
             else:
                 # --- FIX 3: Bắt những khái niệm thất bại vào danh sách
                 unresolved_concepts.append(kw)
@@ -333,7 +339,7 @@ def run_research(
     else:
         prerequisites, pitfalls = ["Đại số tuyến tính", "Python cơ bản"], ["Rò rỉ dữ liệu", "Quá khớp"]
 
-    # Truyền unresolved_concepts
+    # --- FIX 3: Truyền `unresolved_concepts` đúng format của Schema ---
     bundle = ResearchBundle(
         topic=str(actual_topic),
         sources=list(sources_map.values()),
