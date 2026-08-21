@@ -1,30 +1,19 @@
+import os
 import random
 
-# HƯỚNG DẪN TÍCH HỢP DATASET INJECTOR
-# 
+# HƯỚNG DẪN DÙNG HÀM DATASET INJECTOR
 # Hàm chính: get_dataset_code(topic: str, seed: int = None) -> list[dict]
 # Trả về: list[dict], mỗi dict đại diện cho 1 bước (Load, EDA, Split)
 #         Cấu trúc dict: {'title': str, 'code': str}
 #
-# Cách tích hợp vào Pipeline tạo Notebook:
-
-# from tools.dataset_injector import get_dataset_code
-
-# eda_cells = get_dataset_code(topic=profile.topic, seed=profile.seed)
-
-# for cell_info in eda_cells:
-#     # 1. Thêm Markdown cell cho tiêu đề section (nếu pipeline chưa tự tạo)
-#     notebook.cells.append(create_markdown_cell(f"### {cell_info['title']}"))
-    
-#     # 2. Thêm Code cell tương ứng
-#     notebook.cells.append(create_code_cell(cell_info['code']))
-
-
 # LƯU Ý KHI CHẠY:
-# 1. Môi trường chạy Notebook (Executor) cần đảm bảo Working Directory là thư mục ROOT 
-#    của dự án để câu lệnh `pd.read_csv('notebookforge/datasets/...')` tìm thấy file.
-# 2. Nếu topic truyền vào không khớp (Logistic/Tree/KMeans), hàm sẽ tự động fallback 
-#    về dataset 'logistic_regression' mặc định nên không sợ văng Exception.
+# 1. Đảm bảo 3 file CSV đã được đặt đúng cấu trúc thư mục dự án:
+#    - notebookforge/datasets/heart.csv
+#    - notebookforge/datasets/winequality-red.csv
+#    - notebookforge/datasets/Mall_Customers.csv
+# 2. Nếu không tìm thấy file CSV, code cell sinh ra sẽ chủ động raise FileNotFoundError
+#    kèm thông báo chi tiết hướng dẫn cách khắc phục.
+# ==============================================================================
 
 TOPIC_DATASETS = {
     "logistic_regression": {
@@ -41,9 +30,7 @@ TOPIC_DATASETS = {
         "target": "quality",
         "type": "classification",
         "shape": (1599, 12),
-        "description": (
-            "1.599 dòng, 12 cột (11 đặc trưng hóa lý + 1 điểm chất lượng)"
-        ),
+        "description": "1.599 dòng, 12 cột (11 đặc trưng hóa lý + 1 điểm chất lượng)",
     },
     "k_means": {
         "name": "Mall Customer Segmentation",
@@ -54,107 +41,127 @@ TOPIC_DATASETS = {
     },
 }
 
-def get_eda_cells(topic: str, seed: int = None) -> list[dict]:
-  """Trả về danh sách các code cell dùng Dataset Local từ thư mục data/."""
-  if seed is None:
-    seed = random.randint(1, 10000)
-
-  topic_key = topic.lower().strip()
-  cells = []
-
-  # ==========================================
-  # 1. LOGISTIC REGRESSION (Heart Failure)
-  # ==========================================
-  if "logistic" in topic_key:
-    # Cell 1: Load Data từ file Local
-    cells.append({
-        "title": "1. Load Dataset & Inspection",
-        "code": f"""import pandas as pd
+def _get_file_check_snippet(file_path: str, dataset_name: str) -> str:
+    """Tạo đoạn code snippet kiểm tra file CSV có tồn tại hay không trước khi read_csv."""
+    return f"""import os
+import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 
-# Load Heart Failure Prediction Dataset từ file local
-data_path = "{TOPIC_DATASETS['logistic_regression']['path']}"
+data_path = "{file_path}"
+
+# Kiểm tra sự tồn tại của Dataset File
+if not os.path.exists(data_path):
+    raise FileNotFoundError(
+        f"❌ KHÔNG TÌM THẤY DATASET: '{dataset_name}' tại đường dẫn '{{os.path.abspath(data_path)}}'.\\n"
+        f"👉 Vui lòng đảm bảo bạn đã copy file CSV vào đúng thư mục 'notebookforge/datasets/'!"
+    )
+"""
+
+def get_eda_cells(topic: str, seed: int = None) -> list[dict]:
+    """Trả về danh sách các code cell dùng Dataset Local chuẩn theo Schema dự án."""
+    if seed is None:
+        seed = random.randint(1, 10000)
+
+    topic_key = topic.lower().strip()
+    cells = []
+
+    # 1. LOGISTIC REGRESSION (Heart Failure)
+    if "logistic" in topic_key:
+        ds_info = TOPIC_DATASETS["logistic_regression"]
+        
+        # Cell 1: Load Data & Safe Check
+        cells.append({
+            "title": "1. Load Dataset & Inspection",
+            "code": _get_file_check_snippet(ds_info["path"], ds_info["name"]) + f"""
+# Load Heart Failure Prediction Dataset
 df = pd.read_csv(data_path)
 
-print(f"Dataset Shape: {{df.shape}}")
-df.head()""",
-    })
+print(f"Dataset Successfully Loaded! Shape: {{df.shape}}")
+df.head()"""
+        })
 
-    # Cell 2: EDA & Data Cleaning
-    cells.append({
-        "title": "2. EDA & Handling Missing/Outlier Values",
-        "code": """# 1. Loại bỏ dòng vô lý RestingBP = 0
+        # Cell 2: EDA & Data Cleaning
+        cells.append({
+            "title": "2. EDA & Handling Missing/Outlier Values",
+            "code": """# 1. Loại bỏ dòng vô lý RestingBP = 0
 df = df[df['RestingBP'] > 0].copy()
 
-# 2. Chuyển Cholesterol = 0 thành NaN để Impute (Missing ngầm y khoa)
+# 2. Chuyển Cholesterol = 0 thành NaN để Impute (Dữ liệu khuyết ngầm y khoa)
 df['Cholesterol'] = df['Cholesterol'].replace(0, np.nan)
 
 # Impute Cholesterol bằng Median theo từng nhóm HeartDisease
-df['Cholesterol'] = df.groupby('HeartDisease')['Cholesterol'].transform(lambda x: x.fillna(x.median()))
+if 'HeartDisease' in df.columns:
+    df['Cholesterol'] = df.groupby('HeartDisease')['Cholesterol'].transform(lambda x: x.fillna(x.median()))
+else:
+    df['Cholesterol'] = df['Cholesterol'].fillna(df['Cholesterol'].median())
 
-print("Data after handling missing/outliers:")
-print(df.isnull().sum())""",
-    })
+print("Kiểm tra giá trị Null sau khi xử lý:")
+print(df.isnull().sum())"""
+        })
 
-    # Cell 3: Encoding & Scaling & Split
-    cells.append({
-        "title": "3. Feature Encoding, Scaling & Train/Test Split",
-        "code": f"""# 1. One-Hot Encoding cho các biến Categorical
+        # Cell 3: Encoding & Scaling & Split
+        cells.append({
+            "title": "3. Feature Encoding, Scaling & Train/Test Split",
+            "code": f"""from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+# 1. One-Hot Encoding cho các biến Categorical (Sex, ChestPainType, RestECG, ExerciseAngina, ST_Slope)
 df_encoded = pd.get_dummies(df, drop_first=True)
 
 X = df_encoded.drop(columns=['HeartDisease'])
 y = df_encoded['HeartDisease']
 
-# 2. Chia Train/Test (Stratify)
+# 2. Chia Train/Test (Stratify theo nhãn)
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state={seed}, stratify=y
 )
 
-# 3. Standard Scaling cho dữ liệu số
+# 3. Standard Scaling cho đặc trưng
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
-print(f"X_train shape: {{X_train_scaled.shape}}, X_test shape: {{X_test_scaled.shape}}")""",
-    })
+print(f"✅ X_train shape: {{X_train_scaled.shape}}, X_test shape: {{X_test_scaled.shape}}")"""
+        })
 
-  # ==========================================
-  # 2. DECISION TREE (Red Wine Quality)
-  # ==========================================
-  elif "tree" in topic_key or "decision" in topic_key:
-    # Cell 1: Load Data từ file Local
-    cells.append({
-        "title": "1. Load Dataset & Inspection",
-        "code": f"""import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
+    # 2. DECISION TREE (Red Wine Quality)
+    elif "tree" in topic_key or "decision" in topic_key:
+        ds_info = TOPIC_DATASETS["decision_tree"]
 
-# Load Red Wine Quality Dataset từ file local
-data_path = "{TOPIC_DATASETS['decision_tree']['path']}"
-df = pd.read_csv(data_path)
+        # Cell 1: Load Data & Safe Check (Xử lý cả dấu ';' lẫn ',')
+        cells.append({
+            "title": "1. Load Dataset & Inspection",
+            "code": _get_file_check_snippet(ds_info["path"], ds_info["name"]) + f"""
+# Load Red Wine Quality Dataset (Tự động nhận diện delimiter ';' hoặc ',')
+try:
+    df = pd.read_csv(data_path, sep=';')
+    if df.shape[1] <= 1:
+        df = pd.read_csv(data_path, sep=',')
+except Exception:
+    df = pd.read_csv(data_path)
 
-print(f"Dataset Shape: {{df.shape}}")
-df.head()""",
-    })
+print(f"Dataset Successfully Loaded! Shape: {{df.shape}}")
+df.head()"""
+        })
 
-    # Cell 2: EDA & Drop Duplicates
-    cells.append({
-        "title": "2. EDA & Deduplication",
-        "code": """# Check duplicates (~240 dòng trùng)
+        # Cell 2: EDA & Drop Duplicates
+        cells.append({
+            "title": "2. EDA & Deduplication",
+            "code": """# Kiểm tra trùng lặp (~240 dòng trùng trong tập Red Wine gốc)
 duplicate_count = df.duplicated().sum()
-print(f"Số lượng dòng trùng lặp: {duplicate_count}")
+print(f"Số lượng dòng trùng lặp tìm thấy: {duplicate_count}")
 
-# Drop duplicates
+# Loaị bỏ trùng lặp
 df = df.drop_duplicates().reset_index(drop=True)
-print(f"Shape sau khi loại bỏ trùng lặp: {df.shape}")""",
-    })
+print(f"Shape sau khi loại bỏ trùng lặp: {df.shape}")"""
+        })
 
-    # Cell 3: Train/Test Split
-    cells.append({
-        "title": "3. Feature Engineering & Train/Test Split",
-        "code": f"""X = df.drop(columns=['quality'])
+        # Cell 3: Train/Test Split
+        cells.append({
+            "title": "3. Feature Selection & Train/Test Split",
+            "code": f"""from sklearn.model_selection import train_test_split
+
+X = df.drop(columns=['quality'])
 y = df['quality']
 
 # Split Train/Test
@@ -162,56 +169,60 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state={seed}, stratify=y
 )
 
-print(f"Features: {{list(X.columns)}}")
-print(f"Distribution of target 'quality' in Train: \\n{{y_train.value_counts()}}")""",
-    })
+print(f"✅ Danh sách Features: {{list(X.columns)}}")
+print(f"Phân bố nhãn 'quality' trong tập Train:\\n{{y_train.value_counts().sort_index()}}")"""
+        })
 
-  # ==========================================
-  # 3. K-MEANS CLUSTERING (Mall Customers)
-  # ==========================================
-  elif "kmeans" in topic_key or "k-means" in topic_key or "k_means" in topic_key:
-    # Cell 1: Load Data từ file Local
-    cells.append({
-        "title": "1. Load Dataset & Inspection",
-        "code": f"""import pandas as pd
-import numpy as np
-from sklearn.preprocessing import StandardScaler
+    # 3. K-MEANS CLUSTERING (Mall Customers)
+    elif "kmeans" in topic_key or "k-means" in topic_key or "k_means" in topic_key:
+        ds_info = TOPIC_DATASETS["k_means"]
 
-# Load Mall Customer Dataset từ file local
-data_path = "{TOPIC_DATASETS['k_means']['path']}"
+        # Cell 1: Load Data & Safe Check
+        cells.append({
+            "title": "1. Load Dataset & Inspection",
+            "code": _get_file_check_snippet(ds_info["path"], ds_info["name"]) + f"""
+# Load Mall Customer Dataset
 df = pd.read_csv(data_path)
 
-print(f"Dataset Shape: {{df.shape}}")
-df.head()""",
-    })
+print(f"Dataset Successfully Loaded! Shape: {{df.shape}}")
+df.head()"""
+        })
 
-    # Cell 2: Feature Selection & Encoding & Scaling
-    cells.append({
-        "title": "2. Preprocessing & Feature Scaling for Clustering",
-        "code": f"""# 1. Loại bỏ cột định danh CustomerID
-df_features = df.drop(columns=['CustomerID'], errors='ignore')
+        # Cell 2: Feature Selection & Encoding & Scaling
+        cells.append({
+            "title": "2. Preprocessing & Feature Scaling for Clustering",
+            "code": f"""from sklearn.preprocessing import StandardScaler
 
-# 2. Encode biến Gender
-df_encoded = pd.get_dummies(df_features, columns=['Gender'], drop_first=True)
+# 1. Loại bỏ cột định danh CustomerID (nếu có)
+df_features = df.drop(columns=['CustomerID', 'Customer_ID', 'id'], errors='ignore')
 
-# 3. Scaling đặc trưng (Rất quan trọng với KMeans)
+# 2. Encode biến Gender / Genre (nếu có)
+gender_col = [c for c in df_features.columns if c.lower() in ['gender', 'genre']]
+if gender_col:
+    df_encoded = pd.get_dummies(df_features, columns=gender_col, drop_first=True)
+else:
+    df_encoded = pd.get_dummies(df_features, drop_first=True)
+
+# 3. Scaling đặc trưng (Bắt buộc đối với KMeans)
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(df_encoded)
 
-# Xáo trộn dữ liệu theo seed={seed}
+# Xáo trộn dữ liệu theo seed={seed} để đảm bảo tính ngẫu nhiên thử nghiệm
 np.random.seed({seed})
 shuffled_idx = np.random.permutation(len(X_scaled))
 X_scaled = X_scaled[shuffled_idx]
 
-print("Features processed & scaled successfully for KMeans!")
-print(f"Final Input Shape for Clustering: {{X_scaled.shape}}")""",
-    })
+print("✅ Dữ liệu đã được tiền xử lý & Standard Scaled cho K-Means!")
+print(f"Shape đầu vào cuối cùng: {{X_scaled.shape}}")"""
+        })
 
-  else:
-    return get_eda_cells("logistic_regression", seed)
+    else:
+        # Fallback về Logistic Regression nếu chủ đề không khớp
+        return get_eda_cells("logistic_regression", seed)
 
-  return cells
+    return cells
 
 
 def get_dataset_code(topic: str, seed: int = None) -> list[dict]:
-  return get_eda_cells(topic=topic, seed=seed)
+    """Hàm interface chính gọi bởi Pipeline."""
+    return get_eda_cells(topic=topic, seed=seed)
