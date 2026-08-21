@@ -398,6 +398,7 @@ def run_notebook_gen(
             prompt,
             session_id = profile.session_id,
             json_mode = True,
+            reasoning_effort = "low"
         )
         data = processing_json(raw)
         cells = data["cells"]
