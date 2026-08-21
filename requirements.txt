@@ -1,0 +1,35 @@
+# NotebookForge - Nhóm 19
+# Cài: pip install -r requirements.txt
+
+# Contract giữa 5 người (schemas.py) - BẮT BUỘC
+pydantic>=2.7
+
+# Gọi LLM + đếm cost (llm_client.py)
+# Groq/Gemini/OpenRouter đều nói chuẩn OpenAI -> 1 SDK dùng cho cả ba.
+openai>=1.40
+python-dotenv>=1.0
+requests>=2.32
+PyYAML>=6.0
+rank-bm25>=0.2.2
+
+# Chạy notebook trong sandbox (executor.py)
+nbformat>=5.9
+nbclient>=0.9
+ipykernel>=6.29
+
+# API (api.py)
+fastapi>=0.110
+uvicorn[standard]>=0.29
+
+# UI (ui/streamlit_app.py - Nam)
+streamlit>=1.33
+
+# Notebook sinh ra cần các thư viện này để chạy được
+numpy>=1.26
+pandas>=2.2
+scikit-learn>=1.4
+matplotlib>=3.8
+
+# CrewAI: TUỲ CHỌN. main.py không cần, chỉ crew_setup.py dùng.
+# Bỏ dấu # ở dòng dưới nếu nhóm quyết định dùng CrewAI.
+# crewai>=0.80

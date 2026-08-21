@@ -1,3 +1,13 @@
-﻿myenv/
+myenv/
+.venv/
 __pycache__/
 *.pyc
+
+# Bí mật - TUYỆT ĐỐI không commit
+.env
+
+# Sản phẩm sinh ra lúc chạy
+outputs/
+*.executed.ipynb
+.ipynb_checkpoints/
+notebookforge/output_notebooks/

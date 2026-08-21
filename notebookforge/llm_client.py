@@ -78,7 +78,7 @@ PROVIDER = os.getenv("NOTEBOOKFORGE_PROVIDER", "groq")
 #   Judge (Verifier) không được trùng model với Worker, nếu không nó tự chấm bài
 #   của chính mình (self-bias). Đề cương chỉ đích danh Groq Llama 3.3 70B làm judge.
 MODEL = os.getenv("NOTEBOOKFORGE_MODEL", "openai/gpt-oss-120b")
-MODEL_JUDGE = os.getenv("NOTEBOOKFORGE_MODEL_JUDGE", "llama-3.3-70b-versatile")
+MODEL_JUDGE = os.getenv("NOTEBOOKFORGE_MODEL_JUDGE", "qwen/qwen3.6-27b")
 
 MAX_TOKENS = int(os.getenv("NOTEBOOKFORGE_MAX_TOKENS", "16000"))
 TEMPERATURE = float(os.getenv("NOTEBOOKFORGE_TEMPERATURE", "0.3"))
@@ -266,6 +266,8 @@ def call_text(
     temperature: float = TEMPERATURE,
     model: str = MODEL,
     json_mode: bool = False,
+    reasoning_effort: str | None = None,
+    include_reasoning: bool | None = None,
 ) -> tuple[str, Usage]:
     """Gọi LLM, trả về (text, Usage). Tiền được cộng vào tracker của session."""
     client = _get_client()
@@ -284,6 +286,23 @@ def call_text(
     }
     if json_mode:
         kwargs["response_format"] = {"type": "json_object"}
+    # GPT-OSS và Qwen 3.6 dùng tập giá trị reasoning_effort khác nhau trên Groq.
+    # Chỉ gửi các tham số riêng khi model hỗ trợ; model/provider khác tiếp tục
+    # dùng request chuẩn OpenAI như trước.
+    is_groq_gpt_oss = PROVIDER == "groq" and model.startswith("openai/gpt-oss-")
+    is_groq_qwen36 = PROVIDER == "groq" and model.startswith("qwen/qwen3.6-")
+    if reasoning_effort is not None and (is_groq_gpt_oss or is_groq_qwen36):
+        allowed_efforts = (
+            {"low", "medium", "high"} if is_groq_gpt_oss else {"none", "default"}
+        )
+        if reasoning_effort not in allowed_efforts:
+            allowed_text = "/".join(sorted(allowed_efforts))
+            raise ValueError(
+                f"reasoning_effort cho {model} phải là {allowed_text}"
+            )
+        kwargs["reasoning_effort"] = reasoning_effort
+    if include_reasoning is not None and is_groq_gpt_oss:
+        kwargs["extra_body"] = {"include_reasoning": include_reasoning}
 
     last_exc: Exception | None = None
     for attempt in range(1, MAX_RETRIES + 1):
@@ -332,6 +351,8 @@ def call_json(
     max_tokens: int = MAX_TOKENS,
     temperature: float = TEMPERATURE,
     model: str = MODEL,
+    reasoning_effort: str | None = None,
+    include_reasoning: bool | None = None,
 ) -> tuple[T, Usage]:
     """Gọi LLM và ép output về đúng `schema` (một class trong schemas.py).
 
@@ -361,6 +382,8 @@ def call_json(
             temperature=temperature,
             model=model,
             json_mode=True,  # Groq ép model trả JSON hợp lệ ngay từ tầng API
+            reasoning_effort=reasoning_effort,
+            include_reasoning=include_reasoning,
         )
         usage.api_calls = attempt
         try:

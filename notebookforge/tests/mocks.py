@@ -73,7 +73,7 @@ MOCK_PROFILE = LearnerProfile(
 MOCK_PROFILE_ADVANCED = LearnerProfile(
     topic="decision_tree",
     level_declared=2,
-    level_final=3,
+    level_final=2,
     quiz_score=5,
     constraints={"duration_minutes": 90, "num_exercises": 5},  # dict cũng được
     session_id="test-002",
@@ -194,8 +194,18 @@ MOCK_PATH = LearningPath(
             ],
             source_ids=["kb_02"],
         ),
+        Module(
+            module_id="m4",
+            title="Tổng kết và đánh giá mô hình",
+            objective="Đọc được accuracy / confusion matrix và biết mô hình sai ở đâu",
+            concepts=["log loss"],
+            estimated_minutes=5,
+            planned_exercises=[],  # module lý thuyết, không có bài tập
+            source_ids=["kb_02"],
+        ),
     ],
-    notes="Tổng 60 phút, 3 bài tập - khớp constraints của MOCK_PROFILE.",
+    notes="4 module / 65 phút / 3 bài tập - khớp constraints của MOCK_PROFILE "
+    "và yêu cầu 4-6 module của đề cương.",
 )
 
 # ---------------------------------------------------------------------------
@@ -205,6 +215,8 @@ MOCK_PATH = LearningPath(
 _MOCK_NB = {
     "cells": [
         {
+            # nbformat >= 4.5 bắt buộc mỗi cell có "id" - thiếu là nbclient cảnh báo
+            "id": "md-intro",
             "cell_type": "markdown",
             "metadata": {},
             "source": [
@@ -214,6 +226,7 @@ _MOCK_NB = {
             ],
         },
         {
+            "id": "code-setup",
             "cell_type": "code",
             "execution_count": None,
             "metadata": {},
@@ -231,6 +244,7 @@ _MOCK_NB = {
             ],
         },
         {
+            "id": "code-todo",
             "cell_type": "code",
             "execution_count": None,
             "metadata": {},

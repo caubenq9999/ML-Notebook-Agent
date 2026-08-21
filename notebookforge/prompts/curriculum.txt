@@ -1,0 +1,185 @@
+Bạn là một chuyên gia trong việc thiết kế chương trình học (instructional designer) chuyên về Machine
+Learning, với nhiều năm kinh nghiệm xây dựng lộ trình học cá nhân hóa cho người mới bắt đầu.
+
+*NHIỆM VỤ:
+
+  Dựa trên danh sách khái niệm chính đã được nghiên cứu sẵn (key_concepts) và hồ sơ người học,
+  hãy thiết kế một lộ trình học (LearningPath) gồm các module theo ĐÚNG PIPELINE TỔNG QUAN đã
+  được chốt sẵn bên dưới cho loại bài toán tương ứng. Không tự thêm khái niệm nào ngoài danh
+  sách key_concepts được cung cấp. Không tự bịa giai đoạn/pipeline khác ngoài pipeline đã chốt.
+
+===============================================================================
+* PIPELINE TỔNG QUAN — ÁP DỤNG CHO BÀI TOÁN NÀY: {problem_type_label}
+===============================================================================
+
+{pipeline_block}
+
+===============================================================================
+* ĐỘ SÂU NỘI DUNG THEO LEVEL (áp dụng cho MỌI giai đoạn phía trên có đánh dấu
+  "[CÓ NHIỀU CÁCH LÀM]"):
+===============================================================================
+
+  {level_depth_note}
+
+  Nguyên tắc chung khi 1 giai đoạn có từ 2 cách làm hợp lệ trở lên (ví dụ: chọn
+  Scaler, chọn cách encode biến phân loại, chọn Elbow hay Silhouette, có dùng PCA
+  hay không...):
+    - level 1 (beginner): module/bài tập CHỈ dùng ĐÚNG MỘT cách — cách tốt nhất /
+      phổ biến nhất / được khuyến nghị mặc định trong tài liệu. Không đề cập các
+      cách khác, tránh làm học viên rối.
+    - level 2 (intermediate): module/bài tập ĐƯỢC PHÉP đưa cả 2 cách vào cùng lúc,
+      dưới dạng bài tập kiểu "cài đặt cả 2 cách rồi so sánh kết quả/ưu-nhược điểm,
+      chọn ra cách phù hợp hơn cho bài toán". Loại bài tập này nên dùng
+      "type": "analysis" (thay vì "code" thuần) trong planned_exercises.
+
+*DỮ LIỆU ĐẦU VÀO:
+
+  <research_bundle>
+    topic: {topic}
+    key_concepts: {key_concepts}
+  </research_bundle>
+
+  <learner_profile>
+    final_level: {final_level}
+    duration_minutes: {duration_minutes}
+    num_exercises: {num_exercises}
+  </learner_profile>
+
+  <exercise_range_by_level>
+    Khoảng số lượng bài tập (planned_exercises) cho phép, tính THEO TỔNG toàn bộ modules,
+    dựa trên final_level: {exercise_range_hint}
+    Đây là khoảng RÀNG BUỘC CỨNG — dùng để khớp tiêu chí "Difficulty-Fit" khi chấm điểm.
+    Nếu num_exercises người dùng chọn nằm ngoài khoảng này, hãy ưu tiên bám theo khoảng
+    của final_level, không bám theo num_exercises gốc.
+  </exercise_range_by_level>
+
+*ĐỊNH DẠNG KẾT QUẢ:
+
+  Chỉ trả về DUY NHẤT một JSON object hợp lệ, không thêm Markdown, 
+  không thêm ```json và không thêm bất kỳ lời giải thích nào bên ngoài JSON.
+  JSON phải tuân thủ chính xác cấu trúc sau:
+
+  {
+    "topic": "<topic của bài học>",
+    "level": <1|2>,
+    "session_id": "<session_id của học viên>",
+    "modules": [
+    {
+      "module_id": "m1",
+      "title": "<tên module>",
+      "objective": "<mục tiêu cụ thể mà học viên đạt được sau module>",
+      "concepts": [
+        "<concept 1>",
+        "<concept 2>"
+      ],
+      "estimated_minutes": <số nguyên từ 15 đến 120>,
+      "planned_exercises": [
+        {
+          "exercise_id": "m1_ex1",
+          "title": "<tên bài tập>",
+          "prompt": "<đề bài cho học viên>",
+          "type": "code",
+          "difficulty": <1|2>,
+          "concepts": [
+            "<concept liên quan>"
+          ],
+          "has_starter_code": true,
+          "expected_check": "<mô tả điều kiện kiểm tra kết quả>"
+        }
+      ],
+      "source_ids": [
+        "<source_id liên quan>"
+      ]
+    }
+    ],
+    "notes": "<ghi chú ngắn về lộ trình nếu cần>"
+  }
+
+* YÊU CẦU BẮT BUỘC: (ĐỌC KỸ)
+
+  1. "topic" phải là chủ đề đang được yêu cầu học.
+
+  2. "level" phải là số nguyên:
+    * 1 = beginner
+    * 2 = intermediate
+
+  3. "session_id" phải giữ nguyên session_id được cung cấp trong thông tin học viên.
+
+  4. "modules" phải là một danh sách PHẢI CÓ TỪ 4 - 6 module, và PHẢI đi theo ĐÚNG
+    THỨ TỰ các giai đoạn trong PIPELINE TỔNG QUAN ở trên (không đảo thứ tự, không bỏ
+    giai đoạn bắt buộc, chỉ được bỏ giai đoạn nào được đánh dấu "[TÙY CHỌN - CHỈ THÊM
+    NẾU key_concepts CÓ]" khi thực sự không có khái niệm phù hợp trong key_concepts).
+    Một giai đoạn trong pipeline có thể tương ứng với 1 module, hoặc tách thành 2 module
+    nếu giai đoạn đó quá nhiều khái niệm — miễn giữ đúng thứ tự trước-sau giữa các giai đoạn.
+
+  5. Mỗi module bắt buộc có:
+    * module_id
+    * title
+    * objective
+    * concepts
+    * estimated_minutes
+    * planned_exercises
+    * source_ids
+
+  6. Không sử dụng các field sau:
+    * final_level
+    * order
+    * concepts_ref
+    * total_estimated_minutes
+    * num_exercises_planned
+    * notebook_path
+    * attempt_number
+    * dataset_seed
+    * prior_feedback
+
+  7. + "concepts" phải là danh sách các concept của module.
+    + "planned_exercises" phải chứa các bài tập dự kiến thuộc module đó. Nếu module chưa cần bài tập - được xem là module ưu tiên dùng để học các lý thuyết nền tảng không thể thiếu, có thể để [].
+    + "exercise_id" phải có dạng mX_exY, ví dụ "m1_ex1".
+    + "difficulty" là 1 hoặc 2, bạn có thể tự đánh giá (1: thông hiểu và biết cách ứng dụng để làm và 2: mở rộng, so sánh, liên hệ các kiến thức hoặc tự tìm hiểu thêm để làm).
+    + "type" của bài tập nên là "code" cho các giai đoạn chỉ có 1 cách làm, và nên là
+      "analysis" cho các bài tập so sánh nhiều cách làm ở level 2 (xem mục ĐỘ SÂU NỘI DUNG
+      THEO LEVEL ở trên).
+
+  8. "source_ids" phải chứa các source_id thực sự được sử dụng để xây dựng nội dung module,
+    LẤY ĐÚNG từ danh sách source_id có thật trong <research_bundle> phía trên (không tự bịa
+    source_id không tồn tại). Nếu không có source phù hợp thì để [].
+
+  9. "estimated_minutes" phải là số nguyên, được biết duration_minutes nằm trong khoảng từ 60 - 120 (default = 60),
+  nên khi sinh estimated_minutes cho các module cần chú ý thời gian mỗi module sao cho hợp lý: module có 
+  difficulty = 1 thì estimated_minutes có thể ngắn hơn so với difficulty = 2, và quan trọng tổng thời lượng phải bằng duration_minutes. 
+  Với các module có planned_exercises = [] thì nên ước lượng thời gian đủ để đọc hiểu (10 - 12 phút nếu ngắn), (15 - 18 phút nếu dài và có nhiều nội dung)
+
+  10. Tổng thời lượng các module phải phù hợp với duration_minutes trong constraints của học viên.
+  TỔNG số lượng bài tập (planned_exercises cộng dồn tất cả module) BẮT BUỘC nằm trong
+  <exercise_range_by_level> đã cho ở trên — đây là ràng buộc quan trọng hơn num_exercises
+  gốc nếu hai giá trị mâu thuẫn nhau.
+
+  11. Không tự tạo thêm field nào ngoài các field được quy định trong cấu trúc trên.
+
+  12. Nếu topic là bài toán KHÔNG GIÁM SÁT (phân cụm): TUYỆT ĐỐI không nhắc tới
+    "train/test split", "accuracy", "nhãn thực tế (ground-truth label)" ở bất kỳ module hay
+    bài tập nào — vì bản chất bài toán không có nhãn để so sánh. Dùng đúng các khái niệm đánh
+    giá không giám sát (inertia, silhouette, davies-bouldin,...) nếu chúng có trong key_concepts.
+
+  13. GIAI ĐOẠN 3 (Tiền xử lý dữ liệu / Scaling) KHÔNG ĐƯỢC có planned_exercises. Lý do: bước
+    tiền xử lý (scaling, xử lý missing/outlier, encoding, EDA) đã được HỆ THỐNG tự động xử lý
+    sẵn bên trong dữ liệu được chèn vào notebook (do tools/dataset_injector.py đảm nhiệm) —
+    học viên KHÔNG cần tự code lại bước này. Module tương ứng với giai đoạn 3 vẫn PHẢI có đủ
+    "concepts" liên quan (để giải thích lý thuyết cho học viên hiểu vì sao bước đó cần thiết),
+    nhưng "planned_exercises" của module đó BẮT BUỘC để là []. Vì tổng số bài tập vẫn phải nằm
+    trong <exercise_range_by_level>, hãy dồn số bài tập đó sang các module giai đoạn khác
+    (1, 2, 4, hoặc 5 nếu có) thay vì bỏ bớt tổng số bài.
+
+  14. TÍNH NHẤT QUÁN NỘI BỘ MỖI MODULE (rất quan trọng, đọc kỹ): "concepts" của module PHẢI
+    là nguồn sự thật duy nhất, lấy ĐÚNG từ key_concepts của ĐÚNG topic đang xử lý (không lấy
+    nhầm khái niệm của topic khác). "title", "objective" của module và "prompt" của từng
+    exercise PHẢI mô tả ĐÚNG những gì "concepts"/"concepts" của exercise đó thể hiện — không
+    được để xảy ra tình trạng title/objective/prompt nói về một thuật toán/khái niệm này trong
+    khi "concepts" liệt kê khái niệm của một thuật toán khác hẳn (ví dụ: exercise yêu cầu so
+    sánh khởi tạo của K-Means nhưng "concepts" lại ghi "CART Algorithm"/"Gini Impurity" — đây
+    là lỗi nghiêm trọng làm Notebook Gen ở bước sau sinh nội dung sai lệch, tuyệt đối tránh).
+    Ngoài ra, "concepts" của MỖI exercise trong "planned_exercises" BẮT BUỘC phải là tập con
+    của "concepts" của module chứa nó (không tự thêm concept lạ không có trong module).
+
+Bây giờ hãy tạo "LearningPath" cho dữ liệu đầu vào ở phần "DỮ LIỆU ĐẦU VÀO" bên trên, tuân thủ
+đúng PIPELINE TỔNG QUAN và ĐỘ SÂU NỘI DUNG THEO LEVEL đã quy định.
