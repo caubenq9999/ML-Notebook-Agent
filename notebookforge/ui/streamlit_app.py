@@ -13,7 +13,7 @@ import streamlit as st
 
 # Thêm thư mục gốc (notebookforge) vào sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-FASTAPI_URL = "http://localhost:8000"  # Server FastAPI do Hoàng/Hợp quản lý
+FASTAPI_URL = "http://localhost:8000"  # Server FastAPI
 
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
@@ -151,7 +151,7 @@ QUIZ_BANK = {
         },
         {
             "q": (
-                'Phương pháp "Elbow Method" (Phương pháp góc cùi cỏ tay) thường'
+                'Phương pháp "Elbow Method" (Phương pháp góc cùi chỏ) thường'
                 " được dùng trong K-Means để làm gì?"
             ),
             "options": [
@@ -295,10 +295,7 @@ def get_mock_notebook_data(profile_data: dict) -> tuple[dict, dict]:
 
 
 def run_pipeline_via_fastapi(profile_data: dict) -> tuple[dict, dict] | None:
-    """Gửi profile lên FastAPI qua POST /generate, sau đó Polling GET /report/{id}
-
-    để lấy kết quả Notebook và Quality Report thực tế.
-    """
+    """Gửi profile lên FastAPI qua POST /generate, sau đó Polling GET /report/{id}."""
     try:
         response = requests.post(
             f"{FASTAPI_URL}/generate", json=profile_data, timeout=10
