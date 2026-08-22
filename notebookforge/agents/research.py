@@ -180,9 +180,8 @@ def _generate_candidate_concepts_for_web(topic: str) -> List[str]:
 
 # =============================================================================
 # WEB SEARCH FALLBACK (WIKIPEDIA)
-# =============================================================================
+# ==========================================================================
 _WEB_SEARCH_TIMEOUT = 6
-
 def _wikipedia_search_page(query: str) -> Optional[Dict[str, str]]:
     try:
         resp = requests.get(
