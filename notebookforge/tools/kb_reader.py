@@ -144,12 +144,21 @@ def read_kb_files(topic: str, *, enforce_word_range: bool = False) -> List[KBEnt
 
     entries: List[KBEntry] = []
     problems: List[str] = []
+    seen_ids: dict[str, str] = {}
     for path in sorted(topic_dir.glob("*.md")):
         try:
             entry = parse_kb_file(path)
         except KBFormatError as exc:
             problems.append(str(exc))
             continue
+        if entry.source_id in seen_ids:
+            problems.append(
+                f"{path.name}: doc_id '{entry.source_id}' TRÙNG với file "
+                f"'{seen_ids[entry.source_id]}' -- bỏ qua file này vì source_id "
+                f"phải là khoá duy nhất (Source/Citation dựa vào đây)."
+            )
+            continue
+        seen_ids[entry.source_id] = path.name
         if enforce_word_range and not entry.in_word_range:
             problems.append(
                 f"{path.name}: {entry.word_count} từ, ngoài khoảng "
@@ -196,13 +205,47 @@ def concept_is_grounded(concept: str, entry: KBEntry) -> bool:
     )
 
 
-def find_concept_in_kb(concept: str, entries: List[KBEntry], bm25_threshold: float = 0.5) -> Optional[KBEntry]:
+@dataclass
+class KBIndex:
+    """BM25 index dựng 1 LẦN cho 1 danh sách KBEntry, tái sử dụng cho nhiều lượt tìm concept.
+
+    [FIX PERF] Trước đây find_concept_in_kb() tự dựng lại BM25Okapi (tokenize lại TOÀN BỘ
+    corpus) ở MỖI lần gọi, trong khi research.py gọi hàm này bên trong vòng lặp keyword
+    (N keyword -> N lần rebuild index của cùng 1 topic) -> lãng phí O(n_keywords * n_entries)
+    không cần thiết. Giờ build 1 lần/topic bằng KBIndex.build(), rồi truyền index đó vào
+    find_concept_in_kb() cho tất cả keyword trong cùng 1 lần run_research().
+    """
+
+    entries: List[KBEntry]
+    bm25: Optional["BM25Okapi"] = None
+
+    @classmethod
+    def build(cls, entries: List[KBEntry]) -> "KBIndex":
+        bm25 = None
+        if HAS_BM25 and entries:
+            corpus = [_tokenize(e.body) for e in entries]
+            if any(corpus):
+                bm25 = BM25Okapi(corpus)
+        return cls(entries=entries, bm25=bm25)
+
+
+def find_concept_in_kb(
+    concept: str,
+    entries_or_index: "List[KBEntry] | KBIndex",
+    bm25_threshold: float = 0.5,
+) -> Optional[KBEntry]:
     """
     Tìm kiếm khái niệm theo 3 bước:
     1. Match chính xác trong YAML frontmatter (key_concepts)
     2. Match bằng BM25 Full-text search trên toàn bộ body
     3. Match regex theo token bằng concept_is_grounded
+
+    `entries_or_index` nhận List[KBEntry] (tương thích ngược, sẽ tự build KBIndex tạm --
+    dùng cho gọi lẻ / test) hoặc KBIndex đã build sẵn (khuyến nghị khi gọi lặp trong vòng
+    lặp, xem KBIndex ở trên).
     """
+    index = entries_or_index if isinstance(entries_or_index, KBIndex) else KBIndex.build(entries_or_index)
+    entries = index.entries
     if not entries:
         return None
 
@@ -213,13 +256,11 @@ def find_concept_in_kb(concept: str, entries: List[KBEntry], bm25_threshold: flo
         if any(clean_kw == c.strip().lower() for c in entry.key_concepts):
             return entry
 
-    # Tầng 2: BM25 Full-text search
-    if HAS_BM25:
-        corpus = [_tokenize(e.body) for e in entries]
+    # Tầng 2: BM25 Full-text search (dùng index đã build sẵn, KHÔNG rebuild)
+    if index.bm25 is not None:
         query_tokens = _tokenize(concept)
-        if corpus and query_tokens:
-            bm25 = BM25Okapi(corpus)
-            scores = bm25.get_scores(query_tokens)
+        if query_tokens:
+            scores = index.bm25.get_scores(query_tokens)
             best_idx = max(range(len(scores)), key=lambda i: scores[i])
             max_score = scores[best_idx]
             if max_score > bm25_threshold:

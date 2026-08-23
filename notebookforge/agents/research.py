@@ -26,7 +26,7 @@ from tools.kb_reader import (
     read_kb_files,
 )
 
-# --- FIX 1: Dùng cổng chuẩn llm_client của Hoàng ---
+# --- FIX 1: Dùng cổng chuẩn llm_client  ---
 try:
     from llm_client import call_text
 except ImportError:
@@ -180,8 +180,9 @@ def _generate_candidate_concepts_for_web(topic: str) -> List[str]:
 
 # =============================================================================
 # WEB SEARCH FALLBACK (WIKIPEDIA)
-# ==========================================================================
+# =============================================================================
 _WEB_SEARCH_TIMEOUT = 6
+
 def _wikipedia_search_page(query: str) -> Optional[Dict[str, str]]:
     try:
         resp = requests.get(
@@ -353,18 +354,18 @@ def run_research(
     return bundle
 
 
-# if __name__ == "__main__":
-#     from schemas import Constraints, LearnerProfile
+if __name__ == "__main__":
+    from schemas import Constraints, LearnerProfile
 
-#     print("\n================ [BỘ KIỂM TRẢ RESEARCH AGENT] ================")
-#     raw_topic = input("1. Nhập topic (vd: logisict, dt, kmeans, SVD) [Mặc định: SVD]: ").strip() or "SVD"
+    print("\n================ [BỘ KIỂM TRẢ RESEARCH AGENT] ================")
+    raw_topic = input("1. Nhập topic (vd: logisict, dt, kmeans, SVD) [Mặc định: SVD]: ").strip() or "SVD"
 
-#     user_profile = LearnerProfile(
-#         topic=raw_topic, level_declared=2, level_final=1, quiz_score=1,
-#         constraints=Constraints(duration_minutes=120), session_id="test_session",
-#     )
+    user_profile = LearnerProfile(
+        topic=raw_topic, level_declared=2, level_final=1, quiz_score=1,
+        constraints=Constraints(duration_minutes=60), session_id="test_session",
+    )
 
-#     print(f"\n[CACHE HASH GENERATED]: {cache_hash(raw_topic, user_profile)}")
-#     res = run_research(raw_topic, learner_profile=user_profile)
-#     print(res.model_dump_json(indent=2))
-#     print("==========================================================\n")
+    print(f"\n[CACHE HASH GENERATED]: {cache_hash(raw_topic, user_profile)}")
+    res = run_research(raw_topic, learner_profile=user_profile)
+    print(res.model_dump_json(indent=2))
+    print("==========================================================\n")
