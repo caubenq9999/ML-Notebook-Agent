@@ -7,6 +7,7 @@ import ast
 import importlib
 import inspect
 import json
+import os
 import re
 import time
 from pathlib import Path
@@ -18,6 +19,72 @@ from schemas import LearnerProfile
 
 
 GenerateFn = Callable[[LearnerProfile], Any]
+
+
+def benchmark_preflight(*, no_verifier: bool = False) -> dict[str, Any]:
+    """Kiểm tra điều kiện chạy thật trước khi tốn lượt gọi LLM."""
+    generate, generate_error = _load_generate()
+    llm_client_error = None
+    try:
+        llm_client = importlib.import_module("llm_client")
+        has_llm_client = callable(getattr(llm_client, "call_json", None))
+        if not has_llm_client:
+            llm_client_error = "module thiếu hàm call_json"
+    except Exception as error:
+        has_llm_client = False
+        llm_client_error = f"{type(error).__name__}: {error}"
+    repo_root = Path(__file__).parents[2]
+    dataset_roots = (repo_root / "data", repo_root / "notebookforge" / "datasets")
+    required_datasets = {
+        "heart.csv": any((root / "heart.csv").is_file() for root in dataset_roots),
+        "winequality-red.csv": any(
+            (root / "winequality-red.csv").is_file() for root in dataset_roots
+        ),
+        "Mall_Customers.csv": any(
+            (root / "Mall_Customers.csv").is_file() for root in dataset_roots
+        ),
+    }
+    api_keys = {
+        "GEMINI_API_KEY": bool(os.getenv("GEMINI_API_KEY")),
+        "GROQ_API_KEY": no_verifier or bool(os.getenv("GROQ_API_KEY")),
+    }
+    checks = {
+        "main.generate": generate is not None,
+        "llm_client.call_json": has_llm_client,
+        "golden_set_20_cases": len(GOLDEN_SET) == 20,
+        **{f"dataset:{name}": present for name, present in required_datasets.items()},
+        **{f"env:{name}": present for name, present in api_keys.items()},
+    }
+    return {
+        "ready": all(checks.values()),
+        "checks": checks,
+        "generate_error": generate_error,
+        "llm_client_error": llm_client_error,
+        "mode": "without_verifier" if no_verifier else "full_pipeline",
+    }
+
+
+def preflight_markdown(preflight: dict[str, Any]) -> str:
+    """Render kết quả preflight để lưu cùng benchmark."""
+    lines = [
+        "# NotebookForge Benchmark Preflight",
+        "",
+        f"- Mode: `{preflight['mode']}`",
+        f"- Ready: **{'YES' if preflight['ready'] else 'NO'}**",
+        "",
+        "| Check | Status |",
+        "| :--- | :---: |",
+    ]
+    for name, passed in preflight["checks"].items():
+        lines.append(f"| `{name}` | {'PASS' if passed else 'BLOCKED'} |")
+    if preflight.get("generate_error"):
+        error = str(preflight["generate_error"]).replace("|", "\\|")
+        lines.extend(["", f"- `main.generate`: {error}"])
+    if preflight.get("llm_client_error"):
+        error = str(preflight["llm_client_error"]).replace("|", "\\|")
+        lines.append(f"- `llm_client.call_json`: {error}")
+    lines.append("")
+    return "\n".join(lines)
 
 
 def _as_dict(value: Any) -> dict[str, Any]:
@@ -343,13 +410,51 @@ def run_all(
     *,
     generate_fn: GenerateFn | None = None,
     no_verifier: bool = False,
+    checkpoint_path: str | Path | None = None,
+    resume: bool = False,
 ) -> list[dict[str, Any]]:
-    """Chạy danh sách case; mặc định là toàn bộ 20 golden cases."""
+    """Chạy golden cases tuần tự, lưu checkpoint sau từng case.
+
+    Khi ``resume=True``, case có status ``COMPLETED`` trong checkpoint được giữ
+    lại; case BLOCKED/ERROR sẽ chạy lại vì blocker có thể đã được sửa.
+    """
     selected = GOLDEN_SET if cases is None else cases
-    return [
-        run_case(case, generate_fn=generate_fn, no_verifier=no_verifier)
-        for case in selected
-    ]
+    checkpoint = Path(checkpoint_path) if checkpoint_path else None
+    previous: dict[str, dict[str, Any]] = {}
+    if resume and checkpoint and checkpoint.is_file():
+        try:
+            saved = json.loads(checkpoint.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            raise ValueError(f"Checkpoint không đọc được: {checkpoint}: {error}") from error
+        if not isinstance(saved, list):
+            raise ValueError(f"Checkpoint phải là JSON list: {checkpoint}")
+        previous = {
+            str(row["id"]): row
+            for row in saved
+            if isinstance(row, dict) and "id" in row
+        }
+
+    results: list[dict[str, Any]] = []
+    for case in selected:
+        old = previous.get(case["id"])
+        if old and old.get("status") == "COMPLETED":
+            result = old
+        else:
+            result = run_case(
+                case,
+                generate_fn=generate_fn,
+                no_verifier=no_verifier,
+            )
+        results.append(result)
+        if checkpoint:
+            checkpoint.parent.mkdir(parents=True, exist_ok=True)
+            temporary = checkpoint.with_suffix(checkpoint.suffix + ".tmp")
+            temporary.write_text(
+                json.dumps(results, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            temporary.replace(checkpoint)
+    return results
 
 
 def _rate(results: list[dict[str, Any]], key: str, positive: bool = True) -> float | None:
@@ -439,6 +544,7 @@ def report_markdown(summary: dict[str, Any]) -> str:
         "",
         "| Metric | Kết quả | Mục tiêu |",
         "| :--- | ---: | ---: |",
+        f"| Final PASS Rate | {_fmt(summary['decision_pass_rate'], percent=True)} | >= 80% |",
         f"| Execution Pass Rate | {_fmt(summary['execution_pass_rate'], percent=True)} | >= 80% |",
         f"| Model Performance Pass Rate | {_fmt(summary['model_performance_pass_rate'], percent=True)} | >= 80% |",
         f"| Leakage Rate | {_fmt(summary['leakage_rate'], percent=True)} | 0% |",
@@ -492,12 +598,44 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--case", help="chạy 1 case, ví dụ GS-001")
     parser.add_argument(
+        "--preflight",
+        action="store_true",
+        help="chỉ kiểm tra readiness, không gọi pipeline/LLM",
+    )
+    parser.add_argument(
         "--no-verifier",
         action="store_true",
         help="ablation: tắt Verifier nếu main.generate hỗ trợ flag",
     )
     parser.add_argument("--output", help="đường dẫn file Markdown kết quả")
+    parser.add_argument("--json-output", help="đường dẫn JSON summary cuối")
+    parser.add_argument(
+        "--checkpoint",
+        help="JSON checkpoint; lưu sau từng case để không mất kết quả",
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="giữ lại case COMPLETED từ checkpoint và chạy lại case lỗi",
+    )
     args = parser.parse_args()
+
+    preflight = benchmark_preflight(no_verifier=args.no_verifier)
+    if args.preflight or not preflight["ready"]:
+        markdown = preflight_markdown(preflight)
+        if args.output:
+            output = Path(args.output)
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_text(markdown, encoding="utf-8")
+        if args.json_output:
+            json_output = Path(args.json_output)
+            json_output.parent.mkdir(parents=True, exist_ok=True)
+            json_output.write_text(
+                json.dumps(preflight, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        print(markdown)
+        return 0 if preflight["ready"] else 2
 
     cases = (
         [case for case in GOLDEN_SET if case["id"] == args.case]
@@ -506,13 +644,26 @@ def main() -> int:
     )
     if args.case and not cases:
         parser.error(f"Không có case {args.case}")
-    markdown = report_markdown(
-        summarize(run_all(cases, no_verifier=args.no_verifier))
+    summary = summarize(
+        run_all(
+            cases,
+            no_verifier=args.no_verifier,
+            checkpoint_path=args.checkpoint,
+            resume=args.resume,
+        )
     )
+    markdown = report_markdown(summary)
     if args.output:
         output = Path(args.output)
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(markdown, encoding="utf-8")
+    if args.json_output:
+        json_output = Path(args.json_output)
+        json_output.parent.mkdir(parents=True, exist_ok=True)
+        json_output.write_text(
+            json.dumps(summary, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
     print(markdown)
     return 0
 

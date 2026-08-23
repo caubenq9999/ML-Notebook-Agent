@@ -5,11 +5,12 @@ from __future__ import annotations
 import ast
 import io
 import json
-import os
 import re
 import tokenize
 from pathlib import Path
-from typing import Any, MutableSequence
+from typing import Any, Callable, MutableSequence
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from schemas import (
     PASS_THRESHOLD,
@@ -65,6 +66,43 @@ class VerifierConfigurationError(RuntimeError):
 
 class JudgeResponseError(ValueError):
     """Judge trả dữ liệu sai contract."""
+
+
+class JudgeOutput(BaseModel):
+    """Schema truyền cho ``llm_client.call_json`` để retry và tính cost chung."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    executability: float = Field(..., ge=1, le=5)
+    groundedness: float = Field(..., ge=1, le=5)
+    difficulty_fit: float = Field(..., ge=1, le=5)
+    pedagogical_order: float = Field(..., ge=1, le=5)
+    feedback: str | None = None
+    ungrounded_claims: list[str] = Field(default_factory=list)
+
+    @field_validator("feedback")
+    @classmethod
+    def _feedback_has_cell_and_fix(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        if not value:
+            raise ValueError("feedback phải là string không rỗng hoặc null")
+        matches = _FEEDBACK_ITEM.findall(value)
+        def compact(text: str) -> str:
+            return re.sub(r"\s+", "", text)
+
+        if not matches or compact("".join(matches)) != compact(value):
+            raise ValueError("feedback sai format [CELL n] ... FIX: ...")
+        return " ".join(" ".join(item.split()) for item in matches)
+
+    @field_validator("ungrounded_claims")
+    @classmethod
+    def _clean_claims(cls, value: list[str]) -> list[str]:
+        return [item.strip() for item in value if item.strip()]
+
+
+JudgeCall = Callable[..., tuple[Any, Any]]
 
 
 def _source(cell: dict) -> str:
@@ -543,18 +581,6 @@ def _research_summary(bundle: ResearchBundle) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
-def _extract_json(text: str) -> dict[str, Any]:
-    decoder = json.JSONDecoder()
-    for match in re.finditer(r"\{", text):
-        try:
-            value, _ = decoder.raw_decode(text[match.start():])
-        except json.JSONDecodeError:
-            continue
-        if isinstance(value, dict):
-            return value
-    raise JudgeResponseError("judge không trả JSON object")
-
-
 def _validate_judge(payload: dict[str, Any]) -> dict[str, Any]:
     allowed = {*_SCORE_FIELDS, "feedback", "ungrounded_claims"}
     extra = sorted(set(payload) - allowed)
@@ -591,42 +617,36 @@ def _validate_judge(payload: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-def _response_content(response: Any) -> str:
-    try:
-        content = response.choices[0].message.content
-    except (AttributeError, IndexError, TypeError) as error:
-        raise JudgeResponseError(
-            "Groq response không có choices[0].message.content"
-        ) from error
-    if not isinstance(content, str) or not content.strip():
-        raise JudgeResponseError("Groq response rỗng")
-    return content
-
-
 def llm_judge(
     nb: dict,
     bundle: ResearchBundle,
     *,
     exc: ExcRes | None = None,
-    client: Any | None = None,
+    session_id: str,
+    judge_call: JudgeCall | None = None,
     model: str | None = None,
     level: int | None = None,
     prompt_path: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Gọi Groq, parse JSON chặt, retry một lần nếu model sai format."""
-    if client is None:
-        api_key = os.getenv("GROQ_API_KEY")
-        if not api_key:
-            raise VerifierConfigurationError(
-                "Thiếu GROQ_API_KEY; chưa thể chạy LLM-as-a-Judge."
-            )
+    """Chấm bằng Judge qua ``llm_client`` để mọi token/cost vào tracker chung."""
+    if not session_id.strip():
+        raise VerifierConfigurationError("session_id rỗng; không thể tính cost Judge")
+
+    tracker = None
+    tracker_mark = None
+    if judge_call is None:
         try:
-            from groq import Groq
+            from llm_client import MODEL_JUDGE, call_json, get_tracker
         except ImportError as error:
             raise VerifierConfigurationError(
-                "Thiếu package groq; cài dependency trước khi chạy Verifier."
+                "Thiếu llm_client; merge module của Hoàng trước khi chạy Verifier."
             ) from error
-        client = Groq(api_key=api_key)
+        judge_call = call_json
+        selected_model = model or MODEL_JUDGE
+        tracker = get_tracker(session_id)
+        tracker_mark = tracker.mark()
+    else:
+        selected_model = model or DEFAULT_JUDGE_MODEL
 
     path = (
         Path(prompt_path)
@@ -640,45 +660,34 @@ def llm_judge(
         .replace("{research_summary}", _research_summary(bundle))
         .replace("{content}", _notebook_content(nb))
     )
-    messages = [{"role": "user", "content": prompt}]
-    selected_model = model or os.getenv("GROQ_JUDGE_MODEL", DEFAULT_JUDGE_MODEL)
-    last_error: Exception | None = None
-    for attempt in range(2):
-        raw = ""
-        try:
-            response = client.chat.completions.create(
-                model=selected_model,
-                messages=messages,
-                temperature=0,
-                seed=42,
-                max_completion_tokens=1_200,
-                response_format={"type": "json_object"},
-            )
-            raw = _response_content(response)
-            result = _validate_judge(_extract_json(raw))
-            if exc is not None and not exc.success:
-                result["executability"] = min(result["executability"], 2.0)
-                if exc.timeout_hit:
-                    result["executability"] = 1.0
-            return result
-        except JudgeResponseError as error:
-            last_error = error
-            if attempt == 0:
-                messages = [
-                    *messages,
-                    {"role": "assistant", "content": raw},
-                    {
-                        "role": "user",
-                        "content": (
-                            f"JSON vừa rồi không hợp lệ: {error}. "
-                            "Trả lại đúng một JSON object theo schema."
-                        ),
-                    },
-                ]
-                continue
-        except Exception as error:
-            raise RuntimeError(f"Gọi Groq judge thất bại: {error}") from error
-    raise JudgeResponseError(f"judge sai format sau 2 lần: {last_error}")
+    try:
+        payload, usage = judge_call(
+            prompt,
+            JudgeOutput,
+            session_id=session_id,
+            max_tokens=1_200,
+            temperature=0,
+            model=selected_model,
+        )
+    except Exception as error:
+        raise RuntimeError(f"Gọi Judge qua llm_client thất bại: {error}") from error
+
+    if isinstance(payload, BaseModel):
+        payload = payload.model_dump()
+    if not isinstance(payload, dict):
+        raise JudgeResponseError("llm_client.call_json không trả Pydantic model/dict")
+    result = _validate_judge(payload)
+    if exc is not None and not exc.success:
+        result["executability"] = min(result["executability"], 2.0)
+        if exc.timeout_hit:
+            result["executability"] = 1.0
+
+    if tracker is not None and tracker_mark is not None:
+        judge_cost = tracker.cost_since(tracker_mark)
+    else:
+        judge_cost = float(getattr(usage, "cost_usd", 0.0) or 0.0)
+    result["judge_cost_usd"] = round(judge_cost, 6)
+    return result
 
 
 def _merge_feedback(*parts: str | None) -> str | None:
@@ -695,6 +704,7 @@ def update_retry_history(
     exc: ExcRes,
     *,
     extended_checks: dict[str, bool] | None = None,
+    judge_cost_usd: float = 0.0,
 ) -> list[dict[str, Any]]:
     """Upsert attempt theo số; gọi lại không tạo dòng trùng."""
     checks = report.rule_checks.model_dump(exclude_computed_fields=True)
@@ -710,6 +720,7 @@ def update_retry_history(
         "execution_success": exc.success,
         "duration_seconds": exc.duration_seconds,
         "cost_this_attempt": exc.cost_this_attempt,
+        "judge_cost_usd": judge_cost_usd,
         "feedback": report.feedback,
         "ungrounded_claims": report.ungrounded_claims,
     }
@@ -723,14 +734,14 @@ def render_quality_report(history: list[dict[str, Any]]) -> str:
     lines = [
         "# NotebookForge Quality Report",
         "",
-        "| Attempt | Execution | Rules | LLM average | Decision | Cost (USD) | Runtime (s) |",
-        "| ---: | :---: | :---: | ---: | :---: | ---: | ---: |",
+        "| Attempt | Execution | Rules | LLM average | Decision | Attempt cost | Judge cost | Runtime (s) |",
+        "| ---: | :---: | :---: | ---: | :---: | ---: | ---: | ---: |",
     ]
     for item in history:
         checks = item.get("rule_checks") or {}
         lines.append(
             "| {attempt} | {execution} | {passed}/{total} | {average:.3f} | "
-            "{decision} | {cost:.4f} | {runtime:.2f} |".format(
+            "{decision} | {cost:.4f} | {judge_cost:.4f} | {runtime:.2f} |".format(
                 attempt=item.get("attempt", "?"),
                 execution="PASS" if item.get("execution_success") else "FAIL",
                 passed=sum(bool(value) for value in checks.values()),
@@ -738,6 +749,7 @@ def render_quality_report(history: list[dict[str, Any]]) -> str:
                 average=float(item.get("average_score") or 0),
                 decision=item.get("decision", "?"),
                 cost=float(item.get("cost_this_attempt") or 0),
+                judge_cost=float(item.get("judge_cost_usd") or 0),
                 runtime=float(item.get("duration_seconds") or 0),
             )
         )
@@ -786,26 +798,39 @@ def run_verifier(
     exc: ExcRes,
     bundle: ResearchBundle,
     *,
-    judge_client: Any | None = None,
+    session_id: str | None = None,
+    judge_call: JudgeCall | None = None,
     judge_model: str | None = None,
+    judge_prompt_path: str | Path | None = None,
     level: int | None = None,
     retry_history: MutableSequence[dict[str, Any]] | None = None,
     quality_report_path: str | Path | None = None,
 ) -> VerifierReport:
-    """Chấm notebook và cập nhật quality_report.md cạnh notebook."""
+    """Chấm notebook và cập nhật quality report.
+
+    ``session_id`` phải là ``LearnerProfile.session_id`` mà main.py dùng cho
+    CostTracker. Fallback theo tên thư mục notebook chỉ để tương thích code cũ.
+    """
     with open(nb_path, encoding="utf-8") as file:
         nb = json.load(file)
 
     checks = rule_checks(nb, topic=bundle.topic, level=level)
     failures = blocking_failures(checks)
+    resolved_session_id = session_id or Path(nb_path).parent.name
+    if not resolved_session_id:
+        resolved_session_id = f"verifier-attempt-{exc.attempt}"
     judge = llm_judge(
         nb,
         bundle,
         exc=exc,
-        client=judge_client,
+        session_id=resolved_session_id,
+        judge_call=judge_call,
         model=judge_model,
         level=level,
+        prompt_path=judge_prompt_path,
     )
+    judge_cost = float(judge.get("judge_cost_usd") or 0.0)
+    exc.cost_this_attempt = round(exc.cost_this_attempt + judge_cost, 6)
     scores = LlmScores(**{field: judge[field] for field in _SCORE_FIELDS})
     decision, _ = decide(
         checks,
@@ -854,6 +879,7 @@ def run_verifier(
         report,
         exc,
         extended_checks={name: checks[name] for name in _EXTENDED_RULES},
+        judge_cost_usd=judge_cost,
     )
     if retry_history is not None:
         retry_history[:] = history
