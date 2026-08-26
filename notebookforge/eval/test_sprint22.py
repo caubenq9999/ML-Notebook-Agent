@@ -4,16 +4,18 @@ Run from ``notebookforge/`` with::
 
     python -m unittest eval.test_sprint22 -v
 
-The tests use a fake Groq client, so they never spend API credit.
+The tests inject a fake ``llm_client.call_json``, so they never spend API credit.
 """
 
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from agents.verifier import (
     build_execution_feedback,
@@ -24,7 +26,7 @@ from agents.verifier import (
     update_retry_history,
 )
 from eval.golden_set import GOLDEN_SET
-from eval.harness import report_markdown, run_case, summarize
+from eval.harness import report_markdown, run_all, run_case, summarize
 from schemas import CellError, ExcRes, ResearchBundle
 
 
@@ -59,21 +61,15 @@ def _passing_notebook() -> dict:
     return _notebook(cells)
 
 
-class _FakeCompletions:
-    def __init__(self, payload: dict):
+class _FakeJudgeCall:
+    def __init__(self, payload: dict, cost_usd: float = 0.0123):
         self.payload = payload
+        self.cost_usd = cost_usd
         self.calls = []
 
-    def create(self, **kwargs):
-        self.calls.append(kwargs)
-        content = json.dumps(self.payload, ensure_ascii=False)
-        message = SimpleNamespace(content=content)
-        return SimpleNamespace(choices=[SimpleNamespace(message=message)])
-
-
-class _FakeGroq:
-    def __init__(self, payload: dict):
-        self.chat = SimpleNamespace(completions=_FakeCompletions(payload))
+    def __call__(self, prompt, schema, **kwargs):
+        self.calls.append({"prompt": prompt, "schema": schema, **kwargs})
+        return schema(**self.payload), SimpleNamespace(cost_usd=self.cost_usd)
 
 
 class Sprint22RuleTests(unittest.TestCase):
@@ -151,7 +147,7 @@ class Sprint22JudgeTests(unittest.TestCase):
         self.assertNotIn("train_test_split", feedback)
 
     def test_llm_judge_parses_structured_json(self):
-        fake = _FakeGroq(
+        fake = _FakeJudgeCall(
             {
                 "executability": 5,
                 "groundedness": 4,
@@ -162,17 +158,102 @@ class Sprint22JudgeTests(unittest.TestCase):
             }
         )
         result = llm_judge(
-            _passing_notebook(), self.bundle, exc=self.exc_ok, client=fake, level=1
+            _passing_notebook(),
+            self.bundle,
+            exc=self.exc_ok,
+            session_id="test-001",
+            judge_call=fake,
+            level=1,
         )
         self.assertEqual(result["executability"], 5)
         self.assertEqual(result["ungrounded_claims"], [])
-        call = fake.chat.completions.calls[0]
-        self.assertEqual(call["response_format"], {"type": "json_object"})
+        self.assertEqual(result["judge_cost_usd"], 0.0123)
+        call = fake.calls[0]
+        self.assertEqual(call["session_id"], "test-001")
+        self.assertEqual(call["temperature"], 0)
+
+    def test_old_and_new_verifier_prompts_are_both_compatible(self):
+        prompt_dir = Path(__file__).parents[1] / "prompts"
+        payload = {
+            "executability": 5,
+            "groundedness": 4,
+            "difficulty_fit": 4,
+            "pedagogical_order": 4,
+            "feedback": "[CELL 4] Cần giải thích rõ hơn. FIX: thêm giải thích trước code.",
+            "ungrounded_claims": [],
+        }
+        for filename in ("verifier_old.txt", "verifier.txt"):
+            with self.subTest(prompt=filename):
+                fake = _FakeJudgeCall(payload)
+                result = llm_judge(
+                    _passing_notebook(),
+                    self.bundle,
+                    exc=self.exc_ok,
+                    session_id="test-001",
+                    judge_call=fake,
+                    level=1,
+                    prompt_path=prompt_dir / filename,
+                )
+                self.assertEqual(result["groundedness"], 4)
+                rendered_prompt = fake.calls[0]["prompt"]
+                for placeholder in (
+                    "{level}",
+                    "{exc_summary}",
+                    "{research_summary}",
+                    "{content}",
+                ):
+                    self.assertNotIn(placeholder, rendered_prompt)
+                self.assertIn("[CELL 0 | markdown]", rendered_prompt)
+
+    def test_production_judge_uses_llm_client_cost_tracker(self):
+        payload = {
+            "executability": 5,
+            "groundedness": 4,
+            "difficulty_fit": 4,
+            "pedagogical_order": 4,
+            "feedback": None,
+            "ungrounded_claims": [],
+        }
+        calls = []
+
+        class FakeTracker:
+            def mark(self):
+                calls.append("mark")
+                return 0.2
+
+            def cost_since(self, mark):
+                calls.append(("cost_since", mark))
+                return 0.0456
+
+        def fake_call_json(prompt, schema, **kwargs):
+            calls.append(("call_json", kwargs))
+            return schema(**payload), SimpleNamespace(cost_usd=0.01)
+
+        fake_module = SimpleNamespace(
+            MODEL_JUDGE="judge-model",
+            call_json=fake_call_json,
+            get_tracker=lambda session_id: FakeTracker(),
+        )
+        with patch.dict(sys.modules, {"llm_client": fake_module}):
+            result = llm_judge(
+                _passing_notebook(),
+                self.bundle,
+                exc=self.exc_ok,
+                session_id="test-001",
+                level=1,
+            )
+
+        self.assertEqual(result["judge_cost_usd"], 0.0456)
+        self.assertIn("mark", calls)
+        call = next(item for item in calls if isinstance(item, tuple) and item[0] == "call_json")
+        self.assertEqual(call[1]["session_id"], "test-001")
+        self.assertEqual(call[1]["model"], "judge-model")
+        self.assertIn(("cost_since", 0.2), calls)
 
     def test_run_verifier_merges_execution_rule_and_llm_feedback(self):
         nb = _passing_notebook()
         nb["cells"][6]["source"] = ["# TODO: complete this cell\n"]
-        fake = _FakeGroq(
+        fake = _FakeJudgeCall(
             {
                 "executability": 5,
                 "groundedness": 4,
@@ -197,14 +278,42 @@ class Sprint22JudgeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "attempt1.ipynb"
             path.write_text(json.dumps(nb), encoding="utf-8")
-            report = run_verifier(str(path), exc, self.bundle, judge_client=fake, level=1)
+            report = run_verifier(
+                str(path),
+                exc,
+                self.bundle,
+                session_id="test-001",
+                judge_call=fake,
+                level=1,
+            )
         self.assertEqual(report.decision, "RETRY")
         self.assertLessEqual(report.llm_scores.executability, 2)
+        self.assertEqual(exc.cost_this_attempt, 0.0123)
         self.assertIn("NameError", report.feedback or "")
         self.assertIn("Thiếu giải thích metric", report.feedback or "")
 
 
 class Sprint22ReportTests(unittest.TestCase):
+    def test_harness_checkpoint_resumes_completed_case(self):
+        calls = []
+
+        def should_not_run(profile):
+            calls.append(profile.session_id)
+            raise AssertionError("completed case must be resumed")
+
+        saved = [{"id": "GS-001", "status": "COMPLETED", "decision": "PASS"}]
+        with tempfile.TemporaryDirectory() as tmp:
+            checkpoint = Path(tmp) / "checkpoint.json"
+            checkpoint.write_text(json.dumps(saved), encoding="utf-8")
+            results = run_all(
+                [GOLDEN_SET[0]],
+                generate_fn=should_not_run,
+                checkpoint_path=checkpoint,
+                resume=True,
+            )
+        self.assertEqual(results, saved)
+        self.assertEqual(calls, [])
+
     def test_harness_runs_one_case_with_injected_pipeline(self):
         nb = _passing_notebook()
         nb["metadata"]["notebookforge"]["metrics"] = {"accuracy": 0.85}
@@ -238,7 +347,7 @@ class Sprint22ReportTests(unittest.TestCase):
         self.assertEqual(result["average_score"], 4.0)
 
     def test_history_is_upserted_and_markdown_is_rendered(self):
-        fake = _FakeGroq(
+        fake = _FakeJudgeCall(
             {
                 "executability": 5,
                 "groundedness": 4,
@@ -260,7 +369,14 @@ class Sprint22ReportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "attempt1.ipynb"
             path.write_text(json.dumps(_passing_notebook()), encoding="utf-8")
-            report = run_verifier(str(path), exc, bundle, judge_client=fake, level=1)
+            report = run_verifier(
+                str(path),
+                exc,
+                bundle,
+                session_id="test-001",
+                judge_call=fake,
+                level=1,
+            )
         history = update_retry_history([], report, exc)
         history = update_retry_history(history, report, exc)
         self.assertEqual(len(history), 1)

@@ -22,6 +22,8 @@ MODULES = [
     "tests.test_api_schemas",
     "tests.test_pipeline",
     "tests.test_notebook_gen",
+    "tests.test_dataset_injector",
+    "tests.test_ui_report_adapter",
     "tests.test_executor",
 ]
 
