@@ -337,6 +337,7 @@ def run_curriculum(
         prompt = prompt_make_LearningPath,
         schema = LearningPath,
         session_id = profile.session_id,
+        reasoning_effort = "low",
     )
     data_raw = LearningPath_raw.model_dump()
 

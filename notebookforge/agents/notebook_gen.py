@@ -120,9 +120,8 @@ DATASET_INFO: dict[str, dict[str, str | None]] = {
     },
 }
 
-# Dataset Injector chạy trong Executor không có mạng, nên metadata dùng cùng các
-# dataset được đóng gói sẵn trong scikit-learn thay vì mô tả các file Kaggle cũ.
-DATASET_INFO.update({
+# Metadata cũ được giữ để tham khảo, nhưng pipeline hiện dùng ba CSV local ở trên.
+LEGACY_SKLEARN_DATASET_INFO = {
     "logistic_regression": {
         "name": "Breast Cancer Wisconsin Dataset",
         "kaggle": "sklearn.datasets.load_breast_cancer (local)",
@@ -147,7 +146,7 @@ DATASET_INFO.update({
         "description": "Bỏ nhãn gốc và dùng bốn đặc trưng để minh hoạ K-Means.",
         "preprocessing_note": "Bốn đặc trưng được chuẩn hoá bằng StandardScaler trước khi phân cụm.",
     },
-})
+}
 
 _DEFAULT_DATASET_INFO = {
     "name": "(dataset sẽ được hệ thống chèn tự động)",

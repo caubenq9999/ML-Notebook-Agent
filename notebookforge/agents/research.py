@@ -240,6 +240,7 @@ def _fallback_web_search(concept: str) -> Optional[Dict[str, str]]:
         "url": target_url,
         "type": "web_search",  # Đã gán ĐÚNG yêu cầu
         "title": f"Wikipedia - {hit['title']}",
+        "snippet": validated_text,
     }
 
 def _extract_quote_from_body(concept: str, body: str) -> Optional[str]:
@@ -284,6 +285,7 @@ def run_research(
 
     sources_map: Dict[str, Source] = {}
     citations: List[Citation] = []
+    unresolved_concepts: List[str] = []
 
     # 3. TRÍCH XUẤT SOURCE VÀ CITATION
     for kw in final_concepts:
@@ -309,8 +311,10 @@ def run_research(
                 source_type = web_result["type"] # Chắc chắn là "web_search"
                 title = web_result["title"]
                 locator = "Web Search Result"
-                quote_text = None
+                snippet = web_result.get("snippet", "")
+                quote_text = snippet[:200] if snippet else None
             else:
+                unresolved_concepts.append(kw)
                 continue
 
         if source_id not in sources_map:
@@ -333,6 +337,7 @@ def run_research(
         citations=citations,
         prerequisites=prerequisites,
         common_pitfalls=pitfalls,
+        unresolved_concepts=unresolved_concepts,
     )
 
     _cache_set(h_key, bundle)
