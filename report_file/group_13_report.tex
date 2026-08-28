@@ -7,10 +7,11 @@
 % ============================================================
 
 \documentclass[aspectratio=169, 10pt]{beamer}
-\usepackage{newtxtext}
-\usepackage{newtxmath}
+\usepackage[T5,T1]{fontenc}
+\usepackage[utf8]{vietnam}
+\usepackage{lmodern}
 \usepackage{beamerthemeMLIOT}   % custom theme (in same folder)
-
+\setbeamerfont{title}{series=\bfseries} % Ép Beamer phải in đậm tiêu đề chính
 
 
 
@@ -20,7 +21,6 @@
 \usepackage{multicol}
 \usepackage{caption}
 \usepackage{hyperref}
-\usepackage[loadonly]{enumitem}
 \usepackage{array}
 \usepackage{pifont}
 \usepackage{ragged2e}
@@ -36,25 +36,32 @@
 % ============================================================
 %  PAPER METADATA – fill these in
 % ============================================================
-\title{Paper Title}
+\title[NotebookForge]{%
+  \textbf{\Large NotebookForge}\\[0.2em]
+  \large Hệ thống Tự động Sinh và Kiểm định Chất lượng\\
+  Notebook Thực hành Học máy bằng Hệ thống Đa tác nhân
+}
 
 \author{%
-  \textbf{\textcolor{MLIOTaccent}{Author 1}}%
-  \texorpdfstring{\textcolor{MLIOTgold}{\textsuperscript{*a}}}{*a}\textcolor{MLIOTnavy}{,~}%
-  \textbf{\textcolor{MLIOTnavy}{Author 2}}%
+  \textbf{\textcolor{MLIOTaccent}{Nguyễn Xuân Huy}}%
+  \texorpdfstring{\textcolor{MLIOTgold}{\textsuperscript{*a}}}{*a}\textcolor{MLIOTnavy}{,~}\\%
+  \textbf{\textcolor{MLIOTnavy}{Nguyễn Xuân Hoàng}}%
   \texorpdfstring{\textcolor{MLIOTgold}{\textsuperscript{a}}}{a}\textcolor{MLIOTnavy}{,~}%
-  \textbf{\textcolor{MLIOTnavy}{Author 3}}%
-  \texorpdfstring{\textcolor{MLIOTgold}{\textsuperscript{b}}}{b}%
+  \textbf{\textcolor{MLIOTnavy}{Nguyễn Hoàng Nam}}%
+  \texorpdfstring{\textcolor{MLIOTgold}{\textsuperscript{a}}}{a}\textcolor{MLIOTnavy}{,~}\\% 
+  \textbf{\textcolor{MLIOTnavy}{Bùi Phong Hợp}}%
+  \texorpdfstring{\textcolor{MLIOTgold}{\textsuperscript{a}}}{a}\textcolor{MLIOTnavy}{,~}%
+  \textbf{\textcolor{MLIOTnavy}{Nguyễn Minh Trí}}%
+  \texorpdfstring{\textcolor{MLIOTgold}{\textsuperscript{a}}}{a}\textcolor{MLIOTnavy}{~}%
 }
 
 
 \setAffiliations{%
-  \textsuperscript{a}Author Affiliation \\
-  \textsuperscript{b}Co-author Affiliation%
+  \textsuperscript{a} Nhóm 13: UTÚ\\[-5cm]
 }
 
 \setCorrespondingAuthor{%
-  *Corresponding/Presenting Author Email: \href{mailto:author@mail.com}{author@mail.com}%
+  *Email nhóm trưởng: \href{mailto:author@mail.com}{author@mail.com}%
 }
 
 \setPaperID{MLIOT-2026-XXX}
@@ -64,7 +71,7 @@
   Ho Chi Minh City University of Technology (HCMUT)%
 }
 
-\date{June 2026}
+\date{August 2026}
 
 
 
@@ -82,7 +89,7 @@
 % ------------------------------------------------------------
 %  SLIDE 2 – Outline
 % ------------------------------------------------------------
-\begin{frame}{Outline}
+\begin{frame}{Nội dung chính}
 	\begin{columns}[T]
 		\begin{column}{0.55\textwidth}
 			% This temporary font assignment scales the numbers perfectly
@@ -90,10 +97,10 @@
 			
 			\begin{enumerate}
 				\setlength{\itemsep}{0.8em} % Keeps a comfortable gap between items
-				\item {\large Introduction} 
-				\item {\large Objectives} 
-				\item {\large Methodology} 
-				\item {\large Results and Discussion} 
+				\item {\large Đặt vấn đề và giải pháp} 
+				\item {\large Multi-agent Pipeline} 
+				\item {\large Demo và Evaluation} 
+				\item {\large Conclusion và Mentor Q\&A} 
 				\item {\large Conclusions} 
 				\item {\large References} 
 			\end{enumerate}
@@ -103,7 +110,6 @@
 				\footnotesize
 				\textbf{\textcolor{MLIOTnavy}{Address:}}~403.1 BK.B6, HCMUT Campus 2\\[0.35em]
 				\textbf{\textcolor{MLIOTnavy}{Email:}}\\
-				nkloi@hcmut.edu.vn\\
 				mlandiotlab@gmail.com\\[0.35em]
 				\textbf{\textcolor{MLIOTnavy}{Website:}}~mliotlab.com\\[0.35em]
 				\textbf{\textcolor{MLIOTnavy}{Facebook:}}~facebook.com/hcmut.ml.iot.lab\\[0.35em]
@@ -116,17 +122,24 @@
 % ------------------------------------------------------------
 %  SLIDE 3 – Introduction
 % ------------------------------------------------------------
-\begin{frame}{Introduction}
+\begin{frame}{Đặt vấn đề và giải pháp}
   \begin{columns}[T]
     % Left column – Background / Motivation
     \begin{column}{0.52\textwidth}
-      \begin{block}{Background / Motivation}
+      \begin{block}{Tổng quan dự án \& bối cảnh thực tế}
         \begin{itemize}
-          \item Brief background of the research area and its relevance to
-                aerospace/space technology.
-          \item Current state of the field and key challenges addressed.
-          \item Motivation for the current study.
-          \item Significance and expected contributions to the field.
+          \item \textbf{Tên đề tài:} NotebookForge - 
+          Hệ thống Tự động Sinh và Kiểm định Chất lượng 
+          Notebook Thực hành Học máy bằng Hệ thống Đa tác nhân.
+          \item \textbf{Thách thức của người học AI/ML:} Người mới bắt 
+          đầu gặp khó khăn khi tìm kiếm bài tập thực hành 
+          cá nhân hóa theo đúng trình độ, thời lượng rảnh 
+          và mục tiêu cá nhân; tự học dễ nản vì thiếu lời giải chi tiết.
+          \item \textbf{Hạn chế của LLM hiện tại:} Notebook 
+          do ChatGPT/Claude thông thường sinh ra hay bị lỗi 
+          không chạy được (runtime error), dễ bị rò rỉ dữ liệu 
+          (data leakage), thiếu tính cấu trúc sư phạm, hoặc tự 
+          bịa đặt thông tin lý thuyết không chuẩn xác (hallucination).
         \end{itemize}
       \end{block}
     \end{column}
