@@ -11,7 +11,6 @@ from typing import Optional
 
 from pydantic import ValidationError
 
-
 class CurriculumGenerationError(Exception):
     """Raised khi Curriculum Agent không tạo được LearningPath hợp lệ sau tất cả các lần thử."""
 
@@ -49,7 +48,14 @@ def get_exercise_range(level: int) -> tuple[int, int]:
     return EXERCISE_RANGE_BY_LEVEL[_normalize_level(level)]
 
 def clamp_num_exercises(level: int, requested: int) -> int:
-    """Ép số bài tập mong muốn của user về đúng khoảng cho phép theo level."""
+    """
+    Ép số bài tập mong muốn của user về đúng khoảng cho phép theo level:
+        + Nếu "requested" nhỏ hơn "lowest" thì tạo "lowest" bài
+        + Nếu "requested" lớn hơn "highest" thì tạo "highest" bài
+        + Nếu "requested" nằm giữa "lowest" và "highest" thì tạo đúng "requested" bài
+    Tuy các bài tập theo level là (2,3) và (4,5) không có khoảng giữa nhưng code như thế để 
+    dễ nâng cấp hệ thống sau này (nếu có)
+    """
     lowest, highest = get_exercise_range(level)
     return max(lowest, min(highest, requested))
 
@@ -59,17 +65,18 @@ def clamp_num_exercises(level: int, requested: int) -> int:
 # ===========================================================
 LEVEL_DEPTH_NOTE = {
     1: (
-        "Học viên hiện tại là BEGINNER (level 1): ở MỌI giai đoạn có nhiều cách làm hợp lệ, "
-        "CHỈ chọn và trình bày ĐÚNG MỘT cách — là cách tốt nhất / phổ biến nhất / được khuyến "
-        "nghị sử dụng với bài toán đó (Bạn có thể xem qua các cách CHỈ CÓ TRONG key_concept "
-        "và có thể tìm kiếm trên mạng để so sánh các cách đó - CHỈ TRONG CÁC CÁCH ĐÓ: cách nào "
-        "phù hợp với bài toán nhất)"
+        "BEGINNER(level 1): ở MỌI giai đoạn, nếu có nhiều cách làm hợp lệ, "
+        "chỉ chọn ĐÚNG MỘT cách — là cách tốt nhất/phổ biến nhất "
+        "(Bạn có thể xem qua các cách CHỈ CÓ TRONG key_concept và có thể tìm kiếm trên mạng "
+        "để so sánh CHỈ TRONG CÁC CÁCH ĐÓ: cách nào phù hợp với bài toán nhất)"
     ),
     2: (
-        "Học viên hiện tại là INTERMEDIATE (level 2): ở những giai đoạn có nhiều cách làm hợp "
-        "lệ, ĐƯỢC PHÉP (và khuyến khích) đưa nhiều cách vào cùng 1 module/bài tập dưới dạng yêu "
-        "cầu 'cài đặt/thử cả 2 cách rồi so sánh và chọn ra cách phù hợp hơn cho bài toán này'. "
-        "Ưu tiên dùng type='analysis' cho dạng bài tập so sánh này."
+        "INTERMEDIATE(level 2): ở những giai đoạn có nhiều cách làm hợp "
+        "lệ, ƯU TIÊN đưa nhiều cách vào cùng 1 bài tập dưới dạng yêu "
+        "cầu 'cài đặt cả 2 cách rồi so sánh và chọn ra cách phù hợp hơn cho bài toán này'. "
+        "Dùng type='analysis' cho bài tập so sánh này. "
+        "Nếu đã hết số lượng bài tập theo level (4-5 bài) thì phần objective của module "
+        "này phải nói đến việc so sánh những cách gì và so sánh như thế nào"
     ),
 }
 
@@ -93,8 +100,8 @@ TOPIC_PROBLEM_TYPE: dict[str, str] = {
 }
 
 PROBLEM_TYPE_LABEL_VI = {
-    SUPERVISED_CLASSIFICATION: "học có giám sát / phân loại (supervised classification)",
-    UNSUPERVISED_CLUSTERING: "học không giám sát / phân cụm (unsupervised clustering)",
+    SUPERVISED_CLASSIFICATION: "học có giám sát/phân loại (supervised classification)",
+    UNSUPERVISED_CLUSTERING: "học không giám sát/phân cụm (unsupervised clustering)",
 }
 
 # lấy dạng bài toán (học có giám sát / học không có giám sát) 
@@ -111,95 +118,84 @@ def get_problem_type(topic: str) -> str:
 # ====================================================================
 
 SUPERVISED_PIPELINE_BLOCK = """\
-GIAI ĐOẠN 1 — Nền tảng lý thuyết - có thể tìm thêm nội dung ở các file có dạng kb/{problem_type_label}/01_theoretical_foundations.md: (BẮT BUỘC)
-  Giải thích bản chất thuật toán (giải quyết vấn đề gì trong học máy) và công thức toán học cốt lõi, CHỈ dựa trên các
-  key_concepts thuộc nhóm lý thuyết được cung cấp (ví dụ: sigmoid function/odds ratio/log loss/... cho logistic_regression,
-  hoặc Gini Impurity/Entropy/Information Gain/... cho decision_tree).
+GIAI ĐOẠN 1 — Nền tảng lý thuyết (BẮT BUỘC)
+  Giới thiệu đây là bài toán gì, giải quyết vấn đề gì trong học máy và công thức toán học cốt lõi, CHỈ dựa trên các
+  "key_concepts" thuộc nhóm lý thuyết được cung cấp (ví dụ: logistic_regression/hàm sigmoid/odds ratio/log loss/...,
+  hoặc decision_tree/Gini Impurity/Entropy/Information Gain/...). Nêu input/output của bài toán
 
-  Nêu rõ input/output của mô hình và ý nghĩa của decision boundary mà thuật toán tạo ra.
-
-  [CÓ NHIỀU CÁCH LÀM] nếu key_concepts có nhiều công thức đo cùng một thứ (ví dụ: Gini
+  [CÓ NHIỀU CÁCH LÀM] nếu "key_concepts" có nhiều công thức đo cùng một thứ (ví dụ: Gini
   Impurity và Entropy đều dùng để đo độ hỗn loạn tại 1 node) — xem mục ĐỘ SÂU NỘI DUNG
   THEO LEVEL để quyết định trình bày 1 hay nhiều công thức.
 
-GIAI ĐOẠN 2 — Cài đặt với scikit-learn - có thể tìm thêm nội dung ở các file có dạng kb/{problem_type_label}/02_scikit_learn_implementation.md :(BẮT BUỘC)
+GIAI ĐOẠN 2 — Cài đặt với scikit-learn (BẮT BUỘC)
   Giới thiệu class chính trong scikit-learn tương ứng với thuật toán (ví dụ:
-  LogisticRegression cho bài toán logistic_regression, DecisionTreeClassifier cho bài toán decision_tree), 
+  LogisticRegressionScratch cho bài toán logistic_regression, DecisionTreeClassifier cho bài toán decision_tree), 
   các phương thức cốt lõi (.fit/.predict/.predict_proba/...), và các hyperparameter QUAN TRỌNG NHẤT có trong key_concepts (ví dụ:
   penalty/solver/class_weight/... cho logistic_regression, hoặc max_depth/min_samples_split/class_weight/... cho decision_tree).
 
-  [CÓ NHIỀU CÁCH LÀM] nếu key_concepts liệt kê nhiều lựa chọn cho cùng 1 hyperparameter
+  [CÓ NHIỀU CÁCH LÀM] nếu "key_concepts" liệt kê nhiều lựa chọn cho cùng 1 hyperparameter
   (ví dụ nhiều solver, hoặc criterion = 'gini' vs 'entropy') — xem mục ĐỘ SÂU NỘI DUNG THEO
   LEVEL để quyết định trình bày 1 hay nhiều công thức.
 
-GIAI ĐOẠN 3 — Tiền xử lý dữ liệu - có thể tìm thêm nội dung ở các file có dạng kb/{problem_type_label}/03_data_preprocessing_eda.md: (BẮT BUỘC, nhưng nội dung PHỤ THUỘC THUẬT TOÁN)
-  Dựa đúng vào key_concepts được cung cấp để biết bước này gồm những gì — ví dụ:
-  * Nếu key_concepts có StandardScaler/RobustScaler (thuật toán dựa trên khoảng cách
-    hoặc gradient, như logistic_regression): BẮT BUỘC dạy scaling, giải thích vì sao thiếu
+GIAI ĐOẠN 3 — Tiền xử lý dữ liệu (BẮT BUỘC, nhưng nội dung PHỤ THUỘC THUẬT TOÁN)
+  Dựa đúng vào "key_concepts" được cung cấp để biết những phương pháp gì đã được dùng để xử lý dataset — ví dụ:
+  * Nếu "key_concepts" có StandardScaler/RobustScaler: BẮT BUỘC dạy scaling và giải thích vì sao thiếu
     bước này sẽ làm gradient/khoảng cách bị lệch.
   * Nếu key_concepts có "Scale Invariance" (thuật toán dạng cây, như decision_tree):
-    KHÔNG dạy scaling (giải thích rõ vì sao mô hình cây không cần), tập trung vào
-    Categorical Encoding (Ordinal vs One-Hot Encoding) và các vấn đề liên quan đến High Cardinality Bias.
-  * Xử lý missing/outlier (SimpleImputer, IQR,...) nếu key_concepts có nhắc tới.
+    KHÔNG dạy scaling, giải thích rõ vì sao mô hình cây không cần, giải quyết vấn đề liên quan đến High Cardinality Bias.
+  * Nếu key_concepts có Categorical Encoding (Ordinal vs One-Hot Encoding): giải thích vì sao cần Encode
+  các biến không phải biến số
+  * Nếu key_concepts có xử lý missing/outlier(median, drop_duplicates,...): giải thích cách xử lý, ý nghĩa.
 
-  [CÓ NHIỀU CÁCH LÀM] nếu key_concepts có nhiều lựa chọn encoding/scaling cùng giải quyết
-  1 vấn đề (ví dụ One-Hot Encoding vs Ordinal Encoding, hoặc StandardScaler vs
-  RobustScaler) — xem mục ĐỘ SÂU NỘI DUNG THEO LEVEL để quyết định trình bày 1 hay nhiều công thức.
+  [CÓ NHIỀU CÁCH LÀM] nếu "key_concepts" có nhiều lựa chọn cùng giải quyết 1 vấn đề 
+  (ví dụ One-Hot Encoding vs Ordinal Encoding, hoặc StandardScaler vs RobustScaler)
+  — xem mục ĐỘ SÂU NỘI DUNG THEO LEVEL để quyết định trình bày 1 hay nhiều công thức.
 
-  QUAN TRỌNG: bước này đã được HỆ THỐNG xử lý sẵn trong dữ liệu được chèn vào notebook
-  (tools/dataset_injector.py lo phần scaling/encoding/missing-value/EDA) — module ứng với
-  giai đoạn này KHÔNG ĐƯỢC có planned_exercises (xem YÊU CẦU BẮT BUỘC #13), chỉ dùng để giải
-  thích lý thuyết qua "concepts".
-
-GIAI ĐOẠN 4 — Đánh giá mô hình - có thể tìm thêm nội dung ở các file có dạng kb/{problem_type_label}/04_model_evaluation.md: (BẮT BUỘC)
-  Dựa vào key_concepts để chọn đúng bộ metric: Confusion Matrix/Precision/Recall/
-  F1-Score/ROC-AUC/... (cho các bài toán phân loại theo xác suất như logistic_regression),
-  hoặc plot_tree/export_text/ Decision Path (cho các mô hình có tính diễn giải cao như decision_tree).
+GIAI ĐOẠN 4 — Đánh giá mô hình (BẮT BUỘC)
+  Dựa vào "key_concepts" để chọn đúng bộ metric: Ma trận nhầm lẫn/Precision/Recall/
+  F1-Score/ROC-AUC/... (cho bài toán phân loại theo xác suất như logistic_regression),
+  plot_tree/export_text/Decision Path (cho bài toán cần tính diễn giải cao như decision_tree),
+  Silhouette/Davies-Bouldin/... (cho k-means).
 
 GIAI ĐOẠN 5 — Common Pitfalls & Best Practices [TÙY CHỌN - CHỈ THÊM NẾU key_concepts CÓ
   các khái niệm dạng này, ví dụ: Overfitting/Data Leakage/Cost-Complexity Pruning/Extrapolation Limitations] 
-  - có thể tìm thêm nội dung ở các file có dạng kb/{problem_type_label}/05_common_pitfalls_best_practices.md:
   Nếu có, tóm tắt các lỗi thường gặp và cách khắc phục (ví dụ overfitting -> pruning /
-  giảm max_depth). Nếu key_concepts KHÔNG có nhóm khái niệm này, BỎ QUA giai đoạn này
+  giảm max_depth). Nếu "key_concepts" KHÔNG có nhóm khái niệm này, BỎ QUA giai đoạn này
   hoàn toàn, không tự bịa thêm kiến thức ngoài phạm vi.\
 """
 
 UNSUPERVISED_PIPELINE_BLOCK = """\
-GIAI ĐOẠN 1 — Nền tảng lý thuyết - có thể tìm thêm nội dung ở các file có dạng kb/{problem_type_label}/01_theoretical_foundations.md: (BẮT BUỘC)
-  Giải thích bản chất thuật toán (giải quyết vấn đề gì trong học máy)
-  Trình bày các khái niệm Centroid ("Centroids"), khoảng cách Euclidean ("Euclidean Distance"), hàm
-  mục tiêu WCSS/Inertia ("WCSS (Inertia)"), thuật toán Lloyd's ("Lloyd's Algorithm": Assignment step + Update step), cùng
-  chiến lược khởi tạo K-Means++ ("K-Means++ Initialization") nếu có trong key_concepts.
+GIAI ĐOẠN 1 — Nền tảng lý thuyết (BẮT BUỘC)
+  Giới thiệu đây là bài toán gì, giải quyết vấn đề gì trong học máy và công thức toán học cốt lõi
+  khái niệm Centroid ("Centroids"), khoảng cách Euclidean, hàm mục tiêu WCSS/Inertia ("WCSS (Inertia)"), 
+  thuật toán Lloyd's ("Lloyd's Algorithm": Assignment step + Update step), cùng
+  chiến lược khởi tạo K-Means++ ("K-Means++ Initialization") nếu có trong "key_concepts".
 
-GIAI ĐOẠN 2 — Cài đặt với scikit-learn - có thể tìm thêm nội dung ở các file có dạng kb/{problem_type_label}/02_scikit_learn_implementation.md: (BẮT BUỘC)
+GIAI ĐOẠN 2 — Cài đặt với scikit-learn (BẮT BUỘC)
   Giới thiệu class KMeans (sklearn.cluster.KMeans), các phương thức cốt lõi (.fit/.fit_predict/.transform/.cluster_centers_/.inertia_), 
   và các hyperparameter quan trọng CÓ TRONG key_concepts (n_clusters/ init/ n_init/ max_iter/ tol/...).
   
-  [CÓ NHIỀU CÁCH LÀM] nếu key_concepts có nhiều lựa chọn ('algorithm': 'lloyd' vs
+  [CÓ NHIỀU CÁCH LÀM] nếu "key_concepts" có nhiều lựa chọn ('algorithm': 'lloyd' vs
   'elkan', hoặc init='k-means++' vs 'random') — xem mục ĐỘ SÂU NỘI DUNG THEO LEVEL.
 
-GIAI ĐOẠN 3 — Tiền xử lý & Scaling - có thể tìm thêm nội dung ở các file có dạng kb/{problem_type_label}/03_data_preprocessing_eda.md: (BẮT BUỘC)
+GIAI ĐOẠN 3 — Tiền xử lý & Scaling (BẮT BUỘC)
   NHẤN MẠNH: StandardScaler LÀ BẮT BUỘC cho K-Means (vì thuật toán chịu ảnh hưởng lớn bởi
-  khoảng cách Euclidean, biến có biên độ lớn sẽ chi phối toàn bộ khoảng cách). 
+  khoảng cách Euclidean, biến có biên độ lớn sẽ chi phối toàn bộ khoảng cách...). 
   Nêu ảnh hưởng của Outlier lên WCSS. Giới thiệu PCA cho dữ liệu nhiều chiều ("PCA Integration").
-
+  Categorical Encoding (Ordinal vs One-Hot Encoding): giải thích vì sao cần Encode các biến không phải biến số.
+  
   [CÓ NHIỀU CÁCH LÀM] việc CÓ dùng PCA hay KHÔNG (và chọn bao nhiêu n_components) là một
   lựa chọn có ảnh hưởng lớn — xem mục ĐỘ SÂU NỘI DUNG THEO LEVEL.
 
-  QUAN TRỌNG: bước này đã được HỆ THỐNG xử lý sẵn trong dữ liệu được chèn vào notebook
-  (tools/dataset_injector.py lo phần scaling/PCA/EDA) — module ứng với giai đoạn này KHÔNG
-  ĐƯỢC có planned_exercises (xem YÊU CẦU BẮT BUỘC #13), chỉ dùng để giải thích lý thuyết qua
-  "concepts".
-
-GIAI ĐOẠN 4 — Chọn K tối ưu & Đánh giá - có thể tìm thêm nội dung ở các file có dạng kb/{problem_type_label}/04_model_evaluation.md: (BẮT BUỘC)
+GIAI ĐOẠN 4 — Chọn K tối ưu & Đánh giá (BẮT BUỘC)
   QUAN TRỌNG: đây là bài toán KHÔNG GIÁM SÁT nên KHÔNG có accuracy/nhãn thật. Dựa vào
-  key_concepts để chọn đúng phương pháp: Elbow Method : WCSS theo K ("Elbow Method"), Silhouette
-  Coefficient (khoảng [-1,1]) ("Silhouette Coefficient"), Davies-Bouldin Index nếu có.
+  "key_concepts" để chọn đúng phương pháp: Elbow Method : WCSS theo K ("Elbow Method"), Silhouette
+  Coefficient (khoảng [-1,1]) ("Silhouette Coefficient"), "Davies-Bouldin Index" nếu có.
 
   [CÓ NHIỀU CÁCH LÀM] Elbow Method và Silhouette Coefficient là 2 cách phổ biến để chọn K
   — xem mục ĐỘ SÂU NỘI DUNG THEO LEVEL để quyết định dùng 1 hay kết hợp cả 2.
 
-GIAI ĐOẠN 5 — Common Pitfalls & Best Practices - có thể tìm thêm nội dung ở các file có dạng kb/{problem_type_label}/05_common_pitfalls_best_practices.md (BẮT BUỘC)
+GIAI ĐOẠN 5 — Common Pitfalls & Best Practices
   [TÙY CHỌN - CHỈ THÊM NẾU key_concepts CÓ các khái niệm dạng này, ví dụ: Spherical Cluster Assumption, Unequal Cluster Sizes]:
   Nếu có, tóm tắt các giới hạn của K-Means (giả định cụm hình cầu ("Spherical Cluster Assumption"), nhạy cảm với khởi tạo,
   không xử lý tốt cụm không đều ("Unequal Cluster Sizes")) và khi nào nên đổi sang thuật toán khác (DBSCAN, Agglomerative). 
@@ -211,6 +207,54 @@ def build_pipeline_block(topic: str) -> str:
     if get_problem_type(topic) == UNSUPERVISED_CLUSTERING:
         return UNSUPERVISED_PIPELINE_BLOCK
     return SUPERVISED_PIPELINE_BLOCK
+
+
+# =====================================================================
+# RAG: đọc ResearchBundle.theory_chunks (do research.py/kb_reader.py sinh
+# ra bằng semantic chunking + embedding) để (a) đưa bản RÚT GỌN vào prompt
+# giúp LLM chọn concepts/objective/nhóm module chính xác hơn, và (b) sau
+# khi LLM trả JSON, TỰ ĐỘNG gán Module.theory_context bằng code Python
+# (tra cứu thuần, KHÔNG qua LLM) để Notebook Gen dùng sau này.
+# =====================================================================
+THEORY_PREVIEW_CHARS = 150
+
+
+def build_theory_reference_block(bundle: ResearchBundle) -> str:
+    """Bản RÚT GỌN cho prompt: mỗi chunk 1 dòng, nêu các concept cùng nhóm + preview ngắn
+    (KHÔNG đưa full text vào đây để không phình prompt -- full text chỉ dùng ở bước (b)
+    thông qua Module.theory_context, do code gán thẳng, LLM không cần thấy lại)."""
+    if not bundle.theory_chunks:
+        return (
+            "(Không có dữ liệu RAG cho topic này -- tự viết theo hiểu biết chung, "
+            "vẫn PHẢI bám đúng key_concepts đã cho, không tự bịa khái niệm khác.)"
+        )
+
+    lines = []
+    for chunk in bundle.theory_chunks:
+        preview = chunk.text.replace("\n", " ").strip()
+        if len(preview) > THEORY_PREVIEW_CHARS:
+            preview = preview[:THEORY_PREVIEW_CHARS].rstrip() + "..."
+        concepts_str = ", ".join(chunk.concepts)
+        lines.append(f"- [{concepts_str}] (nguồn {chunk.source_id}): {preview}")
+    return "\n".join(lines)
+
+
+def attach_theory_context(modules: list[dict], bundle: ResearchBundle) -> None:
+    """Gán Module.theory_context = {concept: text KB thật} cho từng module, tra cứu
+    trực tiếp trong bundle.theory_chunks theo concepts của module -- THUẦN PYTHON,
+    không bịa lại qua LLM, để nội dung Notebook Gen viết sau này bám đúng KB gốc.
+    Mutate `modules` (list[dict]) tại chỗ."""
+    concept_to_text: dict[str, str] = {}
+    for chunk in bundle.theory_chunks:
+        for concept in chunk.concepts:
+            concept_to_text.setdefault(concept, chunk.text)
+
+    for m in modules:
+        theory_context = {
+            c: concept_to_text[c] for c in m.get("concepts", []) if c in concept_to_text
+        }
+        if theory_context:
+            m["theory_context"] = theory_context
 
 
 # ====================
@@ -230,19 +274,20 @@ def build_prompt_curriculum(bundle : ResearchBundle, profile : LearnerProfile) -
     problem_type = get_problem_type(bundle.topic)
     problem_type_label = PROBLEM_TYPE_LABEL_VI[problem_type]
 
-    # lấy số lượng bài tập  theo level
+    # lấy số lượng bài tập theo level
     lowest, highest = get_exercise_range(level)
-    exercise_range_hint = f"{lowest}-{highest} bài tập (level {level} = {LEVEL_NAMES[level]})"
+    exercise_range_hint = f"{lowest}-{highest} bài tập (level {level}={LEVEL_NAMES[level]})"
 
     prompt = template.replace("{topic}",str(bundle.topic))
     prompt = prompt.replace("{problem_type_label}", problem_type_label)
     prompt = prompt.replace("{pipeline_block}", build_pipeline_block(bundle.topic))
     prompt = prompt.replace("{level_depth_note}", build_level_depth_note(level))
     prompt = prompt.replace("{final_level}" , str(level))
-    prompt = prompt.replace( "{key_concepts}", json.dumps(bundle.key_concepts, ensure_ascii=False))
+    prompt = prompt.replace("{key_concepts}", json.dumps(bundle.key_concepts, ensure_ascii=False))
     prompt = prompt.replace("{duration_minutes}" , str(profile.constraints.duration_minutes))
     prompt = prompt.replace("{num_exercises}" , str(profile.constraints.num_exercises))
     prompt = prompt.replace("{exercise_range_hint}", exercise_range_hint)
+    prompt = prompt.replace("{theory_reference_block}", build_theory_reference_block(bundle))
 
     # Trả về prompt
     return prompt
@@ -303,9 +348,7 @@ def validate_and_adjust(data: dict, profile: LearnerProfile, bundle: Optional[Re
     if not (lo <= actual_exercises <= hi):
         warnings.append(
             f"Tổng planned_exercises ({actual_exercises}) nằm ngoài khoảng cho phép theo "
-            f"level {level} ({LEVEL_NAMES[level]}: {lo}-{hi} bài). Notebook Gen sẽ tự ép về "
-            "khoảng này khi sinh cell TODO, nhưng nên sửa lại prompt/hoặc regen LearningPath "
-            "nếu lệch quá xa."
+            f"level {level} ({LEVEL_NAMES[level]}: {lo}-{hi} bài)."
         )
 
     #--------------------------Kiểm tra source_ids có trỏ tới source thật không--------------------------
@@ -319,8 +362,18 @@ def validate_and_adjust(data: dict, profile: LearnerProfile, bundle: Optional[Re
         if dangling:
             warnings.append(
                 f"source_ids sau đây không tồn tại trong ResearchBundle.sources: "
-                f"{sorted(dangling)}. LLM có thể đang bịa source_id — cần xem lại prompt "
-                "(xem NOTE trong build_prompt_curriculum) hoặc hỏi anh Trí về format sources."
+                f"{sorted(dangling)}. LLM có thể đang bịa source_id"
+            )
+
+    #--------------------------Kiểm tra RAG (theory_chunks) có gán được vào module không--------------------------
+    if bundle is not None and bundle.theory_chunks:
+        all_rag_concepts = {c for chunk in bundle.theory_chunks for c in chunk.concepts}
+        all_module_concepts = {c for m in modules for c in m.get("concepts", [])}
+        if not (all_rag_concepts & all_module_concepts):
+            warnings.append(
+                "ResearchBundle có theory_chunks nhưng KHÔNG concept nào của module trùng với "
+                "concepts trong theory_chunks -- theory_context sẽ rỗng toàn bộ. Khả năng LLM "
+                "đã tự diễn đạt lại concept khác với key_concepts gốc (xem YÊU CẦU #12)."
             )
 
     # Trả về LearningPath sau khi điều chỉnh (nếu bị lệch) và danh sách các cảnh báo
@@ -351,6 +404,10 @@ def run_curriculum(
         data, warnings = validate_and_adjust(data, profile, bundle=bundle)
         for w in warnings:
             print(f"[Curriculum Agent] cảnh báo: {w}")
+
+        # Gán Module.theory_context bằng code Python (KHÔNG qua LLM) -- xem docstring
+        # attach_theory_context ở trên.
+        attach_theory_context(data.get("modules", []), bundle)
 
         data["session_id"] = profile.session_id
         data["level"] = _normalize_level(profile.level_final)
