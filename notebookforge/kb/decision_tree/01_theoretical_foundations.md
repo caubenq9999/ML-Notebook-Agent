@@ -6,7 +6,6 @@ doc_id: "dt_01"
 source_url: "https://scikit-learn.org/stable/modules/tree.html"
 key_concepts:
   - "Decision Tree"
-  - "Decision Tree là gì"
   - "Thuật toán CART"
   - "Chỉ số Gini (Gini Impurity)"
   - "Entropy (Độ hỗn loạn thông tin)"
