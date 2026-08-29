@@ -5,6 +5,7 @@ level: "Intermediate"
 doc_id: "km_01"
 source_url: "https://scikit-learn.org/stable/modules/clustering.html#k-means"
 key_concepts:
+  - "K-Means Clustering"
   - "Học không giám sát (Unsupervised Learning)"
   - "Tâm cụm & Phân hoạch Voronoi (Centroids & Voronoi Partitions)"
   - "Tổng bình phương khoảng cách nội cụm WCSS (Inertia)"
