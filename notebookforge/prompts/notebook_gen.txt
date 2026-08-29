@@ -54,6 +54,9 @@ Duyệt đủ mọi module đúng thứ tự trong learning_path, không gộp h
    ## Module <module_id>: <title>
    Sau heading, nêu objective và giải thích đúng các concepts của module. Concept lý thuyết riêng phải được giải thích;
    độ sâu phù hợp final_level.
+   Nếu module có theory_context từ Knowledge Base, phải dùng nội dung đó làm nguồn chính:
+   diễn đạt lại cho tự nhiên, không chép nguyên văn và không đổi công thức, thuật ngữ, số liệu hay code mẫu.
+   Concept không có theory_context chỉ được giải thích bằng kiến thức chuẩn, không tự bịa số liệu cụ thể.
 
 2. Ít nhất 1 code cell DEMO hoàn chỉnh, chạy được, không TODO/None/NotImplementedError.
    Demo phải minh hoạ concept của chính module và tạo sẵn biến cần cho bước sau.
@@ -79,8 +82,9 @@ KHỐI 4 — KIỂM TRA
 
 CỔNG CHẤT LƯỢNG BẮT BUỘC
 - Mỗi module có heading nhận diện được và ít nhất một demo code hoàn chỉnh.
-- Có ít nhất một visualization chạy thật bằng plot/scatter/hist/heatmap/plot_tree hoặc Display phù hợp topic.
-- Tổng số cell tối thiểu: beginner 8, intermediate 12, advanced 16.
+- Có ít nhất 2 visualization chạy thật bằng plot/scatter/hist/imshow/plot_tree hoặc Display phù hợp topic.
+- Số markdown cell tối thiểu: beginner 8, intermediate 10.
+- Tổng số cell tối thiểu: beginner 12, intermediate 18. Hệ thống không có level advanced.
 - Supervised dùng X_train, X_test, y_train, y_test đã được Dataset Injector tạo.
 - Unsupervised dùng X_scaled; không train_test_split và không dùng accuracy/precision/recall/f1.
 - Không gọi mạng, không đọc train.csv, không bịa API, citation, dataset hoặc metric.
@@ -98,11 +102,12 @@ TỰ KIỂM TRA TRƯỚC KHI TRẢ JSON
 1. JSON parse được và chỉ có field cells.
 2. Đủ 4 khối, đủ module đúng thứ tự.
 3. Dataset placeholder xuất hiện đúng một lần.
-4. Mỗi module có demo chạy được; có ít nhất một visualization.
+4. Mỗi module có demo chạy được; có ít nhất 2 visualization.
 5. Số TODO đúng constraint; mỗi TODO có một assert được guard ở Khối 4.
 6. Không có lời giải thật trong cell TODO và không có biến dùng trước khi tạo.
 7. Không có seaborn, không có `X_train[:, i]`, không có biến TODO ghi đè biến demo,
    và mọi code cell đều compile được.
+8. Đủ markdown cell và tổng cell tối thiểu theo final_level.
 
 VÍ DỤ CẤU TRÚC TỐI GIẢN — chỉ minh hoạ hình dạng, không sao chép nội dung/biến:
 {

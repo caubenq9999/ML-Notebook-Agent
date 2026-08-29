@@ -312,6 +312,13 @@ def build_modules_block(path: LearningPath) -> str:
             f"  concepts lý thuyết riêng (KHÔNG có exercise nào dùng, PHẢI giải thích ở bước 3.2) = {theory_only}",
             f"  estimated_minutes = {m.estimated_minutes}",
         ]
+        if m.theory_context:
+            lines.append(
+                "  theory_context (trích Knowledge Base qua RAG; PHẢI bám sát công thức, "
+                "thuật ngữ, số liệu và code mẫu; diễn đạt lại tự nhiên, không chép nguyên văn):"
+            )
+            for concept, context in m.theory_context.items():
+                lines.append(f'    theory_context["{concept}"] = {context}')
         if m.planned_exercises:
             lines.append("  planned_exercises:")
             for ex in m.planned_exercises:
