@@ -54,9 +54,10 @@ DATASET_INFO: dict[str, dict[str, str | None]] = {
             "hoạ Logistic Regression."
         ),
         "preprocessing_note": (
-            "Một số cột có giá trị 0 bất hợp lý về mặt sinh lý (ví dụ Cholesterol = 0, "
-            "RestingBP = 0) đã được coi là giá trị khuyết và impute lại bằng median; dữ "
-            "liệu đã được chuẩn hoá (StandardScaler)."
+            "Một số cột có giá trị 0 bất hợp lý về mặt sinh lý(Cholesterol=0 được "
+            "impute bằng median theo HeartDisease, 1 dòng có RestingBP=0 đã bị loại bỏ); "
+            "Các biến có kiểu dữ liệu là string được mã hoá bằng One-Hot Encoding; "
+            "Sau cùng, chia tập train/test và chuẩn hoá lại bằng StandardScaler chỉ trên tập train."
         ),
     },
     "decision_tree": {
@@ -64,22 +65,19 @@ DATASET_INFO: dict[str, dict[str, str | None]] = {
         "kaggle": "kaggle.com/datasets/uciml/red-wine-quality-cortez-et-al-2009",
         "size": "1.599 dòng, 12 cột (11 đặc trưng hoá lý + 1 điểm chất lượng)",
         "target": (
-            "quality — điểm chất lượng rượu gốc (thang điểm 3-8, ~6 lớp phân loại), dùng "
-            "trực tiếp làm nhãn đa lớp (multi-class), KHÔNG được gộp nhóm lại"
+            "quality — điểm chất lượng rượu, dùng làm nhãn đa lớp (multi-class)"
         ),
         "description": (
             "11 đặc trưng hoá lý của rượu vang đỏ (fixed acidity, volatile acidity, citric "
             "acid, residual sugar, chlorides, free/total sulfur dioxide, density, pH, "
-            "sulphates, alcohol) dùng để phân loại chất lượng rượu — bài toán phân loại đa "
-            "lớp (multi-class), phù hợp minh hoạ Decision Tree vì các đặc trưng có ngưỡng "
-            "cắt rõ ràng theo từng khoảng giá trị."
+            "sulphates, alcohol) dùng để phân loại chất lượng rượu ('quality');"
+            "các đặc trưng có ngưỡng cắt rõ ràng theo từng khoảng giá trị, phù hợp minh hoạ Decision Tree"
         ),
         "preprocessing_note": (
-            "Dữ liệu đã được hệ thống loại bỏ các dòng trùng lặp (~240 dòng) trước khi chia "
-            "train/test (stratify theo 'quality'). Nhãn 'quality' GIỮ NGUYÊN dạng gốc (đa lớp, "
-            "phân bố có thể lệch giữa các lớp) — chưa được gộp nhóm; ngưỡng accuracy 'tốt' nên "
-            "được xác định qua thực nghiệm trên dataset này, không kỳ vọng cao như bài toán "
-            "nhị phân."
+            "Các dòng trùng lặp(~240 dòng) bị loại bỏ bằng drop_duplicates() trước khi chia "
+            "train/test (stratify theo 'quality'). Nhãn 'quality' giữ nguyên dạng gốc (đa lớp, "
+            "phân bố bị lệch giữa các lớp) - nên gộp thành các nhóm low (<=5), medium (=6), high(>=7); "
+            "ngưỡng accuracy 'tốt' nên được xác định qua thực nghiệm trên dataset này."
         ),
     },
     "kmeans": {
@@ -89,13 +87,12 @@ DATASET_INFO: dict[str, dict[str, str | None]] = {
         "target": None,  # không có nhãn thật — bài toán không giám sát
         "description": (
             "Thông tin khách hàng của một trung tâm thương mại: Gender, Age, "
-            "Annual Income (k$), Spending Score (1-100) — sau khi đã loại bỏ cột định danh "
-            "CustomerID. KHÔNG có nhãn phân khúc sẵn, cần phân cụm khách hàng theo hành "
-            "vi chi tiêu."
+            "Annual Income (k$), Spending Score (1-100) — sau khi đã loại bỏ cột định danh CustomerID. "
+            "KHÔNG có nhãn phân khúc sẵn, cần phân cụm khách hàng theo hành vi chi tiêu."
         ),
         "preprocessing_note": (
-            "Cột CustomerID đã bị loại bỏ vì không mang thông tin phân cụm; biến Gender đã "
-            "được mã hoá nếu sử dụng; toàn bộ đặc trưng số đã được chuẩn hoá (StandardScaler) "
+            "Cột CustomerID đã bị loại bỏ vì không mang thông tin phân cụm; biến Gender đã"
+            "được mã hoá bằng One-Hot Encoding; dữ liệu được chuẩn hoá lại bằng StandardScaler và xáo trộn (shuffle) "
             "trước khi phân cụm."
         ),
     },
@@ -131,7 +128,7 @@ def build_dataset_info_block(topic: str) -> str:
         (
             f"Biến mục tiêu: {info['target']}"
             if info.get("target")
-            else "Biến mục tiêu: KHÔNG có (bài toán học không giám sát / phân cụm)"
+            else "Bài toán học không giám sát / phân cụm"
         ),
         f"Mô tả: {info['description']}",
         f"Một số chú ý tiền xử lý : {info['preprocessing_note']}"
@@ -149,27 +146,23 @@ def build_problem_type_block(topic: str) -> str:
     ptype = get_problem_type(topic)
     if ptype == UNSUPERVISED_CLUSTERING:
         return (
-            "Loại bài toán: KHÔNG GIÁM SÁT / PHÂN CỤM (unsupervised clustering).\n"
-            "Biến có sẵn sau KHỐI 2 (do hệ thống chèn): X KHÔNG có train_test_split, KHÔNG có y thật để so khớp).\n"
-            "Metric đánh giá hợp lệ: inertia (WCSS), silhouette_score (khoảng [-1, 1], "
-            "càng gần 1 càng tốt), davies_bouldin_score nếu có trong concepts. TUYỆT ĐỐI "
-            "KHÔNG dùng accuracy/precision/recall/f1 vì không có nhãn thật để so sánh.\n"
-            "KHÔNG được viết hoặc yêu cầu học viên viết train_test_split ở bất kỳ đâu."
+            "Loại bài toán: KHÔNG GIÁM SÁT / PHÂN CỤM.\n"
+            "Metric đánh giá hợp lệ: inertia (WCSS), silhouette_score, davies_bouldin_score nếu có trong concepts. "
+            "TUYỆT ĐỐI KHÔNG dùng accuracy/precision/recall/f1 và train_test_split ở bất kỳ đâu"
         )
     note_multiclass = ""
     if _normalize_topic(topic) == "decision_tree":
         note_multiclass = (
-            "\nLƯU Ý: target 'quality' của dataset này là ĐA LỚP (~6 lớp: 3-8), không phải nhị "
-            "phân — nếu dùng precision/recall/f1/roc_auc, PHẢI truyền tham số average="
-            "'weighted' (hoặc 'macro') cho precision/recall/f1, và multi_class='ovr' cho "
-            "roc_auc_score; accuracy_score dùng bình thường không cần tham số thêm."
+            "Target 'quality' của dataset này là ĐA LỚP (~6 lớp: 3-8), "
+            "nếu dùng precision/recall/f1/roc_auc, PHẢI truyền tham số average='weighted' (hoặc 'macro') cho precision/recall/f1, "
+            "và multi_class='ovr' cho roc_auc_score; accuracy_score dùng bình thường không cần tham số thêm."
+            "Nếu không, dựa trên số điểm có thể gộp thành các nhóm low (<=5), medium (=6), high(>=7)"
         )
     return (
-        "Loại bài toán: CÓ GIÁM SÁT / PHÂN LOẠI (supervised classification).\n"
-        "Biến có sẵn sau KHỐI 2 (do hệ thống chèn): X_train, X_test, y_train, y_test "
-        "(đã tách sẵn bằng train_test_split).\n"
-        "Metric đánh giá hợp lệ: accuracy, precision, recall, f1, roc_auc, confusion matrix, "
-        "hoặc feature_importances_/plot_tree nếu concepts của module thuộc nhóm diễn giải cây."
+        "Loại bài toán: CÓ GIÁM SÁT / PHÂN LOẠI.\n"
+        "Biến có sẵn sau KHỐI 2(do hệ thống chèn): X_train, X_test, y_train, y_test "
+        "Metric đánh giá hợp lệ: accuracy, precision, recall, f1, roc_auc, confusion matrix, feature_importances_/plot_tree "
+        "nếu có concepts tương ứng."
         f"{note_multiclass}"
     )
 
@@ -187,8 +180,8 @@ def check_prior_feedback(prior_feedback : Optional[str]) -> str:
     return (
         "<prior_feedback>\n"
         "Notebook ở lần sinh trước đã bị Verifier từ chối vì lý do bên dưới. "
-        "Đây là yêu cầu BẮT BUỘC phải sửa đúng chỗ lỗi, không lặp lại lỗi cũ, và "
-        "không được sinh lại nội dung gần như giống hệt bản trước:\n"
+        "BẮT BUỘC phải sửa đúng chỗ lỗi, không lặp lại lỗi cũ, và "
+        "Phần KHÔNG LIÊN QUAN tới lỗi thì giữ nguyên tinh thần nội dung cũ, không cần viết lại từ đầu:\n"
         f"{prior_feedback}\n"
         "</prior_feedback>"
     )
@@ -200,36 +193,43 @@ def _theory_only_concepts(module: Module) -> list[str]:
         used_in_exercises.update(ex.concepts)
     return [c for c in module.concepts if c not in used_in_exercises]
 
-
-# Chuyển modules[] của LearningPath thành text chi tiết đưa vào prompt — tách rõ
-# "concepts lý thuyết riêng" khỏi "concepts đã có exercise", để notebook_gen.txt (KHỐI 3,
-# bước 3.2) biết chính xác phần nào cần giải thích lý thuyết riêng.
+# Chuyển modules[] của LearningPath thành text chi tiết đưa vào prompt 
+# tách rõ "concepts lý thuyết riêng" khỏi "concepts đã có exercise" giải quyết phần 3.2
 def build_modules_block(path: LearningPath) -> str:
     blocks = []
     for m in path.modules:
         theory_only = _theory_only_concepts(m)
         lines = [
-            f'module_id = "{m.module_id}" | title = "{m.title}"',
-            f'  objective = "{m.objective}"',
-            f"  concepts (đầy đủ) = {m.concepts}",
-            f"  concepts lý thuyết riêng (KHÔNG có exercise nào dùng, PHẢI giải thích ở bước 3.2) = {theory_only}",
-            f"  estimated_minutes = {m.estimated_minutes}",
+            f'module_id="{m.module_id}" | title="{m.title}"',
+            f' objective="{m.objective}"',
+            f" concepts(đầy đủ)={m.concepts}",
+            f" concepts lý thuyết riêng(Do không có exercise nào dùng, nên PHẢI giải thích theo hướng dẫn bước 3.2)={theory_only}",
+            f" estimated_minutes={m.estimated_minutes}",
         ]
+        if m.theory_context:
+            lines.append(
+                " theory_context (trích Knowledge Base THẬT qua RAG — PHẢI bám sát khi giải "
+                "thích lý thuyết ở bước 3.2/3.4: diễn đạt lại tự nhiên nhưng KHÔNG đổi công "
+                "thức/thuật ngữ/số liệu/code mẫu so với bản gốc; concept nào KHÔNG có trong "
+                "danh sách này thì giải thích theo kiến thức chuẩn, không tự bịa số liệu cụ thể):"
+            )
+            for concept, text in m.theory_context.items():
+                lines.append(f'  --- theory_context["{concept}"] ---')
+                lines.append(text)
         if m.planned_exercises:
-            lines.append("  planned_exercises:")
+            lines.append(" planned_exercises:")
             for ex in m.planned_exercises:
                 lines.append(
-                    f'    - exercise_id = "{ex.exercise_id}" | title = "{ex.title}" | '
-                    f'type = "{ex.type}" | difficulty = {ex.difficulty} | '
-                    f"has_starter_code = {ex.has_starter_code} | concepts = {ex.concepts}"
+                    f'  - exercise_id="{ex.exercise_id}"|title="{ex.title}"|'
+                    f'type="{ex.type}"|difficulty={ex.difficulty}|'
+                    f"has_starter_code={ex.has_starter_code}|concepts={ex.concepts}"
                 )
-                lines.append(f'      prompt = "{ex.prompt}"')
-                lines.append(f'      expected_check = "{ex.expected_check or ""}"')
+                lines.append(f'  prompt="{ex.prompt}"')
+                lines.append(f'  expected_check="{ex.expected_check or ""}"')
         else:
             lines.append(
                 "  planned_exercises: [] (module KHÔNG có bài tập — chỉ cần markdown lý "
-                "thuyết ở bước 3.2, và cell code demo ở bước 3.3 NẾU cần thiết cho pipeline "
-                "chạy được, xem quy tắc trong notebook_gen.txt)"
+                "thuyết ở bước 3.2 + BẮT BUỘC 1 cell code demo ở bước 3.3, không có ngoại lệ)"
             )
         blocks.append("\n".join(lines))
     return "\n\n".join(blocks)
@@ -243,10 +243,10 @@ def build_prompt_notebook_gen(
 ) -> str:
     template_notebook_gen = load_prompt()
 
-    # Số bài tập mục tiêu: ưu tiên total_planned_exercises của LearningPath (đã được
-    # Curriculum Agent chốt và ép theo khoảng level ở validate_and_adjust); 
-    # nếu path chưa có planned_exercises, fallback về constraints.num_exercises
-    # đã ép theo level (clamp_num_exercises) để phù hợp với Difficulty-Fit.
+    # Số bài tập mục tiêu: ưu tiên total_planned_exercises của LearningPath
+    # và ép theo khoảng level + thông báo thay đổi ở validate_and_adjust; 
+    # nếu toàn bộ module vô tình không có planned_exercises nào,
+    # fallback về constraints.num_exercises đã ép theo level (clamp_num_exercises).
     target_exercises = path.total_planned_exercises or clamp_num_exercises(
         path.level, profile.constraints.num_exercises
     )
@@ -256,9 +256,9 @@ def build_prompt_notebook_gen(
     # Đếm số cell TODO
     todo_count_hint = (
         f"Level {path.level} ({level_name}) -> tổng số cell bài tập có TODO ở KHỐI 3 "
-        f"PHẢI nằm trong khoảng [{lowest}, {highest}] bài (beginner: 2-3 bài, intermediate: "
-        f"4-5 bài). Số bài tập cụ thể nên khớp với target_exercises = {target_exercises} "
-        "nếu số này đã nằm trong khoảng cho phép; nếu không, ưu tiên khoảng cho phép theo level."
+        f"phải nằm trong khoảng [{lowest},{highest}] bài "
+        f"Số bài tập cụ thể nên khớp với target_exercises = {target_exercises} "
+        f"nếu số này đã nằm trong khoảng cho phép; nếu ít hơn {lowest}, tạo {lowest} bài; nếu lớn hơn {highest}, tạo {highest} bài"
     )
 
     prompt = template_notebook_gen
@@ -293,29 +293,29 @@ def validate_cells(cells: list[dict], path: LearningPath) -> list[str]:
     code_sources = [c.get("source", "") for c in cells if c.get("cell_type") == "code"]
     joined_code_sources = "\n".join(code_sources)
 
-    # Tổng số cell TODO phải nằm trong khoảng cho phép theo level.
+    # Tổng số cell bài tập phải nằm trong khoảng cho phép theo level.
     todo_cells = [t for t in code_sources if "TODO" in t]
     lowest, highest = get_exercise_range(path.level)
     if not (lowest <= len(todo_cells) <= highest):
         warnings.append(
-            f"Số cell có TODO ({len(todo_cells)}) NẰM NGOÀI khoảng cho phép theo level "
-            f"{path.level} ({lowest}-{highest}) — kiểm tra lại KHỐI 3, có thể model sinh thừa/thiếu bài."
+            f"Số cell bài tập là: ({len(todo_cells)}), NẰM NGOÀI khoảng cho phép theo level "
+            f"{path.level} [{lowest},{highest}] — kiểm tra lại KHỐI 3."
         )
 
     # Số cell assert (KHỐI 4) nên >= số cell TODO (mỗi bài tập có ít nhất 1 assert).
     assert_cells = [t for t in code_sources if "assert" in t]
     if len(assert_cells) < len(todo_cells):
         warnings.append(
-            f"Số cell assert ({len(assert_cells)}) ít hơn số cell TODO ({len(todo_cells)}) "
-            "— có bài tập ở KHỐI 3 đang thiếu cell kiểm tra tương ứng ở KHỐI 4."
+            f"Số cell assert ({len(assert_cells)}) ít hơn số cell bài tập ({len(todo_cells)}) "
+            "— có bài tập đang thiếu cell kiểm tra tương ứng."
         )
 
     # Nếu topic là unsupervised (K-Means), không được có train_test_split.
     if get_problem_type(path.topic) == UNSUPERVISED_CLUSTERING:
         if "train_test_split" in joined_code_sources:
             warnings.append(
-                "Topic là unsupervised/phân cụm nhưng code vẫn chứa 'train_test_split' "
-                "cần sửa lại prompt hoặc regen."
+                "Topic là unsupervised/phân cụm nhưng code vẫn chứa 'train_test_split', "
+                "cần siết chặt lại prompt."
             )
 
     return warnings
@@ -334,9 +334,8 @@ def inject_dataset(cells : list[dict], topic : str, seed : int) -> list[dict]:
 
     if placeholder_idx is None:
         print(
-            f"Thiếu placeholder '{DATASET_PLACEHOLDER}' ở cell chuẩn bị dữ liệu (bắt buộc để "
-            "hệ thống chèn dataset thật). KHÔNG chèn dataset — trả nguyên cells để không làm "
-            "vỡ notebook, nhưng notebook này gần như chắc chắn sẽ lỗi khi chạy vì thiếu dữ liệu."
+            f"Thiếu placeholder '{DATASET_PLACEHOLDER}' ở cell chuẩn bị dữ liệu"
+            f"KHÔNG chèn dataset — Yêu cầu sinh lại notebook và PHẢI CÓ {DATASET_PLACEHOLDER}."
         )
         return cells
 
@@ -355,7 +354,6 @@ def inject_dataset(cells : list[dict], topic : str, seed : int) -> list[dict]:
 
     # Thay thế đúng 1 cell placeholder bằng toàn bộ các cell EDA/load/split thật
     return cells[:placeholder_idx] + injected_cells + cells[placeholder_idx + 1:]
-
 
 def build_notebook_file(cells : list[dict], notebook_path : Path) -> None:
     # Tạo notebook object mới
