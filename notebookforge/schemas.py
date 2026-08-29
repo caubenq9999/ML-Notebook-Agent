@@ -188,25 +188,6 @@ class Citation(ForgeModel):
     locator: str | None = Field(None, description="Heading / dòng trong file nguồn")
 
 
-class TheoryChunk(ForgeModel):
-    """1 đoạn kiến thức đã được SEMANTIC CHUNKING gom lại (các đoạn văn liên quan về mặt
-    ngữ nghĩa được gộp chung), rồi gắn với các key_concepts liên quan nhất bằng embedding
-    similarity. Đây là input RAG cho Curriculum/Notebook Gen để 2 agent đó không phải tự
-    "nhớ lại" lý thuyết bằng kiến thức nền của LLM mà bám đúng văn bản KB thật.
-    """
-
-    chunk_id: str = Field(..., min_length=1, description="vd: logreg_01_c0")
-    source_id: str = Field(..., min_length=1, description="KBEntry.source_id chứa đoạn này")
-    concepts: list[str] = Field(
-        default_factory=list,
-        description="Các key_concepts được coi là thuộc đoạn này (1 chunk có thể phục vụ nhiều concept)",
-    )
-    text: str = Field(..., min_length=1, description="Nội dung đoạn kiến thức")
-    similarity: float | None = Field(
-        None, description="Điểm cosine similarity cao nhất đạt được với 1 trong các concepts trên (debug/tune threshold)"
-    )
-
-
 class ResearchBundle(ForgeModel):
     """Kết quả research: khái niệm + nguồn dẫn chứng cho 1 topic."""
 
@@ -214,16 +195,6 @@ class ResearchBundle(ForgeModel):
     sources: list[Source] = Field(default_factory=list)
     key_concepts: list[str] = Field(..., min_length=1)
     citations: list[Citation] = Field(default_factory=list)
-
-    theory_chunks: list[TheoryChunk] = Field(
-        default_factory=list,
-        description=(
-            "Đoạn lý thuyết đã gom theo semantic chunking (embedding), phục vụ RAG cho "
-            "Curriculum Agent (bản tóm tắt) và Notebook Gen Agent (bản đầy đủ, xem "
-            "Module.theory_context). Rỗng nếu topic không có KB hoặc thư viện embedding "
-            "không cài được (kb_reader.py tự fallback về BM25/regex khi đó)."
-        ),
-    )
 
     # LỖI 3: khái niệm nêu ra nhưng KHÔNG có nguồn nào chống lưng.
     # Tự động suy ra nếu Trí không truyền vào. Huy dùng để trừ điểm groundedness,
@@ -303,16 +274,6 @@ class Module(ForgeModel):
 
     source_ids: list[str] = Field(
         default_factory=list, description="Nguồn (ResearchBundle.sources) module này dựa vào"
-    )
-
-    theory_context: dict[str, str] = Field(
-        default_factory=dict,
-        description=(
-            "concept -> đoạn text KB liên quan (lấy từ ResearchBundle.theory_chunks). "
-            "Notebook Gen dùng để bám sát KB gốc khi viết cell lý thuyết. Field này do "
-            "curriculum.py gán bằng code Python (tra cứu, KHÔNG qua LLM) SAU KHI LLM trả "
-            "JSON xong -- xem prompts/RAG design. Rỗng nếu chưa wiring (chưa sửa curriculum.py)."
-        ),
     )
 
 
