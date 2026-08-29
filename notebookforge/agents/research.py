@@ -18,11 +18,12 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.append(str(ROOT_DIR))
 
-from schemas import Citation, LearnerProfile, ResearchBundle, Source
+from schemas import Citation, LearnerProfile, ResearchBundle, Source, TheoryChunk
 from llm_client import call_json
 from tools.kb_reader import (
     KB_ROOT,
     KBIndex,
+    extract_theory_chunks_for_concepts,
     find_concept_in_kb,
     list_available_topics,
     read_kb_files,
@@ -330,11 +331,31 @@ def run_research(
     else:
         prerequisites, pitfalls = ["Đại số tuyến tính", "Python cơ bản"], ["Rò rỉ dữ liệu", "Quá khớp"]
 
+    concept_source_map = {
+        citation.concept.strip().lower(): citation.source_id
+        for citation in citations
+    }
+    theory_chunk_dicts = (
+        extract_theory_chunks_for_concepts(
+            final_concepts,
+            kb_index,
+            concept_source_map=concept_source_map,
+            top_k=2,
+            max_chunks_per_concept=2,
+            min_similarity=0.5,
+            min_chunk_chars=70,
+        )
+        if kb_entries
+        else []
+    )
+    theory_chunks = [TheoryChunk(**chunk) for chunk in theory_chunk_dicts]
+
     bundle = ResearchBundle(
         topic=str(actual_topic),
         sources=list(sources_map.values()),
         key_concepts=final_concepts,
         citations=citations,
+        theory_chunks=theory_chunks,
         prerequisites=prerequisites,
         common_pitfalls=pitfalls,
         unresolved_concepts=unresolved_concepts,

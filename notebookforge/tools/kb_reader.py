@@ -4,7 +4,7 @@ import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import yaml
 
@@ -18,7 +18,60 @@ except ImportError:
     HAS_BM25 = False
     logger.warning("Thư viện 'rank_bm25' chưa cài đặt. Hệ thống sẽ bỏ qua BM25.")
 
+# Tích hợp Embedding (Dense/Semantic Search) -- cùng triết lý graceful-fallback với BM25 ở
+# trên: nếu chưa cài sentence-transformers, toàn hệ thống VẪN CHẠY được, chỉ tự động rớt
+# xuống tầng BM25/regex cũ (xem find_concept_in_kb và semantic_chunk_entries bên dưới).
+#
+# LƯU Ý: numpy và sentence-transformers tách 2 try/except RIÊNG (không gộp chung) --
+# numpy nhẹ và hầu như luôn có sẵn trong môi trường ML, nếu gộp chung mà chỉ thiếu
+# sentence-transformers thì numpy cũng bị vô hiệu hoá theo, mất luôn phần cosine
+# similarity dù máy hoàn toàn có thể chạy được phần đó.
+try:
+    import numpy as np
+    HAS_NUMPY = True
+except ImportError:
+    HAS_NUMPY = False
+    logger.warning("Thư viện 'numpy' chưa cài đặt. Semantic chunking/embedding search sẽ tự fallback về BM25/regex.")
+
+try:
+    from sentence_transformers import SentenceTransformer
+    HAS_SENTENCE_TRANSFORMERS = True
+except ImportError:
+    HAS_SENTENCE_TRANSFORMERS = False
+    logger.warning("Thư viện 'sentence-transformers' chưa cài đặt. Semantic chunking/embedding search sẽ tự fallback về BM25/regex.")
+
+HAS_EMBEDDINGS = HAS_NUMPY and HAS_SENTENCE_TRANSFORMERS
+
+# Model nhỏ, chạy CPU tốt, đa ngôn ngữ (quan trọng vì KB + key_concepts có cả tiếng Việt
+# lẫn thuật ngữ tiếng Anh) -- không gọi API, không tốn phí, chỉ tải 1 lần và cache local.
+_EMBEDDING_MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
+_EMBEDDING_MODEL: Optional["SentenceTransformer"] = None
+
+
+def _get_embedding_model() -> Optional["SentenceTransformer"]:
+    """Load model 1 LẦN DUY NHẤT (singleton), tái sử dụng cho mọi lần embed sau đó --
+    tránh load lại model nặng ở mỗi lần gọi run_research()."""
+    global _EMBEDDING_MODEL
+    if not HAS_EMBEDDINGS:
+        return None
+    if _EMBEDDING_MODEL is None:
+        try:
+            _EMBEDDING_MODEL = SentenceTransformer(_EMBEDDING_MODEL_NAME)
+        except Exception as exc:  # model chưa tải được (không mạng, thiếu ổ đĩa,...)
+            logger.warning("Không load được embedding model (%s) -- fallback BM25/regex.", exc)
+            return None
+    return _EMBEDDING_MODEL
+
+
+def _cosine_similarity(a: "np.ndarray", b: "np.ndarray") -> float:
+    denom = (np.linalg.norm(a) * np.linalg.norm(b))
+    if denom == 0:
+        return 0.0
+    return float(np.dot(a, b) / denom)
+
 KB_ROOT = Path(__file__).resolve().parent.parent / "kb"
+
+# Mỗi file sau parse_kb_file phải có ít nhất những thành phần sau:
 REQUIRED_FRONTMATTER_FIELDS = ("doc_id", "topic", "key_concepts")
 
 MIN_WORDS = 200
@@ -136,6 +189,9 @@ def parse_kb_file(path: Path) -> KBEntry:
     )
 
 
+# ================================================================================
+# topic -> kb/<topic>/ -> đọc tất cả các file -> parse_kb_file() -> list[KBEntry]
+# ================================================================================
 def read_kb_files(topic: str, *, enforce_word_range: bool = False) -> List[KBEntry]:
     folder_name = topic.strip().lower().replace(" ", "_")
     topic_dir = KB_ROOT / folder_name
@@ -205,6 +261,182 @@ def concept_is_grounded(concept: str, entry: KBEntry) -> bool:
     )
 
 
+# =====================
+# BỔ SUNG: class Chunk
+# =====================
+@dataclass
+class Chunk:
+    """1 đoạn nội dung thu được sau semantic chunking - đơn vị nhỏ nhất dùng để so khớp với
+    key_concepts bằng embedding similarity (thay vì so khớp cả KBEntry.body rất dài)."""
+
+    chunk_id: str          # source_id_<...>, vd "logreg_01_c0"
+    source_id: str         # KBEntry.source_id chứa chunk này
+    heading: str           # heading gần nhất bao quanh đoạn này (rỗng nếu văn bản mở đầu không heading)
+    text: str              # Nội dung của chunk
+    embedding: Optional["np.ndarray"] = None    # Vector ngữ nghĩa ứng với chunk này
+
+
+_HEADING_RE = re.compile(r"^(#{1,3})\s+(.*)$", re.MULTILINE)
+
+
+# =======================================================================================
+# Chia body thành các đoạn (heading, section_text) theo heading markdown (#, ##, ###).
+# Phần văn bản trước heading đầu tiên (nếu có) được gán heading rỗng.
+# =======================================================================================
+def _split_by_heading(body: str) -> List[tuple[str, str]]:
+    matches = list(_HEADING_RE.finditer(body))
+    if not matches:
+        return [("", body.strip())] if body.strip() else []
+
+    sections: List[tuple[str, str]] = []
+    if matches[0].start() > 0:
+        preamble = body[: matches[0].start()].strip()
+        if preamble:
+            sections.append(("", preamble))
+
+    for i, m in enumerate(matches):
+        heading = m.group(2).strip()
+        start = m.end()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
+        section_text = body[start:end].strip()
+        if section_text:
+            sections.append((heading, section_text))
+    return sections
+
+
+# ================================================================================
+# Chia 1 section thành các đoạn (paragraph) theo dòng trống, GIỮ NGUYÊN khối code
+# ================================================================================
+def _split_into_paragraphs(section_text: str) -> List[str]:
+    # Bảo vệ code fence bằng cách tạm thay newline bên trong bằng placeholder trước khi split.
+    code_blocks: List[str] = []
+
+    def _stash(match: "re.Match") -> str:
+        code_blocks.append(match.group(0))
+        return f"\x00CODEBLOCK{len(code_blocks) - 1}\x00"
+
+    protected = re.sub(r"```.*?```", _stash, section_text, flags=re.DOTALL)
+    raw_paragraphs = re.split(r"\n\s*\n", protected)
+
+    paragraphs = []
+    for p in raw_paragraphs:
+        for i, block in enumerate(code_blocks):
+            p = p.replace(f"\x00CODEBLOCK{i}\x00", block)
+        p = p.strip()
+        if p:
+            paragraphs.append(p)
+    return paragraphs
+
+
+# ==================================
+# Cách hoạt động của semantic_chunk
+# ==================================
+def semantic_chunk_entry(
+    entry: KBEntry,
+    model: Optional["SentenceTransformer"] = None,
+    similarity_threshold: float = 0.50,
+    max_chunk_chars: int = 1200,
+    min_chunk_chars: int = 180,
+) -> List[Chunk]:
+    """
+    Semantic chunking có kiểm soát:
+    - Không trộn nội dung các heading.
+    - Các paragraph liên quan được gộp.
+    - Chunk quá ngắn sẽ cố gắng gộp với paragraph kế tiếp.
+    - Tránh tạo chunk chỉ có 1 câu hoặc code fragment.
+    """
+    sections = _split_by_heading(entry.body)
+
+    chunks: List[Chunk] = []
+    chunk_counter = 0
+
+    for heading, section_text in sections:
+        paragraphs = _split_into_paragraphs(section_text)
+        if not paragraphs:
+            continue
+        # Fallback khi không có embedding:
+        # giữ nguyên section nhưng không tạo chunk rỗng.
+        if model is None:
+            chunks.append(
+                Chunk(
+                    chunk_id=f"{entry.source_id}_c{chunk_counter}",
+                    source_id=entry.source_id,
+                    heading=heading,
+                    text=section_text[:max_chunk_chars],
+                )
+            )
+            chunk_counter += 1
+            continue
+        try:
+            embeddings = model.encode(
+                paragraphs,
+                convert_to_numpy=True,
+                show_progress_bar=False,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Embed paragraph lỗi (%s) -- fallback section nguyên khối.",
+                exc,
+            )
+            chunks.append(
+                Chunk(
+                    chunk_id=f"{entry.source_id}_c{chunk_counter}",
+                    source_id=entry.source_id,
+                    heading=heading,
+                    text=section_text[:max_chunk_chars],
+                )
+            )
+            chunk_counter += 1
+            continue
+        current_texts = [paragraphs[0]]
+        current_vecs = [embeddings[0]]
+        def flush_current():
+            nonlocal chunk_counter
+            if not current_texts:
+                return
+            text = "\n\n".join(current_texts)
+            chunks.append(
+                Chunk(
+                    chunk_id=f"{entry.source_id}_c{chunk_counter}",
+                    source_id=entry.source_id,
+                    heading=heading,
+                    text=text,
+                    embedding=np.mean(current_vecs, axis=0),
+                )
+            )
+            chunk_counter += 1
+        for para, vec in zip(paragraphs[1:], embeddings[1:]):
+            current_text = "\n\n".join(current_texts)
+            current_len = len(current_text)
+            running_mean = np.mean(
+                current_vecs,
+                axis=0,
+            )
+            similarity = _cosine_similarity(
+                running_mean,
+                vec,
+            )
+            fits_size = (
+                current_len + len(para) + 2
+                <= max_chunk_chars
+            )
+
+            # QUY TẮC: Nếu chunk hiện tại còn quá nhỏ, ưu tiên gộp paragraph kế tiếp để tránh fragment.
+            if current_len < min_chunk_chars and fits_size:
+                current_texts.append(para)
+                current_vecs.append(vec)
+            # Chunk đã đủ lớn thì mới dùng semantic similarity
+            elif similarity >= similarity_threshold and fits_size:
+                current_texts.append(para)
+                current_vecs.append(vec)
+            else:
+                flush_current()
+                current_texts = [para]
+                current_vecs = [vec]
+        flush_current()
+
+    return chunks
+
 @dataclass
 class KBIndex:
     """BM25 index dựng 1 LẦN cho 1 danh sách KBEntry, tái sử dụng cho nhiều lượt tìm concept.
@@ -217,22 +449,37 @@ class KBIndex:
     """
 
     entries: List[KBEntry]
-    bm25: Optional["BM25Okapi"] = None
+    bm25: Optional["BM25Okapi"] = None                  # BM25 index của toàn bộ KB
+    chunks: List[Chunk] = field(default_factory=list)   # Tất cả các semantic chunk
+    chunk_embeddings: Optional["np.ndarray"] = None     # Vector embedding tương ứng với chunks
 
     @classmethod
-    def build(cls, entries: List[KBEntry]) -> "KBIndex":
+    # Chỉ dùng KBIdex.build() một lần và reuse cho tất cả concept để đỡ tốn tài nguyên
+    def build(cls, entries: List[KBEntry], *, use_embeddings: bool = True) -> "KBIndex":
         bm25 = None
         if HAS_BM25 and entries:
             corpus = [_tokenize(e.body) for e in entries]
             if any(corpus):
                 bm25 = BM25Okapi(corpus)
-        return cls(entries=entries, bm25=bm25)
+
+        chunks: List[Chunk] = []
+        chunk_embeddings = None
+        model = _get_embedding_model() if (use_embeddings and HAS_EMBEDDINGS) else None
+        # Cách embedding các chunks và lưu trong chunk_embeddings
+        for entry in entries:
+            chunks.extend(semantic_chunk_entry(entry, model=model))
+        if model is not None and chunks:
+            vecs = [c.embedding for c in chunks if c.embedding is not None]
+            if len(vecs) == len(chunks):
+                chunk_embeddings = np.vstack(vecs)
+
+        return cls(entries=entries, bm25=bm25, chunks=chunks, chunk_embeddings=chunk_embeddings)
 
 
 def find_concept_in_kb(
     concept: str,
     entries_or_index: "List[KBEntry] | KBIndex",
-    bm25_threshold: float = 0.5,
+    bm25_threshold: float = 0.5,     # Đây là heuristic threshold, không đúng tuyệt đối
 ) -> Optional[KBEntry]:
     """
     Tìm kiếm khái niệm theo 3 bước:
@@ -251,6 +498,7 @@ def find_concept_in_kb(
 
     clean_kw = concept.strip().lower()
 
+    # NẾU TẦNG TRÊN THẤT BẠI THÌ TỚI TẦNG DƯỚI
     # Tầng 1: Match trong key_concepts (YAML Frontmatter)
     for entry in entries:
         if any(clean_kw == c.strip().lower() for c in entry.key_concepts):
@@ -273,6 +521,149 @@ def find_concept_in_kb(
             return entry
 
     return None
+
+# ===================================================
+# BỔ SUNG: tìm semantic chunk giống với các concept
+# ===================================================
+def extract_theory_chunks_for_concepts(
+    key_concepts: List[str],
+    index: "KBIndex",
+    *,
+    concept_source_map: Optional[Dict[str, str]] = None,    # match concept với source_id đã được Citation xđịnh
+    top_k: int = 2,
+    max_chunks_per_concept: int = 2,
+    min_similarity: float = 0.5,
+    min_chunk_chars: int = 70,
+) -> List[dict]:
+
+    if (
+        not HAS_EMBEDDINGS
+        or index.chunk_embeddings is None
+        or not index.chunks
+    ):
+        return []
+
+    concept_source_map = concept_source_map or {}
+
+    model = _get_embedding_model()
+    if model is None:
+        return []
+
+    results: Dict[str, dict] = {}
+
+    def is_useful_chunk(chunk: Chunk) -> bool:
+
+        text = chunk.text.strip()
+        if len(text) < min_chunk_chars:
+            return False
+
+        # Bỏ chunk chỉ toàn code đơn giản
+        lines = [
+            line.strip()
+            for line in text.splitlines()
+            if line.strip()
+        ]
+        if not lines:
+            return False
+
+        # Chỉ có một dòng và trông giống code
+        if len(lines) == 1:
+            line = lines[0]
+            code_signals = [
+                "=",
+                ".fit(",
+                ".transform(",
+                "import ",
+            ]
+            if any(signal in line for signal in code_signals):
+                return False
+
+        return True
+
+    concept_embeddings = model.encode(
+        key_concepts,
+        convert_to_numpy=True,
+        show_progress_bar=False,
+    )
+
+    for concept, concept_embedding in zip(
+        key_concepts,
+        concept_embeddings,
+    ):
+        expected_source_id = concept_source_map.get(
+            concept.strip().lower()
+        )
+
+        # 1. Candidate phải đúng source nếu đã có citation
+        candidate_indices = []
+        for i, chunk in enumerate(index.chunks):
+            if not is_useful_chunk(chunk):
+                continue
+            if (
+                expected_source_id
+                and chunk.source_id != expected_source_id
+            ):
+                continue
+            candidate_indices.append(i)
+        if not candidate_indices:
+            logger.info(
+                "Không có candidate chunk cho '%s'",
+                concept,
+            )
+            continue
+
+        # 2. Tính similarity
+        scored_candidates = []
+        for i in candidate_indices:
+            score = _cosine_similarity(
+                concept_embedding,
+                index.chunk_embeddings[i],
+            )
+            scored_candidates.append(
+                (i, float(score))
+            )
+
+        # 3. Sort giảm dần
+        scored_candidates.sort(
+            key=lambda x: x[1],
+            reverse=True,
+        )
+
+        # 4. Lấy top-k
+        kept = 0
+
+        for chunk_index, score in scored_candidates[:top_k]:
+            if score < min_similarity:
+                continue
+
+            chunk = index.chunks[chunk_index]
+            if chunk.chunk_id not in results:
+                results[chunk.chunk_id] = {
+                    "chunk_id": chunk.chunk_id,
+                    "source_id": chunk.source_id,
+                    "concepts": [],
+                    "text": chunk.text,
+                    "similarity": round(score, 4),
+                }
+            results[chunk.chunk_id]["concepts"].append(
+                concept
+            )
+            results[chunk.chunk_id]["similarity"] = max(
+                results[chunk.chunk_id]["similarity"],
+                round(score, 4),
+            )
+
+            kept += 1
+            if kept >= max_chunks_per_concept:
+                break
+
+        logger.info(
+            "RAG '%s': kept=%d, source=%s",
+            concept,
+            kept,
+            expected_source_id or "ALL",
+        )
+    return list(results.values())
 
 
 if __name__ == "__main__":

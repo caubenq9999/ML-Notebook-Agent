@@ -209,6 +209,44 @@ def build_pipeline_block(topic: str) -> str:
     return SUPERVISED_PIPELINE_BLOCK
 
 
+THEORY_PREVIEW_CHARS = 150
+
+
+def build_theory_reference_block(bundle: ResearchBundle) -> str:
+    """Build a compact RAG preview for the curriculum prompt."""
+    if not bundle.theory_chunks:
+        return (
+            "(Không có dữ liệu RAG cho topic này; vẫn phải bám đúng key_concepts "
+            "và không tự bịa khái niệm khác.)"
+        )
+
+    lines: list[str] = []
+    for chunk in bundle.theory_chunks:
+        preview = chunk.text.replace("\n", " ").strip()
+        if len(preview) > THEORY_PREVIEW_CHARS:
+            preview = preview[:THEORY_PREVIEW_CHARS].rstrip() + "..."
+        concepts = ", ".join(chunk.concepts)
+        lines.append(f"- [{concepts}] (nguồn {chunk.source_id}): {preview}")
+    return "\n".join(lines)
+
+
+def attach_theory_context(modules: list[dict], bundle: ResearchBundle) -> None:
+    """Attach full KB text to matching module concepts without another LLM call."""
+    concept_to_text: dict[str, str] = {}
+    for chunk in bundle.theory_chunks:
+        for concept in chunk.concepts:
+            concept_to_text.setdefault(concept, chunk.text)
+
+    for module in modules:
+        theory_context = {
+            concept: concept_to_text[concept]
+            for concept in module.get("concepts", [])
+            if concept in concept_to_text
+        }
+        if theory_context:
+            module["theory_context"] = theory_context
+
+
 # ====================
 # 1. Xây dựng prompt
 # ====================
@@ -239,6 +277,7 @@ def build_prompt_curriculum(bundle : ResearchBundle, profile : LearnerProfile) -
     prompt = prompt.replace("{duration_minutes}" , str(profile.constraints.duration_minutes))
     prompt = prompt.replace("{num_exercises}" , str(profile.constraints.num_exercises))
     prompt = prompt.replace("{exercise_range_hint}", exercise_range_hint)
+    prompt = prompt.replace("{theory_reference_block}", build_theory_reference_block(bundle))
 
     # Trả về prompt
     return prompt
@@ -344,6 +383,8 @@ def run_curriculum(
     data, warnings = validate_and_adjust(data_raw, profile, bundle=bundle)
     for w in warnings:
         print(f"[Curriculum Agent] cảnh báo : {w}")
+
+    attach_theory_context(data.get("modules", []), bundle)
 
     try:
         data["session_id"] = profile.session_id

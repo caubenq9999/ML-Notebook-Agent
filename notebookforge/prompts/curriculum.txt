@@ -39,6 +39,13 @@ Learning, với nhiều năm kinh nghiệm xây dựng lộ trình học cá nh�
     key_concepts: {key_concepts}
   </research_bundle>
 
+  <theory_reference>
+    Đây là preview từ Knowledge Base thật qua RAG. Dùng để viết objective đúng trọng tâm
+    và ưu tiên xếp các concept cùng nhóm vào chung module khi phù hợp với pipeline.
+    Không copy nguyên văn preview vào output.
+    {theory_reference_block}
+  </theory_reference>
+
   <learner_profile>
     final_level: {final_level}
     duration_minutes: {duration_minutes}
@@ -180,6 +187,9 @@ Learning, với nhiều năm kinh nghiệm xây dựng lộ trình học cá nh�
     là lỗi nghiêm trọng làm Notebook Gen ở bước sau sinh nội dung sai lệch, tuyệt đối tránh).
     Ngoài ra, "concepts" của MỖI exercise trong "planned_exercises" BẮT BUỘC phải là tập con
     của "concepts" của module chứa nó (không tự thêm concept lạ không có trong module).
+
+  15. "concepts" của module phải giữ ĐÚNG NGUYÊN VĂN chuỗi trong key_concepts. Không diễn đạt
+    lại, rút gọn hoặc đổi cách viết vì bước gắn theory_context tra cứu theo chính chuỗi này.
 
 Bây giờ hãy tạo "LearningPath" cho dữ liệu đầu vào ở phần "DỮ LIỆU ĐẦU VÀO" bên trên, tuân thủ
 đúng PIPELINE TỔNG QUAN và ĐỘ SÂU NỘI DUNG THEO LEVEL đã quy định.
