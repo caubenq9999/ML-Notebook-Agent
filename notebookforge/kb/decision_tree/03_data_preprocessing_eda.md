@@ -10,6 +10,8 @@ key_concepts:
   - "So sánh Ordinal Encoding và One-Hot Encoding"
   - "Độ quan trọng Gini (Gini Importance / MDI)"
   - "Độ quan trọng theo hoán vị (Permutation Importance)"
+  - "Rời rạc hóa nhãn mục tiêu (Target Binarization)"
+  - "Kỹ thuật tạo đặc trưng (Feature Engineering dựa trên Domain Knowledge)"
 ---
 
 # Hướng Dẫn Tiền Xử Lý Dữ Liệu & Kỹ Thuật Đặc Trưng
@@ -61,21 +63,15 @@ Sau khi huấn luyện (`.fit()`), mô hình cung cấp thuộc tính `model.fea
 
 Mức độ giảm độ bất thuần tại nút $m$ khi tách bằng đặc trưng $j$:
 
-$$
-\Delta H(m) = H(m) - \left( \frac{N_L}{N_m} H(m_L) + \frac{N_R}{N_m} H(m_R) \right)
-$$
+$$\Delta H(m) = H(m) - \left( \frac{N_L}{N_m} H(m_L) + \frac{N_R}{N_m} H(m_R) \right)$$
 
 Độ quan trọng chưa chuẩn hóa của đặc trưng $j$ là tổng giảm Impurity trên **tất cả các nút** mà đặc trưng $j$ được chọn để tách, có trọng số là số lượng mẫu $N_m$ tại nút đó:
 
-$$
-I(j) = \sum_{m \in \text{Nodes split on } j} N_m \cdot \Delta H(m)
-$$
+$$I(j) = \sum_{m \in \text{Nodes split on } j} N_m \cdot \Delta H(m)$$
 
 Độ quan trọng chuẩn hóa (được trả về bởi `feature_importances_`):
 
-$$
-\text{Importance}(j) = \frac{I(j)}{\sum_{k} I(k)} \quad \left(\text{Tổng tất cả các Feature Importances} = 1.0\right)
-$$
+$$\text{Importance}(j) = \frac{I(j)}{\sum_{k} I(k)} \quad \left(\text{Tổng tất cả các Feature Importances} = 1.0\right)$$
 
 ### 3.2. Hạn chế của Gini Importance (MDI) & Giải pháp
 
@@ -85,87 +81,141 @@ $$
 
 ---
 
-## 4. Mã Nguồn Hoàn Chỉnh: Mã Hóa Dữ Liệu & Trực Quan Hóa Độ Quan Trọng Đặc Trưng
+## 4. Mã Nguồn Minh Họa Cơ Bản
 
-Đoạn mã hoàn chỉnh dưới đây minh họa quy trình: Mã hóa dữ liệu phân loại, huấn luyện cây, trích xuất và vẽ biểu đồ độ quan trọng đặc trưng bằng `matplotlib`.
+Đoạn mã dưới đây minh họa quy trình: Mã hóa dữ liệu phân loại, huấn luyện cây, trích xuất và vẽ biểu đồ độ quan trọng đặc trưng.
 
 ```python
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
-from sklearn.datasets import make_classification
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OrdinalEncoder
 from sklearn.tree import DecisionTreeClassifier
 
-# 1. Tạo tập dữ liệu giả lập có cả biến số và biến chữ (Categorical)
+# Tập dữ liệu giả lập
 np.random.seed(42)
 n_samples = 1000
-
 data = pd.DataFrame({
-    'Thu_Nhap': np.random.normal(15, 5, n_samples),          # Continuous
-    'Tuoi': np.random.randint(18, 65, size=n_samples),        # Continuous
-    'Trinh_Do': np.random.choice(['Bieu_Thong', 'Dai_Hoc', 'Thac_Si'], size=n_samples),  # Categorical
-    'Khu_Vuc': np.random.choice(['Mien_Bac', 'Mien_Trung', 'Mien_Nam'], size=n_samples),  # Categorical
+    'Thu_Nhap': np.random.normal(15, 5, n_samples),
+    'Tuoi': np.random.randint(18, 65, size=n_samples),
+    'Trinh_Do': np.random.choice(['Bieu_Thong', 'Dai_Hoc', 'Thac_Si'], size=n_samples),
+    'Khu_Vuc': np.random.choice(['Mien_Bac', 'Mien_Trung', 'Mien_Nam'], size=n_samples),
 })
-
-# Nhãn mục tiêu y (Phân loại nhị phân)
 y = np.random.choice([0, 1], size=n_samples, p=[0.6, 0.4])
 
-# 2. Xử lý Tiền xử lý (Preprocessing Pipeline)
+# Tiền xử lý
 categorical_cols = ['Trinh_Do', 'Khu_Vuc']
 numerical_cols = ['Thu_Nhap', 'Tuoi']
-
-# Dùng OrdinalEncoder cho các biến Categorical trong mô hình Cây
 preprocessor = ColumnTransformer(
     transformers=[
         ('cat', OrdinalEncoder(), categorical_cols),
-        ('num', 'passthrough', numerical_cols)  # Bỏ qua biến số, không cần scale
+        ('num', 'passthrough', numerical_cols)
     ]
 )
-
-# Biến đổi X
 X_processed = preprocessor.fit_transform(data)
-feature_names = categorical_cols + numerical_cols
 
-# Chia tập Train / Test
-X_train, X_test, y_train, y_test = train_test_split(
-    X_processed, y, test_size=0.2, random_state=42
-)
-
-# 3. Huấn luyện Decision Tree
+# Huấn luyện
+X_train, X_test, y_train, y_test = train_test_split(X_processed, y, test_size=0.2, random_state=42)
 dt_model = DecisionTreeClassifier(max_depth=4, random_state=42)
 dt_model.fit(X_train, y_train)
-
-# 4. Trích xuất và Trực quan hóa Feature Importance
-def plot_feature_importances(model, feature_names):
-    importances = model.feature_importances_
-    indices = np.argsort(importances)[::-1]  # Sắp xếp giảm dần
-
-    plt.figure(figsize=(9, 5))
-    plt.title("Mức độ quan trọng của các Đặc trưng (Gini Importance - MDI)")
-    plt.bar(range(len(importances)), importances[indices], align="center", color="skyblue", edgecolor="navy")
-    plt.xticks(range(len(importances)), [feature_names[i] for i in indices], rotation=15)
-    plt.xlabel("Tên Đặc trưng")
-    plt.ylabel("Chỉ số Importance (Tổng = 1.0)")
-
-    # Hiển thị giá trị số trên đầu mỗi cột
-    for i, idx in enumerate(indices):
-        plt.text(i, importances[idx] + 0.01, f"{importances[idx]:.3f}", ha='center')
-
-    plt.tight_layout()
-    plt.show()
-
-# Gọi hàm vẽ biểu đồ
-plot_feature_importances(dt_model, feature_names)
 ```
 
----
+## 5. Áp Dụng Thực Tế: Hướng Dẫn Chi Tiết Tiền Xử Lý Dataset "Red Wine Quality"
 
-## 5. Checklist Tiền Xử Lý Cho Mô Hình Cây (Quy Tắc Cốt Lõi)
+Phần này sẽ áp dụng các lý thuyết ở trên vào tập dữ liệu thực tế Red Wine Quality. Tập dữ liệu này gồm 11 đặc trưng hóa học (toàn bộ là biến số liên tục) và 1 biến nhãn quality (điểm chất lượng từ 3 đến 8).
 
-- **Bỏ qua Scaling:** Không mất thời gian áp dụng `StandardScaler` hay `MinMaxScaler`.
-- **Ưu tiên Ordinal Encoding:** Với Cây quyết định đơn lẻ hay Ensemble (Random Forest, XGBoost), nên ưu tiên `OrdinalEncoder` hơn là `OneHotEncoder` để tránh làm thưa thớt dữ liệu.
-- **Cẩn trọng với High Cardinality:** Nếu một biến phân loại có quá nhiều giá trị (ví dụ >100 nhóm), cân nhắc dùng Target Encoding hoặc gom nhóm các nhãn hiếm lại trước khi cho vào mô hình.
-- **Dùng Permutation Importance để kiểm tra lại:** Nếu nghi ngờ Gini Importance bị thiên vị, hãy tính `permutation_importance` trên tập Test để đánh giá chính xác giá trị thực sự của từng cột.
+Đối với người mới học, chúng ta sẽ đi qua từng kỹ thuật tiền xử lý chuyên sâu và giải thích lý do tại sao lại làm như vậy.
+
+### 5.1. Rời Rạc Hóa Nhãn Mục Tiêu (Target Binarization)
+
+**Vấn đề:** Biến `quality` đang là các con số phân tán ($3, 4, 5, 6, 7, 8$). Việc yêu cầu Decision Tree đoán trúng phóc 1 con số cụ thể (Phân loại đa lớp) là rất khó và thực tế kinh doanh ít khi cần.
+
+**Kỹ thuật xử lý:** Chuyển bài toán thành Phân loại nhị phân (Binary Classification). Ta tự định nghĩa ngưỡng:
+- `quality >= 7`: Gán nhãn 1 (Rượu Ngon / High Quality).
+- `quality < 7`: Gán nhãn 0 (Rượu Thường / Normal).
+
+**Lợi ích:** Mô hình tập trung vào việc học "ranh giới" nào tạo nên một chai rượu ngon, giúp độ chính xác (Accuracy) cao hơn hẳn.
+
+### 5.2. Kỹ Thuật Tạo Đặc Trưng (Feature Engineering)
+
+**Vấn đề:** Đưa dữ liệu thô (raw data) vào mô hình đôi khi là chưa đủ. Máy học có thể bỏ lỡ các quy luật phức tạp nếu ta không "gợi ý" cho nó.
+
+**Kỹ thuật xử lý:** Dựa vào kiến thức chuyên ngành (Domain Knowledge), ta tạo ra cột mới từ các cột cũ.
+
+**Ví dụ 1:** Cột `free sulfur dioxide` (SO2 tự do) bảo vệ rượu khỏi vi khuẩn. Tuy nhiên, nó chỉ có ý nghĩa khi so sánh với tổng lượng SO2 (`total sulfur dioxide`).
+
+**Hành động:** Ta tạo ra cột mới là Tỷ lệ SO2 bằng phép tính: `free_SO2_ratio = free sulfur dioxide / total sulfur dioxide`. Mô hình Cây sẽ dùng tỷ lệ này để phân nhánh dễ dàng hơn.
+
+### 5.3. Không Cần Xóa Giá Trị Ngoại Lệ (Outliers)
+
+**Vấn đề:** Cột `residual sugar` (lượng đường) phần lớn dao động quanh $2.0$. Nhưng có vài chai rượu vang ngọt vọt lên tận $15.0$. Với mô hình Hồi quy (Linear Regression), chai rượu này sẽ làm hỏng hoàn toàn đường thẳng dự đoán.
+
+**Quy tắc với Tree:** KHÔNG CẦN XÓA! Vì Cây Quyết Định phân tách dựa trên điều kiện lớn hơn hoặc nhỏ hơn. Giá trị $15.0$ hay $5.0$ thì khi so sánh với ngưỡng cắt $t = 3.0$ (sugar > 3.0), chúng đều được gom chung vào một nhánh con. Đây chính là tính "kháng ngoại lệ" siêu việt của mô hình Cây.
+
+### 5.4. Giải Thích Code Tiền Xử Lý Từng Bước Cụ Thể
+
+```python
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.inspection import permutation_importance
+import matplotlib.pyplot as plt
+
+# --- BƯỚC 1: TẢI DỮ LIỆU ---
+url = "https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv"
+df = pd.read_csv(url, sep=";") # Data gốc dùng dấu chấm phẩy phân cách
+
+# --- BƯỚC 2: TIỀN XỬ LÝ (PREPROCESSING) ---
+
+# Kỹ thuật 1: Target Binarization (Chuyển nhãn đa lớp thành nhị phân)
+# Cú pháp .astype(int) sẽ chuyển True/False thành 1/0.
+df['target'] = (df['quality'] >= 7).astype(int) 
+
+# Kỹ thuật 2: Feature Engineering (Tạo đặc trưng mới)
+# Lưu ý: Cộng thêm 1e-5 (một số rất nhỏ) ở mẫu số để đề phòng lỗi "chia cho 0" (ZeroDivisionError)
+df['free_SO2_ratio'] = df['free sulfur dioxide'] / (df['total sulfur dioxide'] + 1e-5)
+df['total_acidity'] = df['fixed acidity'] + df['volatile acidity']
+
+# Định nghĩa X (Đặc trưng) và y (Nhãn dự đoán)
+# Ta phải bỏ đi cột 'quality' (nhãn gốc) và 'target' (nhãn đã biến đổi) khỏi X
+X = df.drop(columns=['quality', 'target'])
+y = df['target']
+
+# --- BƯỚC 3: CHIA TẬP TRAIN / TEST ---
+# Quan trọng cho người mới: Khi binarize (>=7), số chai vang Ngon rất ít (chỉ ~13%).
+# Ta bắt buộc phải dùng tham số stratify=y để đảm bảo tập Train và Test
+# đều duy trì tỷ lệ 13% này, nếu không mô hình sẽ học sai lệch.
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y 
+)
+
+# --- BƯỚC 4: HUẤN LUYỆN MÔ HÌNH ---
+# Không cần lệnh StandardScaler() như Logistic Regression
+# max_depth=5 để cây không mọc quá sâu gây Overfitting
+dt_model = DecisionTreeClassifier(max_depth=5, random_state=42)
+dt_model.fit(X_train, y_train)
+
+# --- BƯỚC 5: ĐÁNH GIÁ ĐẶC TRƯNG TỐT NHẤT ---
+# Thay vì dùng Gini Importance dễ bị thiên vị, ta dùng Permutation Importance
+# Thuật toán sẽ thử xáo trộn ngẫu nhiên từng cột trên tập Test. 
+# Cột nào bị xáo trộn mà làm độ chính xác (Accuracy) giảm thê thảm nhất -> Cột đó quan trọng nhất.
+result = permutation_importance(dt_model, X_test, y_test, n_repeats=10, random_state=42)
+
+# Trực quan hóa kết quả
+sorted_idx = result.importances_mean.argsort()
+plt.figure(figsize=(10, 6))
+plt.barh(X.columns[sorted_idx], result.importances_mean[sorted_idx], color='teal')
+plt.title("Độ quan trọng đặc trưng trên tập Test (Permutation Importance)")
+plt.xlabel("Mức độ sụt giảm Accuracy khi bị xáo trộn (Càng cao càng quan trọng)")
+plt.show()
+```
+
+## 6. Checklist Cốt Lõi Khi Làm Việc Với Mô Hình Cây
+
+- Bỏ qua Scaling (Chuẩn hóa): Không tốn công viết code StandardScaler hay MinMaxScaler.
+- Encoding hợp lý: Dùng OrdinalEncoder thay vì OneHotEncoder cho biến có thứ tự.
+- Outliers (Ngoại lệ): Cứ để nguyên đó, Decision Tree tự biết cách gom chúng lại bằng các điểm cắt (Threshold).
+- Feature Engineering: Luôn cố gắng suy nghĩ tạo ra các cột tính toán tỷ lệ, tổng, hiệu (như tỷ lệ SO2) thay vì chỉ nhét toàn bộ dữ liệu thô vào.
+- Đo lường độ quan trọng: Hãy tập thói quen dùng permutation_importance trên tập Test thay vì tin hoàn toàn vào thuộc tính feature_importances_ mặc định của mô hình.
