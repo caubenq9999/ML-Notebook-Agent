@@ -10,6 +10,8 @@ key_concepts:
   - "Chuẩn hóa dữ liệu với StandardScaler (StandardScaler)"
   - "Độ nhạy với điểm ngoại lệ (Outlier Sensitivity)"
   - "Tích hợp PCA giảm số chiều (PCA Integration)"
+  - "Loại bỏ biến định danh (Identifier Removal)"
+  - "Mã hóa biến phân loại trong không gian Euclidean (Categorical Encoding for K-Means)"
 ---
 
 # Hướng Dẫn Tiền Xử Lý & Giảm Số Chiều (Preprocessing & Dimensionality Reduction Guidelines)
@@ -45,21 +47,18 @@ $$z = \frac{x - \mu}{\sigma}$$
 
 ## 2. Độ nhạy với Điểm ngoại lệ (Outlier Sensitivity)
 
-Hàm mục tiêu WCSS của K-Means tính bình phương khoảng cách Euclidean $\|x_i - \mu_j\|^2$. Do phép nâng lên bình phương, các điểm dữ liệu nằm xa quần thể (Outliers) sẽ đóng góp mức độ sai số cực lớn.
+Hàm mục tiêu WCSS của K-Means tính bình phương khoảng cách Euclidean $\Vert{}x_i - \mu_j\Vert{}^2$. Do phép nâng lên bình phương, các điểm dữ liệu nằm xa quần thể (Outliers) sẽ đóng góp mức độ sai số cực lớn.
 
 ```text
 [ Cụm chính (Cluster) ] -----------------------------> (Outlier cực xa)
                                   ^
                                   |
-                Tâm cụm bị kéo lệch mạnh về phía Outlier
+                                  Tâm cụm bị kéo lệch mạnh về phía Outlier
 ```
 
-**Cơ chế ảnh hưởng:** Thuật toán Lloyd bị buộc phải kéo tâm cụm $\mu_j$ về phía các outlier để giảm thiểu giá trị bình phương lỗi của điểm ngoại lệ đó, khiến tâm cụm không còn phản ánh đúng trung tâm của đa số dữ liệu.
-
 **Chiến lược xử lý:**
-
-1. **Lọc Outlier trước khi gom cụm:** Sử dụng IQR (Interquartile Range) hoặc Z-Score để gạch bỏ các điểm ngoại lệ trước khi đưa vào KMeans.
-2. **Thay đổi thuật toán:** Chuyển sang K-Medoids (PAM) (dùng điểm trung vị thay vì trung bình) hoặc DBSCAN (tự động gom nhiễu vào nhóm Noise) nếu không thể xóa bỏ outlier.
+- **Lọc Outlier trước khi gom cụm:** Sử dụng IQR (Interquartile Range) hoặc Z-Score để gạch bỏ các điểm ngoại lệ trước khi đưa vào KMeans.
+- **Thay đổi thuật toán:** Chuyển sang K-Medoids (PAM) (dùng điểm trung vị thay vì trung bình) hoặc DBSCAN (tự động gom nhiễu vào nhóm Noise) nếu không thể xóa bỏ outlier.
 
 ---
 
@@ -67,9 +66,9 @@ Hàm mục tiêu WCSS của K-Means tính bình phương khoảng cách Euclidea
 
 Khi số lượng đặc trưng tăng lên lớn ($d > 10$), K-Means gặp phải hiện tượng Lời nguyền số chiều (Curse of Dimensionality):
 
-* Không gian trở nên cực kỳ thưa thớt (sparse).
-* Khoảng cách Euclidean giữa bất kỳ cặp điểm nào cũng đều tiến về một giá trị tương đương ($d_{\max} \approx d_{\min}$), khiến khái niệm "gần - xa" mất ý nghĩa.
-* Dữ liệu chứa nhiều nhiễu và các thuộc tính đa cộng tuyến (multicollinearity).
+- Không gian trở nên cực kỳ thưa thớt (sparse).
+- Khoảng cách Euclidean giữa bất kỳ cặp điểm nào cũng đều tiến về một giá trị tương đương ($d_{\max} \approx d_{\min}$), khiến khái niệm "gần - xa" mất ý nghĩa.
+- Dữ liệu chứa nhiều nhiễu và các thuộc tính đa cộng tuyến (multicollinearity).
 
 ### Kỹ thuật Tích hợp PCA (Principal Component Analysis)
 
@@ -87,7 +86,6 @@ Giải pháp chuẩn là áp dụng PCA để giảm không gian $d$-chiều xu�
 
 ```python
 import numpy as np
-import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.datasets import make_blobs
 from sklearn.decomposition import PCA
@@ -110,9 +108,6 @@ outliers = np.random.uniform(low=-50, high=50, size=(20, 20))
 X_data = np.vstack([X_raw, outliers])
 
 # 2. Xây dựng Production Pipeline hoàn chỉnh
-# Bước 1: StandardScaler chuẩn hóa thang đo các thuộc tính
-# Bước 2: PCA giảm số chiều, giữ lại 90% tổng phương sai
-# Bước 3: KMeans thực hiện phân cụm trên không gian mới
 clustering_pipeline = Pipeline([
     ("scaler", StandardScaler()),
     ("pca", PCA(n_components=0.90, random_state=42)),
@@ -121,24 +116,59 @@ clustering_pipeline = Pipeline([
 
 # 3. Huấn luyện Pipeline
 cluster_labels = clustering_pipeline.fit_predict(X_data)
+```
 
-# 4. Trích xuất chỉ số kiểm tra từng công đoạn
-scaler_step = clustering_pipeline.named_steps["scaler"]
-pca_step = clustering_pipeline.named_steps["pca"]
-kmeans_step = clustering_pipeline.named_steps["kmeans"]
+---
 
-print("=== BÁO CÁO TIỀN XỬ LÝ & GIẢM CHIỀU ===")
-print(f"Số chiều ban đầu: {X_data.shape[1]} chiều")
-print(f"Số chiều sau PCA (giữ 90% variance): {pca_step.n_components_} chiều")
-print(
-    f"Tổng phương sai giải thích được (Explained Variance Ratio): {np.sum(pca_step.explained_variance_ratio_):.4f}"
-)
+## 5. Thực Hành Tiền Xử Lý Với Dataset Thực Tế: Mall Customers
 
-# 5. Đánh giá chất lượng phân cụm bằng Silhouette Score
-X_transformed = pca_step.transform(scaler_step.transform(X_data))
-sil_score = silhouette_score(X_transformed, cluster_labels)
+Để hiểu rõ cách áp dụng lý thuyết trên, ta sẽ xử lý bộ dữ liệu Mall Customer Segmentation. Tập dữ liệu gồm 5 cột: `CustomerID`, `Gender`, `Age`, `Annual Income (k$)`, và `Spending Score (1-100)`.
 
-print("\n=== ĐÁNH GIÁ MÔ HÌNH K-MEANS ===")
-print(f"Giá trị WCSS (Inertia): {kmeans_step.inertia_:.2f}")
-print(f"Silhouette Score: {sil_score:.4f}")
+### 5.1. Xử Lý Biến Định Danh (Identifier Removal)
+
+**Phân tích:** Cột `CustomerID` chỉ là số thứ tự định danh khách hàng (từ 1 đến 200).
+
+**Vấn đề với K-Means:** Thuật toán sẽ coi `CustomerID` là một đặc trưng đo lường. Khách hàng ID số 1 và số 200 sẽ bị coi là "cách xa nhau 199 đơn vị", gây nhiễu loạn hoàn toàn không gian Euclidean.
+
+**Hành động:** Bắt buộc Xóa (Drop) cột này trước khi đưa vào mô hình.
+
+### 5.2. Mã Hóa Biến Phân Loại (Categorical Encoding)
+
+**Phân tích:** Cột `Gender` chứa giá trị dạng chuỗi (Male, Female). K-Means yêu cầu đầu vào phải là số thực.
+
+**Vấn đề không gian hình học:** Nếu mã hóa thành số (vd: Male=0, Female=1), K-Means sẽ coi giới tính như một trục tọa độ. Khoảng cách hình học giữa 0 và 1 có ý nghĩa toán học nhưng lại thiếu ý nghĩa tương quan tuyến tính về mặt hành vi so với thu nhập hay tuổi tác.
+
+**Hành động:** Dùng `OneHotEncoder(drop='first')` hoặc `LabelEncoder` để chuyển thành nhị phân (0 và 1). Tuy nhiên, trong thực tế với K-Means, các chuyên gia thường chạy phân cụm riêng trên cột số (Age, Income, Score) trước, sau đó dùng Gender ở bước EDA để mô tả đặc điểm từng cụm, thay vì đưa chung vào tính khoảng cách.
+
+### 5.3. Chuẩn Hóa Thang Đo (Feature Scaling)
+
+**Phân tích:**
+- `Age` dao động từ 18 - 70 (biên độ ~50).
+- `Annual Income` dao động từ 15 - 137 k$ (biên độ ~122).
+- `Spending Score` dao động từ 1 - 99 (biên độ ~98).
+
+**Vấn đề:** Dù biên độ không lệch nhau cả triệu lần như các dataset khác, biến Annual Income vẫn có phương sai lớn nhất. Nếu không chuẩn hóa, thuật toán sẽ vô tình ưu tiên phân cụm dựa trên Thu nhập nhiều hơn Tuổi tác.
+
+**Hành động:** Bắt buộc dùng StandardScaler cho cả 3 cột này.
+
+```python
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+
+# 1. Tải dữ liệu
+df = pd.read_csv('Mall_Customers.csv')
+
+# 2. Loại bỏ biến định danh
+X = df.drop(columns=['CustomerID'])
+
+# 3. Mã hóa biến phân loại (Giới tính)
+X['Gender'] = X['Gender'].map({'Male': 1, 'Female': 0})
+
+# 4. Chuẩn hóa đặc trưng liên tục
+features_to_scale = ['Age', 'Annual Income (k$)', 'Spending Score (1-100)']
+scaler = StandardScaler()
+X[features_to_scale] = scaler.fit_transform(X[features_to_scale])
+
+# X đã sẵn sàng để đưa vào KMeans!
+print(X.head())
 ```
