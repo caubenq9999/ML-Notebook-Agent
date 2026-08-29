@@ -6,6 +6,7 @@ doc_id: "logreg_01"
 source_url: "https://scikit-learn.org/stable/modules/linear_model.html#logistic-regression"
 scikit_learn_version: "1.4+"
 key_concepts:
+  - "Logistic Regression"
   - "phân loại vs hồi quy"
   - "hàm sigmoid"
   - "tỉ số odds và odds ratio"
