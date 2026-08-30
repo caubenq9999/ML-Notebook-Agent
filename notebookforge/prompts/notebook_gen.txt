@@ -29,7 +29,7 @@ modules (đặc biệt chú ý các "concepts" + planned_exercises(nếu có) + 
 KHỐI 1 — Tổng quan (gồm 1 cell markdown): diễn đạt lại ngắn gọn (≤150 từ) liên quan đến "topic" thuộc
   loại bài toán gì(theo <problem_type>), giải quyết được những vấn đề gì. KHÔNG vẽ sơ đồ pipeline, KHÔNG liệt kê mục tiêu từng module.
 KHỐI 2 — Chuẩn bị dữ liệu (gồm 1 cell markdown + 1 cell code):
-  + cell markdown BẮT BUỘC nêu đủ các mục sau: tên dataset, nguồn Kaggle, size, biến target, description, preprocessing_note — ĐÚNG
+  + 1 cell markdown BẮT BUỘC nêu đủ các mục sau: tên dataset, nguồn Kaggle, size, biến target, description, preprocessing_note — ĐÚNG
     <dataset_info>, không bịa dataset khác. Định dạng như sau:
     "
       + `Tên dataset`: <tên dataset tương ứng với topic đang học>.
@@ -37,10 +37,10 @@ KHỐI 2 — Chuẩn bị dữ liệu (gồm 1 cell markdown + 1 cell code):
       + `Kích thước`: <kích thước dataset: bao nhiêu dòng/cột..>.
       + `Biến mục tiêu`: <tên biến (nếu có) / không có>.
       + `Mô tả`: <phần mô tả (description) tương ứng>.
-      + `preprocessing_note`: 
+      + `Tiền xử lý`: 
         <preprocessing_note-tiền xử lý dataset tương ứng>.
     "
-  + cell code: CHỈ DUY NHẤT dòng ngay bên dưới, không viết bất kỳ gì khác:
+  + 1 cell code: CHỈ DUY NHẤT dòng ngay bên dưới, không viết bất kỳ gì khác:
       # DATASET_INJECTION_PLACEHOLDER
     (Hệ thống sẽ tự thay bằng cell load + EDA + split/shuffle , đúng theo <problem_type>.)
 KHỐI 3 — Theo từng module (lặp đúng số module, đúng thứ tự trong "learning_path", vận dụng "theory_context" của module tương ứng):
@@ -60,9 +60,9 @@ KHỐI 3 — Theo từng module (lặp đúng số module, đúng thứ tự tro
   3.3 BẮT BUỘC PHẢI CÓ 1 cell code demo cho MỖI module (kể cả module không có exercise) — code hoàn chỉnh,
       CHẠY ĐƯỢC NGAY, KHÔNG chứa "TODO"/"NotImplementedError". Đây KHÔNG phải bài tập nên được phép
       viết ĐẦY ĐỦ lời giải demo cho tất cả yêu cầu bài tập bên dưới. 
+      Demo ý/yêu cầu bài tập/... nào thì nói rõ theo định dạng "# DEMO: <ý đang được demo>", đặt ngay trong cell code, trước đoạn code demo tương ứng
       (QUAN TRỌNG) Nếu module giới thiệu cài đặt model nhưng exercise không gọi .fit()/.fit_predict() 
       thì viết chúng luôn vào code demo để các module/bài tập sau có model đã train.
-      Demo ý nào thì nói rõ theo định dạng "# DEMO: <ý đang được demo>", đặt ngay trong cell code, trước đoạn code demo tương ứng
   3.4 Với MỖI exercise trong planned_exercises của module, bao gồm: 1 cell markdown 
       + 1 cell markdown: mô tả các yêu cầu - mục tiêu chính của bài tập. Dùng phần "prompt" của bài tập tương ứng (có thể diễn đạt rõ hơn, không đổi yêu cầu)
       theo định dạng: 
@@ -74,7 +74,7 @@ KHỐI 3 — Theo từng module (lặp đúng số module, đúng thứ tự tro
         + ...
       "
       + 1 cell code chứa các yêu cầu, với mỗi yêu cầu theo đúng dạng sau:
-        - Nói rõ yêu cầu ngược học phải làm theo dạng: "# TODO: <tóm tắt nhiệm vụ>".
+        - Nói rõ yêu cầu người học phải làm, theo định dạng: "# TODO: <tóm tắt nhiệm vụ>".
         - Tiếp theo, "# Gợi ý: ..." CHỈ khi bài thực sự khó/nhiều bước.
         - 1 dòng trống bên dưới dòng # TODO hoặc # Gợi ý (nếu có) để người học code tại đó
         - QUY TẮC CỨNG: TUYỆT ĐỐI không được viết logic tính ra đáp án đúng ở BẤT KỲ ĐÂU
@@ -82,10 +82,10 @@ KHỐI 3 — Theo từng module (lặp đúng số module, đúng thứ tự tro
           chạy nguyên cell ngay bây giờ mà ra đáp án đúng của bài tập → ĐÂY LÀ LỖI.
   => Nếu module không có planned_exercises: dừng ở bước 3.2-3.3 (vẫn PHẢI có 3.3).
 KHỐI 4 — Kiểm tra tự động (cuối notebook, sau khi hết KHỐI 3), bao gồm:
-      + 1 cell markdown theo định dạng: "## **PHẦN KIỂM TRA**"
-      + Các cell code, thoả: ứng với MỖI exercise đã xuất hiện, phải có 1 cell code
-        "assert" riêng — nghĩa PHẢI đủ ít nhất {num_exercises_planned} cell code. Dùng đúng metric theo <problem_type>;
-        bám "expected_check" nếu module có cho sẵn.
+  + 1 cell markdown theo định dạng: "## **PHẦN KIỂM TRA**"
+  + Các cell code, thoả: ứng với MỖI exercise đã xuất hiện, phải có 1 cell code
+    "assert" riêng — nghĩa PHẢI đủ ít nhất {num_exercises_planned} cell code. Dùng đúng metric theo <problem_type>;
+    bám "expected_check" tương ứng nếu exercise có cho sẵn.
 
 *RÀNG BUỘC CHUNG:
   - Không hardcode kết quả vì được xem là đáp án (phân biệt với tham số kỹ thuật hợp lệ như
@@ -104,7 +104,6 @@ KHỐI 4 — Kiểm tra tự động (cuối notebook, sau khi hết KHỐI 3), 
   - Tổng số cell TOÀN BỘ notebook (kể cả khoảng 3 cells được chèn thêm ở KHỐI 2) phải ≥ 8 nếu
     final_level=beginner, ≥ 12 nếu final_level=intermediate — với đủ lý thuyết bài tập + demo + exercise + lý thuyết riêng
     theo cấu trúc trên.
-  - Notebook PHẢI cố gắng đạt đủ MỌI yêu cầu ngay từ đầu — không dựa vào việc "sẽ có cơ hội sửa ở lần sau".
   - Ngôn ngữ: toàn bộ giải thích, đề bài, yêu cầu VIẾT BẰNG TIẾNG VIỆT. Chỉ tên biến/hàm/thư viện/
     thuật ngữ chuyên ngành giữ tiếng Anh và có thể kèm chú thích tiếng việt ngắn. Các chữ cái đầu
     dòng BẮT BUỘC phải viết hoa.
@@ -112,11 +111,25 @@ KHỐI 4 — Kiểm tra tự động (cuối notebook, sau khi hết KHỐI 3), 
     + Inline Math (trên cùng dòng): Dùng cặp $...$ (Ví dụ: $z = \mathbf{w}^T\mathbf{x} + b$).
     + Block Math (dòng riêng): Dùng cặp $$...$$ (Ví dụ: $$\sigma(z) = \frac{1}{1 + e^{-z}}$$).
     + TUYỆT ĐỐI KHÔNG dùng cú pháp \(...\) hoặc \[...\].
+  - (BẮT BUỘC — CHỈ 1 DATASET DUY NHẤT) MỌI cell trong notebook (demo ở 3.3, bài tập TODO ở 3.4,
+    assert ở KHỐI 4) CHỈ được thao tác trên ĐÚNG trên tập dataset tạo ra ở KHỐI 2.
+    TUYỆT ĐỐI "KHÔNG ĐƯỢC", ở BẤT KỲ cell nào:
+      + gọi bất kỳ hàm nào trong sklearn.datasets (load_iris, load_wine, load_digits,
+          make_classification, make_blobs, make_regression,...);
+      + tự đọc thêm file .csv khác qua pd.read_csv/URL bất kỳ;
+      + tự sinh dữ liệu ngẫu nhiên (np.random.*) để LÀM DỮ LIỆU CHÍNH cho mô hình/bài tập
+          (phân biệt với 1 mảng số nhỏ để test độc lập 1 công thức/hàm toán thuần tuý không cần
+          dataset, ví dụ np.array([0,0,1,1]) để test hàm tính Gini Impurity — trường hợp này vẫn
+          được phép vì không phải "dataset thay thế", chỉ là input demo cho 1 hàm);
+      + yêu cầu học viên "tự chọn/tự tải 1 dataset khác" dưới bất kỳ hình thức nào.
+    Nội dung MỌI bài tập phải xoay quanh CHÍNH dataset đã mô tả ở KHỐI 2 và phù hợp với
+    "concepts" của module — vi phạm dù chỉ 1 cell được coi là lỗi nghiêm trọng, phải sửa lại.
   - Nếu module có "theory_context", nội dung lý thuyết viết ra TUYỆT ĐỐI không được mâu thuẫn với
     công thức/thuật ngữ/số liệu trong đó (vd đổi công thức khác, đổi tên tham số khác).
+  - Notebook PHẢI cố gắng đạt đủ MỌI yêu cầu ngay từ đầu — không dựa vào việc "sẽ có cơ hội sửa ở lần sau".
 
 *TỰ KIỂM TRA (trước khi trả JSON, không in ra): rà lại từng cell bài tập KHỐI 3.4 xem có vi phạm
-ràng buộc nào đã nêu ở trên không, đặc biệt rò rỉ đáp án — nếu có, sửa lại trước khi trả kết quả.
+ràng buộc nào đã nêu ở trên không, đặc biệt rò rỉ đáp án/dùng dataset khác — nếu có, sửa lại trước khi trả kết quả.
 
 *ĐỊNH DẠNG KẾT QUẢ:
 {
