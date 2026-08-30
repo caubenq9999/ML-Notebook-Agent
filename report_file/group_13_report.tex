@@ -322,6 +322,7 @@
         \item \textbf{Execution Pass Rate:} Tỷ lệ Notebook mà 100\% các cell code chạy mượt mà từ trên xuống dưới, không phát sinh lỗi Python nào (0 Runtime Error).
         \item \textbf{Final PASS Rate:} Tỷ lệ Notebook vượt qua cả 8 Hard Rules kỹ thuật VÀ đạt điểm chất lượng sư phạm từ LLM Judge $\ge 4/5$.
         \item \textbf{Average LLM Rubric Score:} Điểm số chất lượng trung bình (thang điểm 5) do LLM Judge chấm dựa trên 4 tiêu chí sư phạm.
+        \item \textbf{LLM Judge Agreement (Cohen's Kappa):} Đạt $\kappa \ge 0.70$ (Substantial Agreement), đảm bảo độ đồng thuận cao giữa điểm đánh giá của LLM Judge và chuyên gia (Human Benchmark).
         \item \textbf{Cost \& Time per Case:} Chi phí API trung bình cho mỗi bài học ($\le 0.30\$$/case) và thời gian trung bình để hoàn tất vòng sinh \& kiểm thử.
       \end{itemize}
   \end{itemize}
