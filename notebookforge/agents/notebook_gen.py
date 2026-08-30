@@ -196,6 +196,16 @@ def build_modules_block(path: LearningPath) -> str:
             f"concepts={m.concepts}",
             f"estimated_minutes={m.estimated_minutes}",
         ]
+        if m.theory_context:
+            lines.append(
+                " theory_context (trích Knowledge Base THẬT qua RAG — PHẢI bám sát khi giải "
+                "thích lý thuyết ở bước 3.2: diễn đạt lại tự nhiên nhưng KHÔNG đổi công "
+                "thức/thuật ngữ/số liệu/code mẫu so với bản gốc; concept nào KHÔNG có trong "
+                "danh sách này thì giải thích theo kiến thức chuẩn, không tự bịa số liệu cụ thể):"
+            )
+            for concept, text in m.theory_context.items():
+                lines.append(f'  --- theory_context["{concept}"] ---')
+                lines.append(text)
         if m.planned_exercises:
             lines.append(" planned_exercises:")
             for ex in m.planned_exercises:
