@@ -7,8 +7,7 @@ trong "learning_path" bên dưới.
 topic: {topic}
 final_level: {final_level}
 num_exercises_planned: {num_exercises_planned}
-modules (mỗi module có concepts đầy đủ, concepts lý thuyết riêng [không thuộc exercise nào,
-phải giải thích lý thuyết riêng], và planned_exercises nếu có):
+modules (đặc biệt chú ý các "concepts" + planned_exercises(nếu có) + theory_context):
 {modules_block}
 </learning_path>
 
@@ -27,48 +26,66 @@ phải giải thích lý thuyết riêng], và planned_exercises nếu có):
 {prior_feedback_block}
 
 *CẤU TRÚC: ĐÚNG 4 KHỐI, ĐÚNG THỨ TỰ.
-KHỐI 1 — Tổng quan (1 cell markdown): diễn đạt lại ngắn gọn (≤150 từ) về vấn đề "topic" thuộc
-  loại bài toán gì(theo <problem_type>), giải quyết bài toán gì. KHÔNG vẽ sơ đồ pipeline, KHÔNG liệt kê mục tiêu từng module.
-KHỐI 2 — Chuẩn bị dữ liệu (1 cell markdown + 1 cell code):
-  + cell markdown BẮT BUỘC nêu đủ các mục: tên dataset, nguồn Kaggle, size, biến target, description, preprocessing_note — ĐÚNG
-    <dataset_info>, PHẢI XUỐNG DÒNG giữa các mục để dễ nhìn, không bịa dataset khác. 
+KHỐI 1 — Tổng quan (gồm 1 cell markdown): diễn đạt lại ngắn gọn (≤150 từ) liên quan đến "topic" thuộc
+  loại bài toán gì(theo <problem_type>), giải quyết được những vấn đề gì. KHÔNG vẽ sơ đồ pipeline, KHÔNG liệt kê mục tiêu từng module.
+KHỐI 2 — Chuẩn bị dữ liệu (gồm 1 cell markdown + 1 cell code):
+  + cell markdown BẮT BUỘC nêu đủ các mục sau: tên dataset, nguồn Kaggle, size, biến target, description, preprocessing_note — ĐÚNG
+    <dataset_info>, không bịa dataset khác. Định dạng như sau:
+    "
+      + `Tên dataset`: <tên dataset tương ứng với topic đang học>.
+      + `Nguồn`: <hyperlink liên kết đến nguồn Kaggle tương ứng với dataset>.
+      + `Kích thước`: <kích thước dataset: bao nhiêu dòng/cột..>.
+      + `Biến mục tiêu`: <tên biến (nếu có) / không có>.
+      + `Mô tả`: <phần mô tả (description) tương ứng>.
+      + `preprocessing_note`: 
+        <preprocessing_note-tiền xử lý dataset tương ứng>.
+    "
   + cell code: CHỈ DUY NHẤT dòng ngay bên dưới, không viết bất kỳ gì khác:
       # DATASET_INJECTION_PLACEHOLDER
-    (Hệ thống tự thay bằng cell load + EDA + split/shuffle , đúng theo <problem_type>.)
-KHỐI 3 — Theo từng module (lặp đúng số module, đúng thứ tự trong "learning_path"):
-  3.1 1 cell markdown giới thiệu về module(dựa vào title + objective). BẮT BUỘC heading đúng dạng
-      "## Module <module_id>: <title>" (vd "## Module m2: Cài đặt scikit-learn")
-  3.2 1 cell markdown giải thích tất cả lý thuyết liên quan "concepts lý thuyết riêng" - PHẢI CÓ để người đọc
-      nắm được những kiến thức không có trong phần bài tập. Nếu không có thì bỏ qua hoàn toàn.
-      (QUAN TRỌNG - RAG) Nếu module có "theory_context" đi kèm (trích Knowledge Base THẬT theo từng
-      concept), PHẢI dựa vào ĐÚNG nội dung đó để giải thích — diễn đạt lại cho tự nhiên/dễ hiểu theo
-      final_level, TUYỆT ĐỐI KHÔNG copy nguyên văn, nhưng KHÔNG được đổi công thức/thuật ngữ/số liệu/
-      code mẫu khác với bản gốc trong theory_context. Concept KHÔNG có theory_context thì giải thích
-      theo kiến thức chuẩn thông thường, không tự bịa số liệu cụ thể.
-  3.3 BẮT BUỘC ĐÚNG 1 cell code demo cho MỖI module (kể cả module không có exercise) — code
-      hoàn chỉnh, CHẠY ĐƯỢC NGAY, KHÔNG chứa "TODO"/"NotImplementedError". Đây KHÔNG phải bài tập nên được phép
-      viết đầy đủ lời giải liên quan đến tất cả yêu cầu bài tập bên dưới. 
-      (QUAN TRỌNG) Nếu module giới thiệu cài đặt model nhưng exercise không gọi .fit(), đặt .fit()/.fit_predict() vào đây để module sau có model đã train.
-  => Nếu module không có planned_exercises: dừng ở bước 3.2-3.3 (vẫn PHẢI có 3.3).
-  3.4. 1 cell markdown giải thích tất cả lý thuyết liên quan "concepts" của phần "planned_exercises", định dạng:
-        "### Lý thuyết bài tập:
-          #### <concept_1>: <Lý thuyết concept_1>
-          #### <concept_2>: <Lý thuyết concept_2>
-          ..."
-        Cũng ưu tiên dựa vào "theory_context" của module (nếu concept đó có mặt trong theory_context)
-        để viết đúng công thức/thuật ngữ như bản gốc, cùng nguyên tắc "diễn đạt lại, không copy nguyên
-        văn" như bước 3.2.
-  3.5 Với MỖI exercise trong planned_exercises của module: 1 cell markdown (dùng đúng "prompt", có thể
-      diễn đạt rõ hơn, không đổi yêu cầu) + 1 cell code theo khuôn:
-        - dòng đầu "# TODO: <tóm tắt nhiệm vụ>"
-        - "# Gợi ý: ..." CHỈ khi bài thực sự khó/nhiều bước — bài dễ thì không cần thêm gợi ý
-        - 1 dòng trống bên dưới dòng #TODO để người học code tại đó
+    (Hệ thống sẽ tự thay bằng cell load + EDA + split/shuffle , đúng theo <problem_type>.)
+KHỐI 3 — Theo từng module (lặp đúng số module, đúng thứ tự trong "learning_path", vận dụng "theory_context" của module tương ứng):
+  3.1 1 cell markdown giới thiệu về module (dựa vào title + objective). BẮT BUỘC heading đúng định dạng
+      "
+        ## **Module <module_id>**: <title>
+        > #### Mục tiêu: <diễn giải objective>
+      " 
+  3.2. 1 cell markdown giải thích tất cả lý thuyết thuộc "concepts" của module tương ứng, đúng định dạng sau:
+      "
+      #### **Lý thuyết nền tảng**:
+      + **<concept_1>**: <Lý thuyết concept_1>
+      + **<concept_2>**: <Lý thuyết concept_2>
+      ...
+      "
+      CHỮ CÁI ĐẦU PHẢI VIẾT HOA, công thức toán phải đúng theo "RÀNG BUỘC CÔNG THỨC TOÁN". Nếu KHÔNG CÓ (planned_exercises=[]) thì BỎ QUA hoàn toàn.
+  3.3 BẮT BUỘC PHẢI CÓ 1 cell code demo cho MỖI module (kể cả module không có exercise) — code hoàn chỉnh,
+      CHẠY ĐƯỢC NGAY, KHÔNG chứa "TODO"/"NotImplementedError". Đây KHÔNG phải bài tập nên được phép
+      viết ĐẦY ĐỦ lời giải demo cho tất cả yêu cầu bài tập bên dưới. 
+      (QUAN TRỌNG) Nếu module giới thiệu cài đặt model nhưng exercise không gọi .fit()/.fit_predict() 
+      thì viết chúng luôn vào code demo để các module/bài tập sau có model đã train.
+      Demo ý nào thì nói rõ theo định dạng "# DEMO: <ý đang được demo>", đặt ngay trong cell code, trước đoạn code demo tương ứng
+  3.4 Với MỖI exercise trong planned_exercises của module, bao gồm: 1 cell markdown 
+      + 1 cell markdown: mô tả các yêu cầu - mục tiêu chính của bài tập. Dùng phần "prompt" của bài tập tương ứng (có thể diễn đạt rõ hơn, không đổi yêu cầu)
+      theo định dạng: 
+      "
+      #### **Bài tập <exercise_id>**:
+      *Sau khi làm xong người học có thể:*
+        + <yêu_cầu_1>
+        + <yêu_cầu_2>
+        + ...
+      "
+      + 1 cell code chứa các yêu cầu, với mỗi yêu cầu theo đúng dạng sau:
+        - Nói rõ yêu cầu ngược học phải làm theo dạng: "# TODO: <tóm tắt nhiệm vụ>".
+        - Tiếp theo, "# Gợi ý: ..." CHỈ khi bài thực sự khó/nhiều bước.
+        - 1 dòng trống bên dưới dòng # TODO hoặc # Gợi ý (nếu có) để người học code tại đó
         - QUY TẮC CỨNG: TUYỆT ĐỐI không được viết logic tính ra đáp án đúng ở BẤT KỲ ĐÂU
           trong cell (kể cả bên trong thân hàm, kể cả 1 dòng) — chỉ placeholder + hướng dẫn. Nếu
           chạy nguyên cell ngay bây giờ mà ra đáp án đúng của bài tập → ĐÂY LÀ LỖI.
-KHỐI 4 — Kiểm tra tự động (cuối notebook, sau khi hết KHỐI 3): ứng với MỖI exercise đã xuất hiện, phải có 1 cell code
- "assert" riêng — đủ ít nhất {num_exercises_planned} cells. Dùng đúng metric theo <problem_type>;
-  bám "expected_check" nếu module có cho sẵn.
+  => Nếu module không có planned_exercises: dừng ở bước 3.2-3.3 (vẫn PHẢI có 3.3).
+KHỐI 4 — Kiểm tra tự động (cuối notebook, sau khi hết KHỐI 3), bao gồm:
+      + 1 cell markdown theo định dạng: "## **PHẦN KIỂM TRA**"
+      + Các cell code, thoả: ứng với MỖI exercise đã xuất hiện, phải có 1 cell code
+        "assert" riêng — nghĩa PHẢI đủ ít nhất {num_exercises_planned} cell code. Dùng đúng metric theo <problem_type>;
+        bám "expected_check" nếu module có cho sẵn.
 
 *RÀNG BUỘC CHUNG:
   - Không hardcode kết quả vì được xem là đáp án (phân biệt với tham số kỹ thuật hợp lệ như
@@ -78,26 +95,28 @@ KHỐI 4 — Kiểm tra tự động (cuối notebook, sau khi hết KHỐI 3): 
     Cần đặt ngưỡng thì dùng tên khác không chứa các từ trên (vd "threshold", "nguong").
     Không viết số thẳng trong assert.
   - Mỗi exercise (KHỐI 3.4) và assert tương ứng (KHỐI 4) PHẢI bám đúng "concepts" của chính exercise
-    đó, và cũng thuộc các khái niệm của module chứa nó.
+    đó, và cũng thuộc các "concepts" của module chứa nó.
   - (RẤT QUANG TRỌNG) có ít nhất 1 phần trực quan hoá/đồ thị ở đâu đó trong toàn bộ notebook (cell
     demo, EDA, cell bài tập): dùng 1 trong các hàm sau — plot, scatter, bar,
     barh, hist, boxplot, violinplot, imshow, heatmap, pairplot, lineplot, countplot, plot_tree, ConfusionMatrixDisplay, RocCurveDisplay, PrecisionRecallDisplay,
-    DecisionBoundaryDisplay. Nếu phần trực quan hoá nằm ở cell demo thì phải đặt tên theo ý nghĩa đồ thị và 
+    DecisionBoundaryDisplay. Nếu phần trực quan hoá nằm ở cell demo thì phải đặt tên đồ thị, hàng, cột, ô và 
     đồ thị phải mang một ý nghĩa thực sự nào đó.
   - Tổng số cell TOÀN BỘ notebook (kể cả khoảng 3 cells được chèn thêm ở KHỐI 2) phải ≥ 8 nếu
     final_level=beginner, ≥ 12 nếu final_level=intermediate — với đủ lý thuyết bài tập + demo + exercise + lý thuyết riêng
     theo cấu trúc trên.
   - Notebook PHẢI cố gắng đạt đủ MỌI yêu cầu ngay từ đầu — không dựa vào việc "sẽ có cơ hội sửa ở lần sau".
   - Ngôn ngữ: toàn bộ giải thích, đề bài, yêu cầu VIẾT BẰNG TIẾNG VIỆT. Chỉ tên biến/hàm/thư viện/
-    thuật ngữ chuyên ngành giữ tiếng Anh, có thể kèm chú thích tiếng Việt ngắn.
-  - Các biểu thức toán (nếu có) phải ghi đúng dạng để chạy được trên cell markdown.
+    thuật ngữ chuyên ngành giữ tiếng Anh và có thể kèm chú thích tiếng việt ngắn. Các chữ cái đầu
+    dòng BẮT BUỘC phải viết hoa.
+  - RÀNG BUỘC CÔNG THỨC TOÁN:
+    + Inline Math (trên cùng dòng): Dùng cặp $...$ (Ví dụ: $z = \mathbf{w}^T\mathbf{x} + b$).
+    + Block Math (dòng riêng): Dùng cặp $$...$$ (Ví dụ: $$\sigma(z) = \frac{1}{1 + e^{-z}}$$).
+    + TUYỆT ĐỐI KHÔNG dùng cú pháp \(...\) hoặc \[...\].
   - Nếu module có "theory_context", nội dung lý thuyết viết ra TUYỆT ĐỐI không được mâu thuẫn với
     công thức/thuật ngữ/số liệu trong đó (vd đổi công thức khác, đổi tên tham số khác).
 
 *TỰ KIỂM TRA (trước khi trả JSON, không in ra): rà lại từng cell bài tập KHỐI 3.4 xem có vi phạm
 ràng buộc nào đã nêu ở trên không, đặc biệt rò rỉ đáp án — nếu có, sửa lại trước khi trả kết quả.
-Nếu module có "theory_context", rà thêm: nội dung lý thuyết đã viết có đúng công thức/thuật ngữ/số
-liệu như trong đó không — nếu lệch, sửa lại cho khớp.
 
 *ĐỊNH DẠNG KẾT QUẢ:
 {
@@ -112,7 +131,7 @@ tập, dataset=Red Wine Quality):
 {
   "cells": [
     {"cell_type": "markdown", "source": "# Decision Tree\nMô hình phân loại phi tham số, chia dữ liệu bằng ranh giới trực giao dựa trên Information Gain..."},
-    {"cell_type": "markdown", "source": "## Chuẩn bị dữ liệu\nDataset: Red Wine Quality (Kaggle). Target: quality (3-8). 11 đặc trưng hoá lý..."},
+    {"cell_type": "markdown", "source": "## Chuẩn bị dữ liệu\nDataset: Red Wine Quality (Kaggle). \nTarget: quality (3-8). \n11 đặc trưng hoá lý..."},
     {"cell_type": "code", "source": "# DATASET_INJECTION_PLACEHOLDER"},
     {"cell_type": "markdown", "source": "## Module m1: Nền tảng CART\nGini Impurity đo độ hỗn loạn tại 1 nút: 1 - sum(p_k^2)..."},
     {"cell_type": "code", "source": "import numpy as np\nsample = np.array([0,0,1,1])\nprint('Ví dụ mảng nhãn:', sample)"},
@@ -123,7 +142,7 @@ tập, dataset=Red Wine Quality):
     {"cell_type": "code", "source": "# Kiểm tra m1_ex1\nassert result is not None\nassert 0 <= result <= 1"}
   ]
 }
-(Notebook thật phải đủ TẤT CẢ module + exercise trong <learning_path>, không rút gọn như ví dụ này.)
+(Notebook thật phải đủ TẤT CẢ module + exercise trong <learning_path> + đúng định dạng, không rút gọn như ví dụ này.)
 
 Bây giờ hãy tạo notebook đầy đủ theo <learning_path> ở trên, đúng 4 khối, đúng thứ tự, đủ TẤT CẢ
 module (không bỏ sót module nào). KHÔNG trả file .ipynb/nbformat, CHỈ trả JSON {"cells": [...]}.

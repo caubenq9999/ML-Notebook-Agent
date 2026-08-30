@@ -34,7 +34,7 @@ from agents.curriculum import (
     get_problem_type
 )
 
-PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "notebook_gen.txt"
+PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "notebook_gen_origin.txt"
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "output_notebooks"
 DATASET_PLACEHOLDER = "# DATASET_INJECTION_PLACEHOLDER"
 
@@ -54,10 +54,9 @@ DATASET_INFO: dict[str, dict[str, str | None]] = {
             "hoạ Logistic Regression."
         ),
         "preprocessing_note": (
-            "Một số cột có giá trị 0 bất hợp lý về mặt sinh lý(Cholesterol=0 được "
-            "impute bằng median theo HeartDisease, 1 dòng có RestingBP=0 đã bị loại bỏ); "
-            "Các biến có kiểu dữ liệu là string được mã hoá bằng One-Hot Encoding; "
-            "Sau cùng, chia tập train/test và chuẩn hoá lại bằng StandardScaler chỉ trên tập train."
+            "- Một số cột có giá trị 0 bất hợp lý về mặt sinh lý(Cholesterol=0 được impute bằng median theo HeartDisease, 1 dòng có RestingBP=0 đã bị loại bỏ)."
+            "- Các biến có kiểu dữ liệu là string được mã hoá bằng One-Hot Encoding. "
+            "- Sau cùng, chia tập train/test và chuẩn hoá lại bằng StandardScaler chỉ trên tập train."
         ),
     },
     "decision_tree": {
@@ -74,9 +73,8 @@ DATASET_INFO: dict[str, dict[str, str | None]] = {
             "các đặc trưng có ngưỡng cắt rõ ràng theo từng khoảng giá trị, phù hợp minh hoạ Decision Tree"
         ),
         "preprocessing_note": (
-            "Các dòng trùng lặp(~240 dòng) bị loại bỏ bằng drop_duplicates() trước khi chia "
-            "train/test (stratify theo 'quality'). Nhãn 'quality' giữ nguyên dạng gốc (đa lớp, "
-            "phân bố bị lệch giữa các lớp) - nên gộp thành các nhóm low (<=5), medium (=6), high(>=7); "
+            "- Các dòng trùng lặp(~240 dòng) bị loại bỏ bằng drop_duplicates() trước khi chia train/test (stratify theo 'quality')."
+            "- Nhãn 'quality' giữ nguyên dạng gốc (đa lớp, phân bố bị lệch giữa các lớp) - nên gộp thành các nhóm low (<=5), medium (=6), high(>=7); "
             "ngưỡng accuracy 'tốt' nên được xác định qua thực nghiệm trên dataset này."
         ),
     },
@@ -91,9 +89,9 @@ DATASET_INFO: dict[str, dict[str, str | None]] = {
             "KHÔNG có nhãn phân khúc sẵn, cần phân cụm khách hàng theo hành vi chi tiêu."
         ),
         "preprocessing_note": (
-            "Cột CustomerID đã bị loại bỏ vì không mang thông tin phân cụm; biến Gender đã"
-            "được mã hoá bằng One-Hot Encoding; dữ liệu được chuẩn hoá lại bằng StandardScaler và xáo trộn (shuffle) "
-            "trước khi phân cụm."
+            "- Cột CustomerID đã bị loại bỏ vì không mang thông tin phân cụm."
+            "- Biến Gender đã được mã hoá bằng One-Hot Encoding."
+            "- Dữ liệu được chuẩn hoá lại bằng StandardScaler và xáo trộn (shuffle) trước khi phân cụm."
         ),
     },
 }
@@ -186,36 +184,18 @@ def check_prior_feedback(prior_feedback : Optional[str]) -> str:
         "</prior_feedback>"
     )
 
-# Lấy các concepts không có trong "planned_exercises", giải quyết phần 3.2
-def _theory_only_concepts(module: Module) -> list[str]:
-    used_in_exercises: set[str] = set()
-    for ex in module.planned_exercises:
-        used_in_exercises.update(ex.concepts)
-    return [c for c in module.concepts if c not in used_in_exercises]
-
 # Chuyển modules[] của LearningPath thành text chi tiết đưa vào prompt 
 # tách rõ "concepts lý thuyết riêng" khỏi "concepts đã có exercise" giải quyết phần 3.2
 def build_modules_block(path: LearningPath) -> str:
     blocks = []
     for m in path.modules:
-        theory_only = _theory_only_concepts(m)
         lines = [
-            f'module_id="{m.module_id}" | title="{m.title}"',
-            f' objective="{m.objective}"',
-            f" concepts(đầy đủ)={m.concepts}",
-            f" concepts lý thuyết riêng(Do không có exercise nào dùng, nên PHẢI giải thích theo hướng dẫn bước 3.2)={theory_only}",
-            f" estimated_minutes={m.estimated_minutes}",
+            f'module_id="{m.module_id}"',
+            f'title="{m.title}"',
+            f'objective="{m.objective}"',
+            f"concepts={m.concepts}",
+            f"estimated_minutes={m.estimated_minutes}",
         ]
-        if m.theory_context:
-            lines.append(
-                " theory_context (trích Knowledge Base THẬT qua RAG — PHẢI bám sát khi giải "
-                "thích lý thuyết ở bước 3.2/3.4: diễn đạt lại tự nhiên nhưng KHÔNG đổi công "
-                "thức/thuật ngữ/số liệu/code mẫu so với bản gốc; concept nào KHÔNG có trong "
-                "danh sách này thì giải thích theo kiến thức chuẩn, không tự bịa số liệu cụ thể):"
-            )
-            for concept, text in m.theory_context.items():
-                lines.append(f'  --- theory_context["{concept}"] ---')
-                lines.append(text)
         if m.planned_exercises:
             lines.append(" planned_exercises:")
             for ex in m.planned_exercises:
@@ -228,7 +208,7 @@ def build_modules_block(path: LearningPath) -> str:
                 lines.append(f'  expected_check="{ex.expected_check or ""}"')
         else:
             lines.append(
-                "  planned_exercises: [] (module KHÔNG có bài tập — chỉ cần markdown lý "
+                "  planned_exercises: [] (module KHÔNG có bài tập — Cần markdown lý "
                 "thuyết ở bước 3.2 + BẮT BUỘC 1 cell code demo ở bước 3.3, không có ngoại lệ)"
             )
         blocks.append("\n".join(lines))
