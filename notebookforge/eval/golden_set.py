@@ -10,9 +10,9 @@ sinh ra bằng cách ghép mỗi tổ hợp với các ràng buộc thời lư�
 khác nhau. Ràng buộc mới là chỗ hệ thống hay vỡ: Curriculum Agent rất hay
 sinh 6 module 90 phút trong khi học viên chỉ xin 60.
 
-level dùng ĐÚNG kiểu schemas.Level (Literal[1, 2, 3]) để harness dựng thẳng
+level dùng ĐÚNG kiểu schemas.Level (Literal[1, 2]) để harness dựng thẳng
 LearnerProfile mà không phải map: 1 = beginner, 2 = intermediate.
-Đề cương chỉ có 2 trình độ nên golden set không dùng tới 3 (advanced).
+Đề cương chỉ có 2 trình độ; level 3 (advanced) không còn trong schema.
 
 Phân bổ:
     logistic_regression  7 case (4 beginner / 3 intermediate)  binary

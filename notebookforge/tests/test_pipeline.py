@@ -155,6 +155,53 @@ def test_giu_duoc_best_attempt():
     assert r.report is not None and r.report.average_score == best.average_score
 
 
+def test_tie_break_uu_tien_hard_rules_pass():
+    """Cùng điểm LLM -> giữ vòng qua hard rules, không giữ vòng cũ theo quán tính."""
+
+    def tied_score_better_rules(nb_path, exc, bundle):
+        checks = (
+            RuleChecks(
+                has_instructions=True,
+                has_todo=True,
+                has_assert=False,
+                no_hardcoded_answers=True,
+                has_train_test_split=True,
+                has_visualization=True,
+                has_demo_per_module=True,
+                min_cells_by_level=True,
+            )
+            if exc.attempt == 1
+            else RuleChecks(
+                has_instructions=True,
+                has_todo=True,
+                has_assert=True,
+                no_hardcoded_answers=True,
+                has_train_test_split=True,
+                has_visualization=True,
+                has_demo_per_module=True,
+                min_cells_by_level=True,
+            )
+        )
+        return mocks.MOCK_REPORT_PASS.model_copy(
+            update={
+                "nb_path": nb_path,
+                "attempt": exc.attempt,
+                "rule_checks": checks,
+                "decision": "RETRY" if exc.attempt == 1 else "PASS",
+            }
+        )
+
+    _wire(run_verifier=tied_score_better_rules)
+    r = m.generate(_profile("t-best-tie-rules"), force_mock=True)
+    assert r.decision == "PASS"
+    assert r.attempts_used == 2
+    assert r.best_attempt_so_far is not None
+    assert r.best_attempt_so_far.attempt == 2
+    assert r.best_attempt_so_far.rules_all_passed is True
+    assert r.best_attempt_so_far.execution_ok is True
+    assert r.notebook_path == r.best_attempt_so_far.nb_path
+
+
 def test_diem_cao_nhung_rule_fail_thi_khong_pass():
     """Điểm LLM >= 3.5 nhưng rule fail -> retry rồi FAIL_MAX_RETRY."""
 

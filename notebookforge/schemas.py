@@ -417,14 +417,21 @@ class RuleChecks(ForgeModel):
     report cũ; report mới do Verifier sinh phải truyền tường minh cả tám field.
     """
 
-    has_instructions: bool = Field(..., description="Có markdown hướng dẫn trước mỗi bài")
+    has_instructions: bool = Field(
+        ...,
+        description="Đủ markdown theo level: beginner >= 8, intermediate >= 10",
+    )
     has_todo: bool = Field(..., description="Có chỗ TODO cho học viên tự làm")
     has_assert: bool = Field(..., description="Có assert để học viên tự kiểm tra")
     no_hardcoded_answers: bool = Field(..., description="Không lộ đáp án sẵn trong code")
     has_train_test_split: bool = Field(..., description="Có tách train/test")
-    has_visualization: bool = Field(False, description="Có trực quan hoá kết quả")
+    has_visualization: bool = Field(
+        False, description="Có ít nhất 2 lời gọi trực quan hoá"
+    )
     has_demo_per_module: bool = Field(False, description="Mỗi module có code demo")
-    min_cells_by_level: bool = Field(False, description="Đủ số cell tối thiểu theo level")
+    min_cells_by_level: bool = Field(
+        False, description="Đủ tổng cell theo level: beginner >= 12, intermediate >= 18"
+    )
 
     def _values_for_gate(self) -> list[bool]:
         base = [
@@ -541,6 +548,7 @@ class BestAttempt(ForgeModel):
     nb_path: str = Field(..., min_length=1)
     average_score: float = Field(..., ge=1, le=5)
     rules_all_passed: bool = False
+    execution_ok: bool = False
 
 
 class AttemptRecord(ForgeModel):

@@ -8,7 +8,7 @@ Chủ sở hữu: HOÀNG. Nơi DUY NHẤT được gọi LLM. Ba việc (đề c
 
 NHÀ CUNG CẤP: Groq (đề cương mục 2.2). Groq đi theo chuẩn OpenAI chứ không phải
 Anthropic, nên file này dùng SDK `openai` trỏ vào endpoint của Groq. Cùng cơ chế đó
-cắm được Gemini và OpenRouter (đề cương ghi OpenRouter là phương án dự phòng) mà
+cắm được Gemini, OpenRouter, DeepSeek và AgentRouter mà
 không phải viết thêm backend - xem PROVIDERS bên dưới.
 
 Cả nhóm dùng như sau (KHÔNG ai tự import openai/groq):
@@ -29,8 +29,8 @@ Tiền cộng dồn tự động theo session_id, main.py đọc lại bằng:
     get_tracker(session_id).total_usd
     get_tracker(session_id).cost_since(mark)   # tiền của riêng 1 attempt
 
-API key: đặt GROQ_API_KEY trong .env ở gốc repo (xem .env.example). Đăng ký free
-tại console.groq.com. KHÔNG commit .env - đã có trong .gitignore.
+API key: đặt biến tương ứng với provider trong .env ở gốc repo. KHÔNG commit
+.env - đã có trong .gitignore.
 """
 
 from __future__ import annotations
@@ -70,6 +70,12 @@ PROVIDERS: dict[str, tuple[str, str]] = {
     "groq": ("https://api.groq.com/openai/v1", "GROQ_API_KEY"),
     "gemini": ("https://generativelanguage.googleapis.com/v1beta/openai/", "GEMINI_API_KEY"),
     "openrouter": ("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY"),
+    "deepseek": ("https://api.deepseek.com", "DEEPSEEK_API_KEY"),
+    # Có thể override vì endpoint AgentRouter phụ thuộc cổng/tổ chức của tài khoản.
+    "agentrouter": (
+        os.getenv("AGENTROUTER_BASE_URL", "https://agentrouter.org/v1"),
+        "AGENTROUTER_API_KEY",
+    ),
 }
 
 PROVIDER = os.getenv("NOTEBOOKFORGE_PROVIDER", "groq")
@@ -83,21 +89,28 @@ MODEL_JUDGE = os.getenv("NOTEBOOKFORGE_MODEL_JUDGE", "qwen/qwen3.6-27b")
 MAX_TOKENS = int(os.getenv("NOTEBOOKFORGE_MAX_TOKENS", "16000"))
 TEMPERATURE = float(os.getenv("NOTEBOOKFORGE_TEMPERATURE", "0.3"))
 MAX_RETRIES = int(os.getenv("NOTEBOOKFORGE_LLM_RETRIES", "3"))
+DEEPSEEK_THINKING = os.getenv(
+    "NOTEBOOKFORGE_DEEPSEEK_THINKING", "disabled"
+).strip().lower()
 BASE_DELAY = 1.0  # giây, nhân đôi sau mỗi lần fail (exponential backoff)
 
-# Giá USD / 1 TRIỆU token.
-#
-# CẢNH BÁO: trang giá của Groq render bằng JavaScript nên mình KHÔNG tự đọc được
-# để đối chiếu. Các số dưới đây là mức mình biết, CHƯA verify. Trước khi đưa số
-# chi phí vào báo cáo, mở console.groq.com/settings/billing xem giá thật rồi sửa
-# lại bảng này. Trên free tier thì chi phí = $0, bảng này chỉ dùng để ước lượng
-# nếu nhóm phải nâng lên gói trả phí.
+# Giá USD / 1 TRIỆU token. DeepSeek dùng mức PEAK để cost guard luôn bảo thủ;
+# off-peak bằng một nửa. Input trong PRICING là giá cache-miss.
 PRICING: dict[str, tuple[float, float]] = {
     #  model id                    (input, output)
     "llama-3.3-70b-versatile": (0.59, 0.79),
     "llama-3.1-8b-instant": (0.05, 0.08),
     "openai/gpt-oss-120b": (0.15, 0.75),
     "openai/gpt-oss-20b": (0.10, 0.50),
+    "deepseek-v4-flash": (0.44, 1.32),
+    "deepseek-v4-pro": (1.32, 3.96),
+    "deepseek-v4-flash-vision-exp": (0.44, 1.32),
+}
+# (cache-hit input, cache-miss input, output), đều là mức peak / 1M token.
+DEEPSEEK_PEAK_PRICING: dict[str, tuple[float, float, float]] = {
+    "deepseek-v4-flash": (0.014, 0.44, 1.32),
+    "deepseek-v4-pro": (0.044, 1.32, 3.96),
+    "deepseek-v4-flash-vision-exp": (0.014, 0.44, 1.32),
 }
 DEFAULT_PRICE = (0.59, 0.79)  # model lạ -> lấy giá model đắt nhất cho an toàn
 
@@ -130,6 +143,8 @@ class Usage:
     cost_usd: float = 0.0
     api_calls: int = 1  # >1 nếu phải gọi lại vì output sai schema
     finish_reason: str | None = None
+    cache_hit_tokens: int = 0
+    cache_miss_tokens: int = 0
 
 
 def estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
@@ -204,7 +219,7 @@ def _get_client():
         if not api_key:
             raise LLMError(
                 f"Thiếu {key_env}. Tạo file .env ở gốc repo (xem .env.example). "
-                f"Đăng ký free tại console.groq.com."
+                f"Lấy API key từ dashboard của provider đang chọn."
             )
         # SDK tự retry 429/5xx 2 lần; mình bọc thêm 1 lớp cho lỗi schema.
         _client = OpenAI(base_url=base_url, api_key=api_key, max_retries=2, timeout=180.0)
@@ -219,15 +234,28 @@ def _usage_from_response(resp: Any, model: str) -> Usage:
     u = getattr(resp, "usage", None)
     inp = getattr(u, "prompt_tokens", 0) or 0
     out = getattr(u, "completion_tokens", 0) or 0
+    cache_hit = getattr(u, "prompt_cache_hit_tokens", 0) or 0
+    cache_miss = getattr(u, "prompt_cache_miss_tokens", 0) or 0
     finish = None
     if getattr(resp, "choices", None):
         finish = getattr(resp.choices[0], "finish_reason", None)
+    cost = estimate_cost(model, inp, out)
+    if PROVIDER == "deepseek" and model in DEEPSEEK_PEAK_PRICING:
+        hit_price, miss_price, output_price = DEEPSEEK_PEAK_PRICING[model]
+        # SDK/version cũ có thể chưa expose breakdown; khi đó coi toàn bộ là miss.
+        if cache_hit == 0 and cache_miss == 0:
+            cache_miss = inp
+        cost = (
+            cache_hit * hit_price + cache_miss * miss_price + out * output_price
+        ) / 1_000_000
     return Usage(
         model=model,
         input_tokens=inp,
         output_tokens=out,
-        cost_usd=estimate_cost(model, inp, out),
+        cost_usd=cost,
         finish_reason=finish,
+        cache_hit_tokens=cache_hit,
+        cache_miss_tokens=cache_miss,
     )
 
 
@@ -250,6 +278,68 @@ def _sleep_backoff(attempt: int) -> None:
     delay = BASE_DELAY * (2 ** (attempt - 1)) + random.uniform(0, 0.5)
     _log(f"retry sau {delay:.1f}s ...")
     time.sleep(delay)
+
+
+def _extract_model_ids(payload: Any) -> list[str]:
+    """Đọc model ID từ cả OpenAI schema và các biến thể gateway phổ biến."""
+    if isinstance(payload, str):
+        return [payload]
+    if isinstance(payload, list):
+        model_ids: list[str] = []
+        for item in payload:
+            model_ids.extend(_extract_model_ids(item))
+        return model_ids
+    if not isinstance(payload, dict):
+        return []
+
+    for key in ("id", "model_id"):
+        value = payload.get(key)
+        if isinstance(value, str):
+            return [value]
+
+    for key in ("data", "models", "items", "result"):
+        if key in payload:
+            model_ids = _extract_model_ids(payload[key])
+            if model_ids:
+                return model_ids
+    return []
+
+
+def _list_available_models() -> list[str]:
+    """Gọi REST trực tiếp để không phụ thuộc schema `/models` của OpenAI SDK."""
+    if PROVIDER not in PROVIDERS:
+        raise LLMError(
+            f"NOTEBOOKFORGE_PROVIDER='{PROVIDER}' không hợp lệ. Chọn: {list(PROVIDERS)}"
+        )
+    base_url, key_env = PROVIDERS[PROVIDER]
+    api_key = os.getenv(key_env)
+    if not api_key:
+        raise LLMError(f"Thiếu {key_env}.")
+
+    try:
+        import requests
+    except ImportError as exc:  # pragma: no cover
+        raise LLMError("Chưa cài requests. Chạy: pip install -r requirements.txt") from exc
+
+    try:
+        response = requests.get(
+            f"{base_url.rstrip('/')}/models",
+            headers={"Authorization": f"Bearer {api_key}"},
+            timeout=30,
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except requests.RequestException as exc:
+        status = getattr(getattr(exc, "response", None), "status_code", None)
+        detail = f" HTTP {status}" if status else ""
+        raise LLMError(f"Gọi model catalog thất bại.{detail}") from exc
+    except ValueError as exc:
+        raise LLMError("Model catalog không trả về JSON hợp lệ.") from exc
+
+    model_ids = sorted(set(_extract_model_ids(payload)))
+    if not model_ids:
+        raise LLMError("Không nhận diện được Model ID trong response catalog.")
+    return model_ids
 
 
 # ---------------------------------------------------------------------------
@@ -291,6 +381,7 @@ def call_text(
     # dùng request chuẩn OpenAI như trước.
     is_groq_gpt_oss = PROVIDER == "groq" and model.startswith("openai/gpt-oss-")
     is_groq_qwen36 = PROVIDER == "groq" and model.startswith("qwen/qwen3.6-")
+    is_deepseek_v4 = PROVIDER == "deepseek" and model.startswith("deepseek-v4-")
     if reasoning_effort is not None and (is_groq_gpt_oss or is_groq_qwen36):
         allowed_efforts = (
             {"low", "medium", "high"} if is_groq_gpt_oss else {"none", "default"}
@@ -303,6 +394,20 @@ def call_text(
         kwargs["reasoning_effort"] = reasoning_effort
     if include_reasoning is not None and is_groq_gpt_oss:
         kwargs["extra_body"] = {"include_reasoning": include_reasoning}
+    if is_deepseek_v4:
+        if DEEPSEEK_THINKING not in {"enabled", "disabled"}:
+            raise ValueError(
+                "NOTEBOOKFORGE_DEEPSEEK_THINKING phải là enabled hoặc disabled"
+            )
+        kwargs["extra_body"] = {"thinking": {"type": DEEPSEEK_THINKING}}
+        if DEEPSEEK_THINKING == "enabled":
+            kwargs.pop("temperature", None)  # thinking mode không dùng temperature
+            effort = reasoning_effort or "low"
+            if effort not in {"low", "medium", "high", "xhigh", "max"}:
+                raise ValueError(
+                    "reasoning_effort cho DeepSeek phải là low/medium/high/xhigh/max"
+                )
+            kwargs["reasoning_effort"] = effort
 
     last_exc: Exception | None = None
     for attempt in range(1, MAX_RETRIES + 1):
@@ -418,6 +523,7 @@ __all__ = [
     "MODEL",
     "MODEL_JUDGE",
     "PRICING",
+    "DEEPSEEK_PEAK_PRICING",
     "Usage",
     "CostTracker",
     "LLMError",
@@ -432,6 +538,7 @@ __all__ = [
 
 if __name__ == "__main__":
     # `python llm_client.py` -> in cấu hình + ước tính chi phí. KHÔNG gọi API.
+    # `--list-models` là tiện ích tùy chọn; không phải provider nào cũng hỗ trợ.
     base_url, key_env = PROVIDERS.get(PROVIDER, ("?", "?"))
     print(f"provider     : {PROVIDER}  ({base_url})")
     print(f"model worker : {MODEL}")
@@ -448,8 +555,38 @@ if __name__ == "__main__":
     print("\nƯớc tính chi phí TRỌN 1 SESSION (2 vòng sinh, pipeline đề cương):")
     for name in PRICING:
         total = sum(estimate_cost(name, i, o) * n for _, i, o, n in steps)
-        print(f"  {name:<26} ${total:.4f}   {'vừa trần' if total <= 0.30 else 'VƯỢT trần'}")
-    print("\nTrần đề cương = $0.30/notebook. Trên FREE TIER thì chi phí thật = $0,")
-    print("bảng trên chỉ để ước lượng nếu nhóm phải nâng lên gói trả phí.")
-    print("Giá CHƯA verify - đối chiếu console.groq.com/settings/billing trước khi")
-    print("đưa số vào báo cáo.")
+        print(f"  {name:<26} ${total:.4f}   {'trong trần' if total <= 0.30 else 'VƯỢT trần'}")
+    print("\nTrần đề cương = $0.30/notebook.")
+    print("Bảng trên chỉ là ước lượng; đối chiếu dashboard của provider trước khi")
+    print("đưa số chi phí vào báo cáo.")
+
+    if "--list-models" in sys.argv:
+        print("\nModel mà tài khoản hiện truy cập được:")
+        try:
+            available = _list_available_models()
+        except Exception as exc:  # noqa: BLE001 - tiện ích chẩn đoán ở CLI
+            raise SystemExit(
+                f"Không lấy được model catalog: {type(exc).__name__}: {exc}"
+            ) from exc
+        for model_id in available:
+            print(f"  {model_id}")
+
+    if "--smoke" in sys.argv:
+        print("\nSmoke test Chat Completions:")
+        try:
+            answer, smoke_usage = call_text(
+                "Reply with exactly one word: OK",
+                session_id="llm-client-smoke",
+                model=MODEL,
+                max_tokens=16,
+                temperature=0,
+            )
+        except Exception as exc:  # noqa: BLE001 - tiện ích chẩn đoán ở CLI
+            raise SystemExit(
+                f"Smoke test thất bại: {type(exc).__name__}: {exc}"
+            ) from exc
+        print(f"response      : {answer}")
+        print(
+            f"usage         : input={smoke_usage.input_tokens}, "
+            f"output={smoke_usage.output_tokens}, cost=${smoke_usage.cost_usd:.6f}"
+        )

@@ -449,16 +449,29 @@ def generate(
             )
         )
 
-        # Giữ bản tốt nhất - vòng cuối chưa chắc đã là vòng ngon nhất
-        if (
-            result.best_attempt_so_far is None
-            or report.average_score > result.best_attempt_so_far.average_score
-        ):
+        # Giữ bản tốt nhất - vòng cuối chưa chắc đã là vòng ngon nhất.
+        # Khi điểm LLM hòa, ưu tiên bản qua hard rules, rồi execution sạch;
+        # nếu vẫn hòa thì lấy vòng mới hơn vì đó là bản đã nhận feedback sửa lỗi.
+        candidate_rank = (
+            report.average_score,
+            report.rule_checks.all_passed,
+            exc_res.success,
+            attempt,
+        )
+        best = result.best_attempt_so_far
+        best_rank = (
+            best.average_score,
+            best.rules_all_passed,
+            best.execution_ok,
+            best.attempt,
+        ) if best is not None else None
+        if best_rank is None or candidate_rank > best_rank:
             result.best_attempt_so_far = BestAttempt(
                 attempt=attempt,
                 nb_path=nb_path,
                 average_score=report.average_score,
                 rules_all_passed=report.rule_checks.all_passed,
+                execution_ok=exc_res.success,
             )
             best_report = report
 

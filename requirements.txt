@@ -11,6 +11,8 @@ python-dotenv>=1.0
 requests>=2.32
 PyYAML>=6.0
 rank-bm25>=0.2.2
+# Semantic chunking/RAG. Lần chạy đầu tải model embedding về cache local.
+sentence-transformers>=6.0,<7
 
 # Chạy notebook trong sandbox (executor.py)
 nbformat>=5.9

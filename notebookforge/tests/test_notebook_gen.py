@@ -29,7 +29,7 @@ def _valid_response() -> str:
 
 
 def test_notebook_gen_tat_json_mode_va_dung_budget_rieng():
-    """NotebookGen không dùng JSON enforcement và giữ output budget 5000 riêng."""
+    """NotebookGen không dùng JSON enforcement và giữ output budget riêng."""
     original = notebook_gen.call_text
     seen: list[dict] = []
 
@@ -46,7 +46,7 @@ def test_notebook_gen_tat_json_mode_va_dung_budget_rieng():
     assert len(cells) == 2
     assert seen[0]["json_mode"] is False
     assert seen[0]["max_tokens"] == notebook_gen.notebook_request_max_tokens("prompt")
-    assert seen[0]["max_tokens"] == notebook_gen.NOTEBOOK_MAX_TOKENS == 5000
+    assert seen[0]["max_tokens"] == notebook_gen.NOTEBOOK_MAX_TOKENS
     assert seen[0]["reasoning_effort"] == "low"
     assert seen[0]["include_reasoning"] is False
     assert seen[0]["session_id"] == "session-test"
@@ -94,7 +94,12 @@ def test_tpm_constraint_chan_lai_request_8043_token():
     """Prompt retry test web phải được hạ output ceiling dưới budget 7600."""
     prompt = "x" * 10_531
 
-    max_tokens = notebook_gen.notebook_request_max_tokens(prompt)
+    original_provider = notebook_gen.PROVIDER
+    notebook_gen.PROVIDER = "groq"
+    try:
+        max_tokens = notebook_gen.notebook_request_max_tokens(prompt)
+    finally:
+        notebook_gen.PROVIDER = original_provider
     estimated_input = math.ceil(len(prompt) / notebook_gen.NOTEBOOK_CHARS_PER_TOKEN)
 
     assert max_tokens == 4_089
@@ -271,6 +276,102 @@ def test_llm_client_forward_non_thinking_cho_groq_qwen36():
     assert text == '{"ok": true}'
     assert seen["reasoning_effort"] == "none"
     assert "extra_body" not in seen
+
+
+def test_llm_client_deepseek_tat_thinking_va_giu_temperature():
+    """DeepSeek mặc định non-thinking để JSON ổn định và tiết kiệm."""
+    original_client = llm_client._client
+    original_provider = llm_client.PROVIDER
+    original_thinking = llm_client.DEEPSEEK_THINKING
+    seen: dict = {}
+
+    class FakeCompletions:
+        def create(self, **kwargs):
+            seen.update(kwargs)
+            usage = type(
+                "Usage",
+                (),
+                {
+                    "prompt_tokens": 100,
+                    "completion_tokens": 20,
+                    "prompt_cache_hit_tokens": 80,
+                    "prompt_cache_miss_tokens": 20,
+                },
+            )()
+            message = type("Message", (), {"content": "OK"})()
+            choice = type("Choice", (), {"message": message, "finish_reason": "stop"})()
+            return type("Response", (), {"usage": usage, "choices": [choice]})()
+
+    llm_client._client = type(
+        "FakeClient",
+        (),
+        {"chat": type("Chat", (), {"completions": FakeCompletions()})()},
+    )()
+    llm_client.PROVIDER = "deepseek"
+    llm_client.DEEPSEEK_THINKING = "disabled"
+    try:
+        text, usage = llm_client.call_text(
+            "prompt",
+            session_id="deepseek-disabled-test",
+            model="deepseek-v4-flash",
+            temperature=0.2,
+            reasoning_effort="low",
+        )
+    finally:
+        llm_client._client = original_client
+        llm_client.PROVIDER = original_provider
+        llm_client.DEEPSEEK_THINKING = original_thinking
+        llm_client.reset_tracker("deepseek-disabled-test")
+
+    expected_cost = (80 * 0.014 + 20 * 0.44 + 20 * 1.32) / 1_000_000
+    assert text == "OK"
+    assert seen["temperature"] == 0.2
+    assert seen["extra_body"] == {"thinking": {"type": "disabled"}}
+    assert "reasoning_effort" not in seen
+    assert usage.cache_hit_tokens == 80
+    assert usage.cache_miss_tokens == 20
+    assert abs(usage.cost_usd - expected_cost) < 1e-12
+
+
+def test_llm_client_deepseek_bat_thinking_va_bo_temperature():
+    """Thinking mode forward effort nhưng bỏ temperature theo tài liệu DeepSeek."""
+    original_client = llm_client._client
+    original_provider = llm_client.PROVIDER
+    original_thinking = llm_client.DEEPSEEK_THINKING
+    seen: dict = {}
+
+    class FakeCompletions:
+        def create(self, **kwargs):
+            seen.update(kwargs)
+            usage = type("Usage", (), {"prompt_tokens": 10, "completion_tokens": 5})()
+            message = type("Message", (), {"content": "OK"})()
+            choice = type("Choice", (), {"message": message, "finish_reason": "stop"})()
+            return type("Response", (), {"usage": usage, "choices": [choice]})()
+
+    llm_client._client = type(
+        "FakeClient",
+        (),
+        {"chat": type("Chat", (), {"completions": FakeCompletions()})()},
+    )()
+    llm_client.PROVIDER = "deepseek"
+    llm_client.DEEPSEEK_THINKING = "enabled"
+    try:
+        llm_client.call_text(
+            "prompt",
+            session_id="deepseek-enabled-test",
+            model="deepseek-v4-flash",
+            temperature=0.2,
+            reasoning_effort="max",
+        )
+    finally:
+        llm_client._client = original_client
+        llm_client.PROVIDER = original_provider
+        llm_client.DEEPSEEK_THINKING = original_thinking
+        llm_client.reset_tracker("deepseek-enabled-test")
+
+    assert "temperature" not in seen
+    assert seen["extra_body"] == {"thinking": {"type": "enabled"}}
+    assert seen["reasoning_effort"] == "max"
 
 
 if __name__ == "__main__":

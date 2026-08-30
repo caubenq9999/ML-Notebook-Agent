@@ -61,7 +61,7 @@ def main() -> int:
     parser.add_argument("target", help="file .ipynb hoặc thư mục chứa .ipynb")
     parser.add_argument("--topic", help="topic của notebook, quy tắc 5 cần (vd kmeans)")
     parser.add_argument(
-        "--level", type=int, choices=(1, 2, 3),
+        "--level", type=int, choices=(1, 2),
         help="level dùng cho min_cells_by_level (mặc định đọc metadata/beginner)",
     )
     parser.add_argument("--detail", action="store_true", help="in dòng bị quy tắc 4 bắt")

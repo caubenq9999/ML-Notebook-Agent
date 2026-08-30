@@ -25,7 +25,9 @@ from schemas import (
 
 DEFAULT_JUDGE_MODEL = "qwen/qwen3.6-27b"
 MAX_NOTEBOOK_CHARS = 40_000
-MIN_CELLS_BY_LEVEL = {1: 8, 2: 12, 3: 16}
+MIN_MARKDOWN_CELLS_BY_LEVEL = {1: 8, 2: 10}
+MIN_CELLS_BY_LEVEL = {1: 12, 2: 18}
+MIN_VISUALIZATIONS = 2
 
 _CLUSTERING_TOPICS = frozenset(
     {"kmeans", "k_means", "dbscan", "hierarchical_clustering"}
@@ -160,7 +162,9 @@ def _topic_key(topic: str | None) -> str:
 
 
 def _infer_level(nb: dict, explicit: int | None = None) -> int:
-    if explicit in MIN_CELLS_BY_LEVEL:
+    if explicit is not None:
+        if explicit not in MIN_CELLS_BY_LEVEL:
+            raise ValueError("Verifier chỉ hỗ trợ level 1 (beginner) hoặc 2 (intermediate)")
         return int(explicit)
     metadata = nb.get("metadata") or {}
     forge = metadata.get("notebookforge") or {}
@@ -170,12 +174,14 @@ def _infer_level(nb: dict, explicit: int | None = None) -> int:
         metadata.get("level"),
         metadata.get("level_final"),
     )
-    labels = {"beginner": 1, "intermediate": 2, "advanced": 3}
+    labels = {"beginner": 1, "intermediate": 2}
     for value in values:
         if isinstance(value, int) and value in MIN_CELLS_BY_LEVEL:
             return value
         if str(value).lower() in labels:
             return labels[str(value).lower()]
+        if value == 3 or str(value).lower() == "advanced":
+            raise ValueError("Verifier không còn hỗ trợ level 3 (advanced)")
     # Hàm run_verifier chưa nhận LearnerProfile. Harness truyền level thật;
     # khi gọi riêng dùng ngưỡng beginner để tránh fail oan.
     return 1
@@ -247,7 +253,8 @@ def _reads_train_csv(code: list[str]) -> bool:
     return False
 
 
-def _has_visualization(code: list[str]) -> bool:
+def _visualization_count(code: list[str]) -> int:
+    """Đếm lời gọi vẽ thật, không tính import/comment/string."""
     plot_calls = {
         "plot", "scatter", "bar", "barh", "hist", "boxplot", "violinplot",
         "imshow", "matshow", "pie", "heatmap", "pairplot", "lineplot",
@@ -257,6 +264,7 @@ def _has_visualization(code: list[str]) -> bool:
         "ConfusionMatrixDisplay", "DecisionBoundaryDisplay",
         "PrecisionRecallDisplay", "RocCurveDisplay",
     }
+    count = 0
     for text in code:
         parsed = _tree(text)
         if parsed:
@@ -266,17 +274,22 @@ def _has_visualization(code: list[str]) -> bool:
                 name = _call_name(node)
                 tail = name.rsplit(".", 1)[-1]
                 if tail in plot_calls or tail in display_classes:
-                    return True
-                if tail in {"from_estimator", "from_predictions"} and any(
+                    count += 1
+                elif tail in {"from_estimator", "from_predictions"} and any(
                     display in name for display in display_classes
                 ):
-                    return True
-        if re.search(
-            r"\.(?:plot|scatter|bar|hist|boxplot|imshow|heatmap|pairplot|plot_tree)\s*\(",
+                    count += 1
+            continue
+        count += len(re.findall(
+            r"\.(?:plot|scatter|bar|barh|hist|boxplot|violinplot|imshow|matshow|"
+            r"pie|heatmap|pairplot|lineplot|countplot|clustermap|plot_tree)\s*\(",
             _mask_comments_strings(text),
-        ):
-            return True
-    return False
+        ))
+    return count
+
+
+def _has_visualization(code: list[str]) -> bool:
+    return _visualization_count(code) >= MIN_VISUALIZATIONS
 
 
 def _module_label(cell: dict) -> str | None:
@@ -350,7 +363,9 @@ def rule_checks(
         for text in code
     )
     return {
-        "has_instructions": len(markdown) >= 3,
+        "has_instructions": (
+            len(markdown) >= MIN_MARKDOWN_CELLS_BY_LEVEL[resolved_level]
+        ),
         "has_todo": any(re.search(r"\bTODO\b", text, re.I) for text in code),
         "has_assert": any(_real_assert_count(text) for text in code),
         "no_hardcoded_answers": not hardcoded,
@@ -426,9 +441,12 @@ def build_rule_feedback(
     messages: list[str] = []
     for failure in failures:
         if failure == "has_instructions":
+            required = MIN_MARKDOWN_CELLS_BY_LEVEL[resolved_level]
             messages.append(
-                f"[CELL {first_code}] Thiếu tối thiểu 3 cell markdown hướng dẫn. "
-                "FIX: thêm phần giải thích và yêu cầu bài tập trước code."
+                f"[CELL {first_code}] Notebook level {resolved_level} chỉ có "
+                f"{sum(cell.get('cell_type') == 'markdown' for cell in nb.get('cells', []))}/"
+                f"{required} cell markdown tối thiểu. FIX: bổ sung phần tổng quan model, "
+                "dataset, heading module và heading bài tập còn thiếu."
             )
         elif failure == "has_todo":
             messages.append(
@@ -460,9 +478,14 @@ def build_rule_feedback(
                 "FIX: gọi train_test_split(...) hoặc đọc tập train đã tách sẵn."
             )
         elif failure == "has_visualization":
+            code = [
+                _source(cell) for cell in nb.get("cells", [])
+                if cell.get("cell_type") == "code"
+            ]
             messages.append(
-                f"[CELL {first_code}] Notebook chưa tạo biểu đồ minh hoạ. "
-                "FIX: thêm ít nhất một lệnh vẽ phù hợp và giải thích biểu đồ."
+                f"[CELL {first_code}] Notebook chỉ có {_visualization_count(code)}/"
+                f"{MIN_VISUALIZATIONS} lệnh vẽ tối thiểu. FIX: thêm các biểu đồ phù hợp "
+                "để minh hoạ dữ liệu và kết quả mô hình, kèm phần giải thích."
             )
         elif failure == "has_demo_per_module":
             if missing_demos:

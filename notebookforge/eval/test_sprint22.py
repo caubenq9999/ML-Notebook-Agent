@@ -50,13 +50,28 @@ def _notebook(cells: list[dict], level: int = 1) -> dict:
 def _passing_notebook() -> dict:
     cells = [
         _cell("markdown", "# Notebook"),
+        _cell("markdown", "Tổng quan mô hình và mục tiêu học tập."),
+        _cell("markdown", "Tổng quan dataset và biến mục tiêu."),
         _cell("markdown", "## Module 1: Chuẩn bị"),
-        _cell("code", "import pandas as pd\nX_train, X_test, y_train, y_test = train_test_split(X, y)"),
-        _cell("code", "print(X_train.shape)"),
+        _cell("markdown", "Giải thích bước chuẩn bị dữ liệu."),
+        _cell(
+            "code",
+            "import pandas as pd\n"
+            "X_train, X_test, y_train, y_test = train_test_split(X, y)\n"
+            "print(X_train.shape)",
+        ),
+        _cell("markdown", "### Exercise 1: Thử thay đổi tham số"),
+        _cell("code", "# TODO: thử đổi test_size\nassert len(X_train) > 0"),
         _cell("markdown", "## Module 2: Huấn luyện"),
-        _cell("code", "model.fit(X_train, y_train)\nprint(model.score(X_test, y_test))"),
-        _cell("code", "# TODO: thử đổi max_iter\nassert len(X_train) > 0"),
-        _cell("code", "import matplotlib.pyplot as plt\nplt.plot([0, 1], [0, 1])"),
+        _cell("markdown", "Giải thích huấn luyện và đánh giá."),
+        _cell(
+            "code",
+            "model.fit(X_train, y_train)\n"
+            "print(model.score(X_test, y_test))\n"
+            "plt.plot([0, 1], [0, 1])\n"
+            "plt.scatter([0, 1], [0, 1])",
+        ),
+        _cell("code", "assert len(X_test) > 0"),
     ]
     return _notebook(cells)
 
@@ -93,23 +108,44 @@ class Sprint22RuleTests(unittest.TestCase):
         writes_train = _notebook([_cell("code", "df.to_csv('train.csv')")])
         self.assertFalse(rule_checks(writes_train)["has_train_test_split"])
 
-    def test_visualization_needs_a_plot_call(self):
+    def test_visualization_needs_two_plot_calls(self):
         imported = _notebook([_cell("code", "import matplotlib.pyplot as plt")])
-        plotted = _notebook([_cell("code", "import matplotlib.pyplot as plt\nplt.scatter(x, y)")])
+        one_plot = _notebook([_cell("code", "plt.scatter(x, y)")])
+        two_plots = _notebook([_cell("code", "plt.scatter(x, y)\nplt.hist(x)")])
         self.assertFalse(rule_checks(imported)["has_visualization"])
-        self.assertTrue(rule_checks(plotted)["has_visualization"])
+        self.assertFalse(rule_checks(one_plot)["has_visualization"])
+        self.assertTrue(rule_checks(two_plots)["has_visualization"])
+
+    def test_instruction_markdown_threshold_depends_on_level(self):
+        beginner = _notebook([_cell("markdown", f"Phần {i}") for i in range(8)])
+        intermediate = _notebook(
+            [_cell("markdown", f"Phần {i}") for i in range(10)], level=2
+        )
+        self.assertTrue(rule_checks(beginner, level=1)["has_instructions"])
+        self.assertFalse(rule_checks(beginner, level=2)["has_instructions"])
+        self.assertTrue(rule_checks(intermediate, level=2)["has_instructions"])
+
+    def test_level_three_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "chỉ hỗ trợ level 1"):
+            rule_checks(_passing_notebook(), level=3)
 
     def test_every_module_needs_complete_demo_code(self):
         nb = _passing_notebook()
         self.assertTrue(rule_checks(nb)["has_demo_per_module"])
         nb["cells"][5]["source"] = ["# TODO: train model\n", "raise NotImplementedError\n"]
-        nb["cells"][7]["source"] = ["# TODO: add visualization\n"]
+        nb["cells"][10]["source"] = ["# TODO: add visualization\n"]
         self.assertFalse(rule_checks(nb)["has_demo_per_module"])
 
     def test_minimum_cells_depends_on_level(self):
-        nb = _passing_notebook()  # exactly 8 cells
+        nb = _passing_notebook()  # exactly 12 cells
         self.assertTrue(rule_checks(nb, level=1)["min_cells_by_level"])
         self.assertFalse(rule_checks(nb, level=2)["min_cells_by_level"])
+        nb["cells"].extend(
+            [_cell("markdown", "Bổ sung lý thuyết 1"), _cell("markdown", "Bổ sung lý thuyết 2")]
+            + [_cell("code", f"print({i})") for i in range(4)]
+        )
+        self.assertEqual(len(nb["cells"]), 18)
+        self.assertTrue(rule_checks(nb, level=2)["min_cells_by_level"])
 
 
 class Sprint22JudgeTests(unittest.TestCase):
@@ -123,8 +159,8 @@ class Sprint22JudgeTests(unittest.TestCase):
             nb_path="notebook.ipynb",
             attempt=1,
             success=True,
-            total_cells=8,
-            executed_cells=8,
+            total_cells=12,
+            executed_cells=12,
             duration_seconds=1.0,
         )
 
