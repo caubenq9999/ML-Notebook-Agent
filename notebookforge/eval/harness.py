@@ -356,11 +356,23 @@ def run_case(
     scores = _as_dict(report.get("llm_scores"))
     average = report.get("average_score")
     if not isinstance(average, (int, float)) and scores:
-        values = [scores.get(field) for field in (
-            "executability", "groundedness", "difficulty_fit", "pedagogical_order"
-        )]
+        fields = (
+            "groundedness", "difficulty_fit", "pedagogical_order",
+            "content_completeness", "learning_coverage",
+        )
+        values = [scores.get(field) for field in fields]
         if all(isinstance(value, (int, float)) for value in values):
-            average = sum(values) / 4
+            average = sum(values) / len(values)
+        else:
+            # Đọc được artifact benchmark cũ trước khi Executability được tách
+            # khỏi LLM rubric.
+            legacy_fields = (
+                "executability", "groundedness", "difficulty_fit",
+                "pedagogical_order",
+            )
+            legacy = [scores.get(field) for field in legacy_fields]
+            if all(isinstance(value, (int, float)) for value in legacy):
+                average = sum(legacy) / len(legacy)
 
     metric, threshold = next(iter(case["metric_threshold"].items()))
     metric_value = _metric_value(nb, metric)

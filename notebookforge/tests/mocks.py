@@ -346,8 +346,8 @@ MOCK_EXC_TIMEOUT = ExcRes(
 # 6. VerifierReport (output của HUY)
 # ---------------------------------------------------------------------------
 
-# average_score là computed field (trung bình 4 điểm LLM) -> KHÔNG truyền tay.
-# Ở đây: (4.5 + 4.0 + 4.0 + 3.5) / 4 = 4.0 >= 3.5 -> PASS.
+# average_score là computed field (trung bình 5 điểm LLM) -> KHÔNG truyền tay.
+# Ở đây: (4.0 + 4.0 + 3.5 + 4.0 + 4.5) / 5 = 4.0 -> PASS.
 MOCK_REPORT_PASS = VerifierReport(
     nb_path=MOCK_NB_PATH,
     attempt=1,
@@ -359,17 +359,18 @@ MOCK_REPORT_PASS = VerifierReport(
         has_train_test_split=True,
     ),
     llm_scores=LlmScores(
-        executability=4.5,
         groundedness=4.0,
         difficulty_fit=4.0,
         pedagogical_order=3.5,
+        content_completeness=4.0,
+        learning_coverage=4.5,
     ),
     decision="PASS",
     feedback=None,
     notes="Notebook chạy sạch, bám nguồn kb_01/kb_02.",
 )
 
-# (2.0 + 3.0 + 3.5 + 3.0) / 4 = 2.875 < 3.5 -> còn RETRY.
+# (3.0 + 3.5 + 3.0 + 2.5 + 2.5) / 5 = 2.9 < 3.5 -> còn RETRY.
 MOCK_REPORT_RETRY = VerifierReport(
     nb_path=MOCK_NB_PATH,
     attempt=2,
@@ -381,10 +382,11 @@ MOCK_REPORT_RETRY = VerifierReport(
         has_train_test_split=False,
     ),
     llm_scores=LlmScores(
-        executability=2.0,
         groundedness=3.0,
         difficulty_fit=3.5,
         pedagogical_order=3.0,
+        content_completeness=2.5,
+        learning_coverage=2.5,
     ),
     decision="RETRY",
     feedback=(

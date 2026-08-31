@@ -47,11 +47,13 @@ _FEEDBACK_ITEM = re.compile(
     re.I | re.S,
 )
 _SCORE_FIELDS = (
-    "executability",
     "groundedness",
     "difficulty_fit",
     "pedagogical_order",
+    "content_completeness",
+    "learning_coverage",
 )
+_COVERAGE_FIELDS = ("covered_concepts", "shallow_concepts", "missing_concepts")
 _EXTENDED_RULES = (
     "has_visualization",
     "has_demo_per_module",
@@ -75,10 +77,14 @@ class JudgeOutput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    executability: float = Field(..., ge=1, le=5)
     groundedness: float = Field(..., ge=1, le=5)
     difficulty_fit: float = Field(..., ge=1, le=5)
     pedagogical_order: float = Field(..., ge=1, le=5)
+    content_completeness: float = Field(..., ge=1, le=5)
+    learning_coverage: float = Field(..., ge=1, le=5)
+    covered_concepts: list[str] = Field(default_factory=list)
+    shallow_concepts: list[str] = Field(default_factory=list)
+    missing_concepts: list[str] = Field(default_factory=list)
     feedback: str | None = None
     ungrounded_claims: list[str] = Field(default_factory=list)
 
@@ -102,6 +108,11 @@ class JudgeOutput(BaseModel):
     @classmethod
     def _clean_claims(cls, value: list[str]) -> list[str]:
         return [item.strip() for item in value if item.strip()]
+
+    @field_validator("covered_concepts", "shallow_concepts", "missing_concepts")
+    @classmethod
+    def _clean_concepts(cls, value: list[str]) -> list[str]:
+        return list(dict.fromkeys(item.strip() for item in value if item.strip()))
 
 
 JudgeCall = Callable[..., tuple[Any, Any]]
@@ -596,18 +607,56 @@ def _research_summary(bundle: ResearchBundle) -> str:
         "key_concepts": bundle.key_concepts,
         "grounded_concepts": bundle.grounded_concepts,
         "unresolved_concepts": bundle.unresolved_concepts,
+        "sources": [
+            {
+                "source_id": item.source_id,
+                "title": item.title,
+                "path_or_url": item.path_or_url,
+            }
+            for item in bundle.sources
+        ],
         "citations": [
-            {"concept": item.concept, "source_id": item.source_id}
+            {
+                "concept": item.concept,
+                "source_id": item.source_id,
+                "quote": item.quote,
+                "locator": item.locator,
+            }
             for item in bundle.citations
+        ],
+        "theory_chunks": [
+            {
+                "chunk_id": item.chunk_id,
+                "source_id": item.source_id,
+                "concepts": item.concepts,
+                "text": item.text,
+            }
+            for item in bundle.theory_chunks
         ],
     }
     return json.dumps(value, ensure_ascii=False)
 
 
-def _validate_judge(payload: dict[str, Any]) -> dict[str, Any]:
-    allowed = {*_SCORE_FIELDS, "feedback", "ungrounded_claims"}
+def _coverage_score(covered: int, total: int) -> float:
+    ratio = covered / total if total else 0.0
+    if ratio < 0.2:
+        return 1.0
+    if ratio < 0.4:
+        return 2.0
+    if ratio < 0.7:
+        return 3.0
+    if ratio < 0.9:
+        return 4.0
+    return 5.0
+
+
+def _validate_judge(
+    payload: dict[str, Any], key_concepts: list[str]
+) -> dict[str, Any]:
+    allowed = {*_SCORE_FIELDS, *_COVERAGE_FIELDS, "feedback", "ungrounded_claims"}
     extra = sorted(set(payload) - allowed)
-    missing = [field for field in _SCORE_FIELDS if field not in payload]
+    required = (*_SCORE_FIELDS, *_COVERAGE_FIELDS)
+    missing = [field for field in required if field not in payload]
     if extra or missing:
         raise JudgeResponseError(f"field thừa={extra}, field thiếu={missing}")
 
@@ -619,6 +668,36 @@ def _validate_judge(payload: dict[str, Any]) -> dict[str, Any]:
         if not 1 <= float(score) <= 5:
             raise JudgeResponseError(f"{field} phải nằm trong [1, 5]")
         result[field] = float(score)
+
+    canonical = {item.strip().casefold(): item for item in key_concepts}
+    assigned: set[str] = set()
+    groups: dict[str, list[str]] = {field: [] for field in _COVERAGE_FIELDS}
+    for field in _COVERAGE_FIELDS:
+        values = payload.get(field)
+        if not isinstance(values, list) or not all(
+            isinstance(item, str) for item in values
+        ):
+            raise JudgeResponseError(f"{field} phải là list string")
+        for item in values:
+            key = item.strip().casefold()
+            if key in canonical and key not in assigned:
+                groups[field].append(canonical[key])
+                assigned.add(key)
+
+    # Judge đôi khi bỏ sót hoặc lặp concept. Concept chưa phân loại được xem là
+    # missing; điểm coverage được tính lại bằng code để luôn khớp danh sách.
+    for key, concept in canonical.items():
+        if key not in assigned:
+            groups["missing_concepts"].append(concept)
+    result.update(groups)
+    coverage_score = _coverage_score(
+        len(groups["covered_concepts"]), len(canonical)
+    )
+    if coverage_score == 5.0 and (
+        groups["shallow_concepts"] or groups["missing_concepts"]
+    ):
+        coverage_score = 4.0
+    result["learning_coverage"] = coverage_score
 
     feedback = payload.get("feedback")
     if feedback is not None:
@@ -701,11 +780,7 @@ def llm_judge(
         payload = payload.model_dump()
     if not isinstance(payload, dict):
         raise JudgeResponseError("llm_client.call_json không trả Pydantic model/dict")
-    result = _validate_judge(payload)
-    if exc is not None and not exc.success:
-        result["executability"] = min(result["executability"], 2.0)
-        if exc.timeout_hit:
-            result["executability"] = 1.0
+    result = _validate_judge(payload, bundle.key_concepts)
 
     if tracker is not None and tracker_mark is not None:
         judge_cost = tracker.cost_since(tracker_mark)
@@ -748,6 +823,9 @@ def update_retry_history(
         "judge_cost_usd": judge_cost_usd,
         "feedback": report.feedback,
         "ungrounded_claims": report.ungrounded_claims,
+        "covered_concepts": report.covered_concepts,
+        "shallow_concepts": report.shallow_concepts,
+        "missing_concepts": report.missing_concepts,
     }
     by_attempt = {int(old["attempt"]): dict(old) for old in history}
     by_attempt[report.attempt] = item
@@ -890,6 +968,9 @@ def run_verifier(
         decision=decision,
         feedback=feedback,
         ungrounded_claims=judge.get("ungrounded_claims", []),
+        covered_concepts=judge.get("covered_concepts", []),
+        shallow_concepts=judge.get("shallow_concepts", []),
+        missing_concepts=judge.get("missing_concepts", []),
         notes=notes,
     )
 

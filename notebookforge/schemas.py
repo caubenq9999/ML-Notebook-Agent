@@ -366,7 +366,7 @@ class ExcRes(ForgeModel):
     duration_seconds: float = Field(..., ge=0)
     timeout_hit: bool = False
     executed_nb_path: str | None = Field(
-        None, description="Notebook đã có output, để Huy chấm executability"
+        None, description="Notebook đã có output, phục vụ hard gate và Judge"
     )
 
     # Chi phí LLM của LƯỢT này. executor không gọi LLM nên mặc định 0.0;
@@ -471,27 +471,34 @@ class RuleChecks(ForgeModel):
 
 
 class LlmScores(ForgeModel):
-    """4 tiêu chí chấm bằng LLM, thang 1-5.
+    """5 tiêu chí chất lượng nội dung do LLM Judge chấm, thang 1-5.
 
-    [CHỐT TRONG BUỔI HỌP] đang lấy đúng 4 đề xuất trong tài liệu Sprint 2.
+    Executability do Executor kiểm tra như một hard gate riêng, không còn được
+    trộn vào điểm chất lượng sư phạm của notebook.
     """
 
-    executability: float = Field(..., ge=1, le=5, description="Chạy trơn tru không")
     groundedness: float = Field(..., ge=1, le=5, description="Bám nguồn trong ResearchBundle")
     difficulty_fit: float = Field(..., ge=1, le=5, description="Vừa với level_final")
     pedagogical_order: float = Field(..., ge=1, le=5, description="Thứ tự dạy hợp lý")
+    content_completeness: float = Field(
+        ..., ge=1, le=5, description="Độ đầy đủ và chiều sâu của nội dung"
+    )
+    learning_coverage: float = Field(
+        ..., ge=1, le=5, description="Tỷ lệ key concept được giảng dạy đầy đủ"
+    )
 
     @computed_field
     @property
     def average(self) -> float:
         return round(
             (
-                self.executability
-                + self.groundedness
+                self.groundedness
                 + self.difficulty_fit
                 + self.pedagogical_order
+                + self.content_completeness
+                + self.learning_coverage
             )
-            / 4,
+            / 5,
             3,
         )
 
@@ -512,6 +519,9 @@ class VerifierReport(ForgeModel):
     ungrounded_claims: list[str] = Field(
         default_factory=list, description="Câu khẳng định trong notebook không có nguồn"
     )
+    covered_concepts: list[str] = Field(default_factory=list)
+    shallow_concepts: list[str] = Field(default_factory=list)
+    missing_concepts: list[str] = Field(default_factory=list)
     notes: str | None = None
     verified_at: datetime = Field(default_factory=_utcnow)
     schema_version: str = SCHEMA_VERSION
@@ -519,7 +529,7 @@ class VerifierReport(ForgeModel):
     @computed_field
     @property
     def average_score(self) -> float:
-        """Trung bình 4 điểm LLM. CHỈ MỘT công thức duy nhất, không ai tính lại tay.
+        """Trung bình 5 điểm LLM. CHỈ MỘT công thức duy nhất, không ai tính lại tay.
 
         rule_checks không tính vào đây - chúng là cổng chặn cứng, thể hiện qua
         feedback. Muốn đổi cách tính -> nhắn Hoàng.

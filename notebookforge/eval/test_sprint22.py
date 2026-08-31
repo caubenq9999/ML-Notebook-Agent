@@ -185,10 +185,14 @@ class Sprint22JudgeTests(unittest.TestCase):
     def test_llm_judge_parses_structured_json(self):
         fake = _FakeJudgeCall(
             {
-                "executability": 5,
                 "groundedness": 4,
                 "difficulty_fit": 4,
                 "pedagogical_order": 4,
+                "content_completeness": 4,
+                "learning_coverage": 5,
+                "covered_concepts": ["sigmoid"],
+                "shallow_concepts": [],
+                "missing_concepts": [],
                 "feedback": None,
                 "ungrounded_claims": [],
             }
@@ -201,52 +205,51 @@ class Sprint22JudgeTests(unittest.TestCase):
             judge_call=fake,
             level=1,
         )
-        self.assertEqual(result["executability"], 5)
+        self.assertEqual(result["learning_coverage"], 5)
+        self.assertEqual(result["covered_concepts"], ["sigmoid"])
         self.assertEqual(result["ungrounded_claims"], [])
         self.assertEqual(result["judge_cost_usd"], 0.0123)
         call = fake.calls[0]
         self.assertEqual(call["session_id"], "test-001")
         self.assertEqual(call["temperature"], 0)
 
-    def test_old_and_new_verifier_prompts_are_both_compatible(self):
+    def test_production_verifier_prompt_is_rendered(self):
         prompt_dir = Path(__file__).parents[1] / "prompts"
         payload = {
-            "executability": 5,
             "groundedness": 4,
             "difficulty_fit": 4,
             "pedagogical_order": 4,
+            "content_completeness": 4,
+            "learning_coverage": 5,
+            "covered_concepts": ["sigmoid"],
+            "shallow_concepts": [],
+            "missing_concepts": [],
             "feedback": "[CELL 4] Cần giải thích rõ hơn. FIX: thêm giải thích trước code.",
             "ungrounded_claims": [],
         }
-        for filename in ("verifier_old.txt", "verifier.txt"):
-            with self.subTest(prompt=filename):
-                fake = _FakeJudgeCall(payload)
-                result = llm_judge(
-                    _passing_notebook(),
-                    self.bundle,
-                    exc=self.exc_ok,
-                    session_id="test-001",
-                    judge_call=fake,
-                    level=1,
-                    prompt_path=prompt_dir / filename,
-                )
-                self.assertEqual(result["groundedness"], 4)
-                rendered_prompt = fake.calls[0]["prompt"]
-                for placeholder in (
-                    "{level}",
-                    "{exc_summary}",
-                    "{research_summary}",
-                    "{content}",
-                ):
-                    self.assertNotIn(placeholder, rendered_prompt)
-                self.assertIn("[CELL 0 | markdown]", rendered_prompt)
+        fake = _FakeJudgeCall(payload)
+        result = llm_judge(
+            _passing_notebook(), self.bundle, exc=self.exc_ok,
+            session_id="test-001", judge_call=fake, level=1,
+            prompt_path=prompt_dir / "verifier.txt",
+        )
+        self.assertEqual(result["groundedness"], 4)
+        rendered_prompt = fake.calls[0]["prompt"]
+        for placeholder in ("{level}", "{research_summary}", "{content}"):
+            self.assertNotIn(placeholder, rendered_prompt)
+        self.assertIn("[CELL 0 | markdown]", rendered_prompt)
+        self.assertTrue((prompt_dir / "verifier_old.txt").is_file())
 
     def test_production_judge_uses_llm_client_cost_tracker(self):
         payload = {
-            "executability": 5,
             "groundedness": 4,
             "difficulty_fit": 4,
             "pedagogical_order": 4,
+            "content_completeness": 4,
+            "learning_coverage": 5,
+            "covered_concepts": ["sigmoid"],
+            "shallow_concepts": [],
+            "missing_concepts": [],
             "feedback": None,
             "ungrounded_claims": [],
         }
@@ -291,10 +294,14 @@ class Sprint22JudgeTests(unittest.TestCase):
         nb["cells"][6]["source"] = ["# TODO: complete this cell\n"]
         fake = _FakeJudgeCall(
             {
-                "executability": 5,
                 "groundedness": 4,
                 "difficulty_fit": 4,
                 "pedagogical_order": 4,
+                "content_completeness": 4,
+                "learning_coverage": 5,
+                "covered_concepts": ["sigmoid"],
+                "shallow_concepts": [],
+                "missing_concepts": [],
                 "feedback": "[CELL 5] Thiếu giải thích metric. FIX: thêm giải thích accuracy.",
                 "ungrounded_claims": [],
             }
@@ -323,7 +330,7 @@ class Sprint22JudgeTests(unittest.TestCase):
                 level=1,
             )
         self.assertEqual(report.decision, "RETRY")
-        self.assertLessEqual(report.llm_scores.executability, 2)
+        self.assertEqual(report.llm_scores.learning_coverage, 5)
         self.assertEqual(exc.cost_this_attempt, 0.0123)
         self.assertIn("NameError", report.feedback or "")
         self.assertIn("Thiếu giải thích metric", report.feedback or "")
@@ -368,10 +375,11 @@ class Sprint22ReportTests(unittest.TestCase):
                         "decision": "PASS",
                         "average_score": 4.0,
                         "llm_scores": {
-                            "executability": 4,
                             "groundedness": 4,
                             "difficulty_fit": 4,
                             "pedagogical_order": 4,
+                            "content_completeness": 4,
+                            "learning_coverage": 4,
                         },
                     },
                 }
@@ -385,10 +393,14 @@ class Sprint22ReportTests(unittest.TestCase):
     def test_history_is_upserted_and_markdown_is_rendered(self):
         fake = _FakeJudgeCall(
             {
-                "executability": 5,
                 "groundedness": 4,
                 "difficulty_fit": 4,
                 "pedagogical_order": 4,
+                "content_completeness": 4,
+                "learning_coverage": 5,
+                "covered_concepts": ["sigmoid"],
+                "shallow_concepts": [],
+                "missing_concepts": [],
                 "feedback": None,
                 "ungrounded_claims": [],
             }

@@ -12,7 +12,7 @@ vòng retry chỉ sửa được một lỗi.
 Ba thứ trả về quan trọng:
   - errors[]          : danh sách cell hỏng (index + ename + evalue + traceback)
   - timeout_hit       : True nếu có cell chạy quá CELL_TIMEOUT giây
-  - executed_nb_path  : notebook đã có output, để Huy chấm executability
+  - executed_nb_path  : notebook đã có output, phục vụ hard gate và Judge
 
 Chạy tay để test:
     python executor.py path/to/notebook.ipynb
@@ -213,7 +213,7 @@ def run_notebook(nb_path: str, attempt: int = 1, timeout: int | None = None) -> 
     if fatal is not None:
         errors.append(fatal)
 
-    # Luôn ghi bản đã chạy, kể cả khi lỗi - Huy cần output để chấm executability.
+    # Luôn ghi bản đã chạy, kể cả khi lỗi - hard gate/Judge cần output.
     executed_path = source.with_suffix(".executed.ipynb")
     try:
         import nbformat as _nbf

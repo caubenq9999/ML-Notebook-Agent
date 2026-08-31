@@ -91,12 +91,18 @@ def _store_init(session_id: str) -> None:
 
 
 def _store_finish(session_id: str, result: GenerationResult) -> None:
+    """Lưu một pipeline đã chạy xong, bất kể có vượt quality gate hay không.
+
+    FAIL_MAX_RETRY/FAIL_COST_CAP là kết quả nghiệp vụ hợp lệ và vẫn có thể có
+    notebook tốt nhất để người dùng xem hoặc tải xuống. Chỉ exception thật sự
+    trong _run_job mới dùng trạng thái HTTP-level ``error`` qua _store_fail().
+    """
     with _LOCK:
-        status: SessionStatus = "completed" if result.decision == "PASS" else "error"
-        message = result.error if status == "error" else None
-        if status == "error" and not message:
-            message = f"Pipeline kết thúc với decision={result.decision}"
-        _STORE[session_id] = {"status": status, "result": result, "error": message}
+        _STORE[session_id] = {
+            "status": "completed",
+            "result": result,
+            "error": result.error,
+        }
 
 
 def _store_fail(session_id: str, message: str) -> None:

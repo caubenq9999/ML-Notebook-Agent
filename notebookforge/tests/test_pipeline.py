@@ -137,10 +137,11 @@ def test_giu_duoc_best_attempt():
                 "nb_path": nb_path,
                 "attempt": exc.attempt,
                 "llm_scores": LlmScores(
-                    executability=score,
                     groundedness=score,
                     difficulty_fit=score,
                     pedagogical_order=score,
+                    content_completeness=score,
+                    learning_coverage=score,
                 ),
             }
         )

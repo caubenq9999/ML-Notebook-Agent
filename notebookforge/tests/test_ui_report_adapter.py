@@ -23,11 +23,12 @@ def test_current_generation_result_is_flattened_for_ui() -> None:
             "retry_history": [{"attempt": 1, "average_score": 4.75}],
             "report": {
                 "llm_scores": {
-                    "executability": 5.0,
                     "groundedness": 5.0,
                     "difficulty_fit": 5.0,
                     "pedagogical_order": 4.0,
-                    "average": 4.75,
+                    "content_completeness": 4.5,
+                    "learning_coverage": 4.5,
+                    "average": 4.6,
                 },
                 "rule_checks": {"all_passed": True},
                 "feedback": "[CELL 1] lỗi. FIX: sửa.",
@@ -37,7 +38,7 @@ def test_current_generation_result_is_flattened_for_ui() -> None:
 
     report = normalize_report_payload(payload)
     assert report is not None
-    assert report["scores"]["average"] == 4.75
+    assert report["scores"]["average"] == 4.6
     assert report["status"] == "PASS"
     assert report["attempts_used"] == 1
     assert report["feedback"].startswith("[CELL 1]")
@@ -49,12 +50,12 @@ def test_api_report_alias_is_supported() -> None:
         "report": {
             "decision": "FAIL_MAX_RETRY",
             "attempts_used": 2,
-            "report": {"llm_scores": {"executability": 3.0}},
+            "report": {"llm_scores": {"content_completeness": 3.0}},
         }
     }
     report = normalize_report_payload(payload)
     assert report is not None
-    assert report["scores"]["executability"] == 3.0
+    assert report["scores"]["content_completeness"] == 3.0
     assert report["attempts_used"] == 2
 
 

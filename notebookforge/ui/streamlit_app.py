@@ -287,10 +287,11 @@ def get_mock_notebook_data(profile_data: dict) -> tuple[dict, dict]:
     mock_report = {
         "status": "completed",
         "scores": {
-            "executability": 1.0,
             "groundedness": 0.9,
             "difficulty_fit": 0.85,
             "pedagogical_order": 0.9,
+            "content_completeness": 0.8,
+            "learning_coverage": 0.85,
         },
         "feedback": (
             "Fallback Mode: Dữ liệu Notebook được giả lập do Backend chưa trả"
@@ -326,7 +327,7 @@ def run_pipeline_via_fastapi(profile_data: dict) -> tuple[dict, dict] | None:
         task_id = data.get("task_id") or data.get("id")
 
         POLL_INTERVAL = 3
-        MAX_RETRIES = 60
+        MAX_RETRIES = 200
 
         for _ in range(MAX_RETRIES):
             res = requests.get(f"{FASTAPI_URL}/report/{task_id}", timeout=5)
@@ -354,6 +355,24 @@ def run_pipeline_via_fastapi(profile_data: dict) -> tuple[dict, dict] | None:
                     return notebook, report
 
                 elif status in ["failed", "error"]:
+                    # Tương thích với backend cũ: FAIL_MAX_RETRY từng bị gắn
+                    # status="error" dù notebook tốt nhất đã được lưu đầy đủ.
+                    notebook = report_data.get("notebook") or report_data.get(
+                        "notebook_data"
+                    )
+                    report = normalize_report_payload(report_data)
+                    if notebook:
+                        decision = (
+                            report.get("status")
+                            if isinstance(report, dict)
+                            else "FAIL_MAX_RETRY"
+                        )
+                        st.warning(
+                            "Pipeline đã tạo notebook nhưng chưa vượt quality"
+                            f" gate ({decision}). Vẫn hiển thị bản tốt nhất."
+                        )
+                        return notebook, report or report_data.get("quality_report")
+
                     st.error(
                         "Pipeline thất bại:"
                         f" {report_data.get('error_message', 'Lỗi thực thi')}"
@@ -363,7 +382,7 @@ def run_pipeline_via_fastapi(profile_data: dict) -> tuple[dict, dict] | None:
 
             time.sleep(POLL_INTERVAL)
 
-        st.warning("⚠️ Timeout 3 phút từ FastAPI. Đang bật Mock Data...")
+        st.warning("⚠️ Timeout 10 phút từ FastAPI. Đang bật Mock Data...")
         return fallback_result(profile_data)
 
     except requests.exceptions.ConnectionError:
@@ -377,7 +396,7 @@ def run_pipeline_via_fastapi(profile_data: dict) -> tuple[dict, dict] | None:
         return fallback_result(profile_data)
 
 
-def execute_pipeline_with_progress(profile, timeout_seconds=180):
+def execute_pipeline_with_progress(profile, timeout_seconds=600):
     """Chạy pipeline với giao diện cập nhật 5 bước tiến trình và xử lý Timeout."""
     steps = [
         (
@@ -449,11 +468,27 @@ def execute_pipeline_with_progress(profile, timeout_seconds=180):
                     return None
 
                 progress_bar.progress(100)
-                status.update(
-                    label="🎉 **Đã hoàn thành tạo Notebook thành công!**",
-                    state="complete",
-                    expanded=False,
+                _, result_report = result_tuple
+                decision = (
+                    str(result_report.get("status", "")).upper()
+                    if isinstance(result_report, dict)
+                    else ""
                 )
+                if decision == "PASS":
+                    status.update(
+                        label="🎉 **Đã hoàn thành tạo Notebook thành công!**",
+                        state="complete",
+                        expanded=False,
+                    )
+                else:
+                    status.update(
+                        label=(
+                            "⚠️ **Đã tạo notebook nhưng chưa vượt quality gate"
+                            f" ({decision or 'UNKNOWN'})**"
+                        ),
+                        state="complete",
+                        expanded=True,
+                    )
                 return result_tuple
             except Exception as e:
                 status.update(
@@ -600,6 +635,14 @@ submit_quiz = st.button(
 
 # --- PHASE 3: XỬ LÝ & TẠO LEANER PROFILE & CHẠY PIPELINE ---
 if submit_quiz:
+    # Mỗi lần bấm Tạo Notebook là một job mới. Xóa artifact UI cũ
+    # ngay từ đầu để run mới timeout/fail không làm report PASS cũ
+    # tiếp tục xuất hiện; đồng thời tránh API 409 do trùng session_id.
+    for state_key in ("notebook_dict", "report_data", "current_topic"):
+        st.session_state.pop(state_key, None)
+    st.session_state.session_id = str(uuid.uuid4())[:8]
+    st.session_state.created_at = datetime.now().isoformat()
+
     quiz_score = sum(
         1
         for idx, q_data in enumerate(questions)
@@ -636,7 +679,7 @@ if submit_quiz:
 
     # KÍCH HOẠT CHẠY PIPELINE THẬT QUA FASTAPI
     notebook_result = execute_pipeline_with_progress(
-        profile=profile_data, timeout_seconds=180
+        profile=profile_data, timeout_seconds=600
     )
 
     if notebook_result:
@@ -647,8 +690,21 @@ if submit_quiz:
 
 # --- PHASE 4: HIỂN THỊ KẾT QUẢ KHI ĐÃ CÓ DATA ---
 if "notebook_dict" in st.session_state and st.session_state.notebook_dict:
-    st.balloons()
-    st.success("🎉 **Notebook của bạn đã được tạo thành công!**")
+    initial_report = st.session_state.get("report_data")
+    final_decision = (
+        str(initial_report.get("status", "")).upper()
+        if isinstance(initial_report, dict)
+        else ""
+    )
+    if final_decision == "PASS":
+        st.balloons()
+        st.success("🎉 **Notebook của bạn đã được tạo thành công!**")
+    else:
+        st.warning(
+            "⚠️ **Notebook chưa vượt quality gate"
+            f" ({final_decision or 'UNKNOWN'}), nhưng bạn vẫn có thể xem và tải"
+            " xuống bản tốt nhất.**"
+        )
 
     # Download Notebook JSON
     notebook_json_bytes = json.dumps(

@@ -90,8 +90,9 @@ AGENT_SPECS: dict[str, dict[str, Any]] = {
         "prompt_file": "verifier.txt",
         "role": "Giám khảo chất lượng notebook",
         "goal": (
-            "Chấm notebook trên 4 tiêu chí (executability, groundedness, difficulty_fit, "
-            "pedagogical_order) thang 1-5, và viết feedback đủ cụ thể để vòng sau sửa được."
+            "Chấm notebook trên 5 tiêu chí nội dung (groundedness, difficulty_fit, "
+            "pedagogical_order, content_completeness, learning_coverage) thang 1-5, "
+            "và viết feedback đủ cụ thể để vòng sau sửa được."
         ),
         "backstory": (
             "Bạn chấm thẳng tay. Điểm 62% kèm phân tích vì sao fail có giá trị hơn 95% "

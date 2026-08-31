@@ -122,10 +122,11 @@ def _write_quality_report(result: GenerationResult) -> str:
             "",
             "| Tiêu chí LLM (1-5) | Điểm |",
             "|---|---|",
-            f"| Executability | {s.executability} |",
             f"| Groundedness | {s.groundedness} |",
             f"| Difficulty-fit | {s.difficulty_fit} |",
             f"| Pedagogical-order | {s.pedagogical_order} |",
+            f"| Content completeness | {s.content_completeness} |",
+            f"| Learning coverage | {s.learning_coverage} |",
             f"| **Trung bình** | **{result.report.average_score}** "
             f"(ngưỡng {PASS_THRESHOLD}) |",
             "",
@@ -137,6 +138,14 @@ def _write_quality_report(result: GenerationResult) -> str:
         if result.report.ungrounded_claims:
             lines += ["", "### Câu khẳng định không có nguồn", ""]
             lines += [f"- {c}" for c in result.report.ungrounded_claims]
+        lines += [
+            "",
+            "### Phạm vi kiến thức",
+            "",
+            "- Covered: " + (", ".join(result.report.covered_concepts) or "Không có"),
+            "- Shallow: " + (", ".join(result.report.shallow_concepts) or "Không có"),
+            "- Missing: " + (", ".join(result.report.missing_concepts) or "Không có"),
+        ]
 
     if result.retry_history:
         lines += [

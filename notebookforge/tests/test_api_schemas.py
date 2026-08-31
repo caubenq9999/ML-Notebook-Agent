@@ -77,7 +77,7 @@ def test_round_trip_json():
 def test_average_score_chi_mot_cong_thuc():
     """average_score là computed field, không ai set tay được"""
     assert mocks.MOCK_REPORT_PASS.average_score == 4.0
-    assert mocks.MOCK_REPORT_RETRY.average_score == 2.875
+    assert mocks.MOCK_REPORT_RETRY.average_score == 2.9
 
 
 def test_quy_tac_ha_trinh_do():
@@ -152,6 +152,25 @@ def test_generate_roi_report():
         assert artifact.status_code == 200, (name, artifact.text)
         assert filename in artifact.headers.get("content-disposition", "")
         assert artifact.content, f"artifact {name} không được rỗng"
+
+
+def test_fail_max_retry_van_la_pipeline_completed_va_giu_result():
+    """Không đạt quality gate vẫn phải trả result/notebook tốt nhất cho UI."""
+    import api
+
+    sid = "test-fail-max-retry"
+    failed_quality = mocks.MOCK_RESULT.model_copy(
+        update={"decision": "FAIL_MAX_RETRY"}
+    )
+    api._store_finish(sid, failed_quality)
+
+    try:
+        entry = api._STORE[sid]
+        assert entry["status"] == "completed"
+        assert entry["result"].decision == "FAIL_MAX_RETRY"
+    finally:
+        with api._LOCK:
+            api._STORE.pop(sid, None)
 
 
 def test_artifact_la_allowlist_khong_nhan_duong_dan_tuy_y():
