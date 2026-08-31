@@ -1,0 +1,24 @@
+name: Compile LaTeX to PDF
+
+on:
+  push:
+    branches:
+      - report  # Tự động chạy khi bạn push lên BẤT KỲ branch nào
+
+jobs:
+  build_latex:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Compile LaTeX document
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: group_13_report.tex  # ĐỔI TÊN NÀY thành tên file .tex chính của bạn (ví dụ: report.tex)
+
+      - name: Commit and Push PDF back to repository
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs: render preview pdf [skip ci]"
+          file_pattern: "*.pdf"

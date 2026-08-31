@@ -11,3 +11,6 @@ outputs/
 *.executed.ipynb
 .ipynb_checkpoints/
 notebookforge/output_notebooks/
+
+# IDE local settings
+.vscode/

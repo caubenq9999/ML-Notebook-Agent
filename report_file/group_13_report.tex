@@ -1,0 +1,366 @@
+\documentclass[aspectratio=169, 10pt, t]{beamer}
+\usepackage[T5,T1]{fontenc}
+\usepackage[utf8]{vietnam}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{beamerthemeMLIOT}   % custom theme (in same folder)
+\setbeamerfont{title}{series=\bfseries} % Ép Beamer phải in đậm tiêu đề chính
+
+% ---- Additional packages ----
+\usepackage{amsmath, amssymb}
+\usepackage{booktabs}
+\usepackage{multicol}
+\usepackage{caption}
+\usepackage{hyperref}
+\usepackage{array}
+\usepackage{pifont}
+\usepackage{ragged2e}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning}
+
+% ---- Hyperlink colours ----
+\hypersetup{
+  colorlinks = true,
+  urlcolor   = MLIOTaccent,
+  linkcolor  = MLIOTblue,
+  citecolor  = MLIOTblue
+}
+
+% ============================================================
+%  PAPER METADATA – fill these in
+% ============================================================
+\title[NotebookForge]{%
+  \textbf{\Large NotebookForge}\\[0.2em]
+  \large Hệ thống Tự động Sinh và Kiểm định Chất lượng Notebook Thực hành Học máy bằng Hệ thống Đa tác nhân sử dụng CrewAI
+}
+
+\author{%
+  \textbf{\textcolor{MLIOTaccent}{Nguyễn Xuân Huy}}%
+  \texorpdfstring{\textcolor{MLIOTgold}{\textsuperscript{*a}}}{*a}\textcolor{MLIOTnavy}{,~}\\%
+  \textbf{\textcolor{MLIOTnavy}{Nguyễn Xuân Hoàng}}%
+  \texorpdfstring{\textcolor{MLIOTgold}{\textsuperscript{a}}}{a}\textcolor{MLIOTnavy}{,~}%
+  \textbf{\textcolor{MLIOTnavy}{Nguyễn Hoàng Nam}}%
+  \texorpdfstring{\textcolor{MLIOTgold}{\textsuperscript{a}}}{a}\textcolor{MLIOTnavy}{,~}\\% 
+  \textbf{\textcolor{MLIOTnavy}{Bùi Phong Hợp}}%
+  \texorpdfstring{\textcolor{MLIOTgold}{\textsuperscript{a}}}{a}\textcolor{MLIOTnavy}{,~}%
+  \textbf{\textcolor{MLIOTnavy}{Nguyễn Minh Trí}}%
+  \texorpdfstring{\textcolor{MLIOTgold}{\textsuperscript{a}}}{a}\textcolor{MLIOTnavy}{~}%
+}
+
+\setAffiliations{%
+  \textsuperscript{a} Nhóm 13: UTÚ
+}
+
+\setCorrespondingAuthor{%
+  *Email nhóm trưởng: \href{mailto:author@mail.com}{author@mail.com}%
+}
+
+\setPaperID{MLIOT-2026-XXX}
+
+\institute{%
+  Machine Learning \& IoT Lab,
+  Ho Chi Minh City University of Technology (HCMUT)%
+}
+
+\date{August 2026}
+
+% ============================================================
+\begin{document}
+% ============================================================
+
+% ------------------------------------------------------------
+%  SLIDE 1 – Title Slide
+% ------------------------------------------------------------
+\begin{frame}[plain, c]
+  \titlepage
+\end{frame}
+
+% ------------------------------------------------------------
+%  SLIDE 2 – Outline
+% ------------------------------------------------------------
+\begin{frame}{Nội dung chính}
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      \setbeamerfont{enumerate item}{size=\large}
+      
+      \begin{enumerate}
+        \setlength{\itemsep}{0.8em}
+        \item {\large Đặt vấn đề và giải pháp} 
+        \item {\large Multi-agent Pipeline} 
+        \item {\large Demo và Evaluation} 
+        \item {\large Conclusion và Mentor Q\&A} 
+        \item {\large Conclusions} 
+        \item {\large References} 
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{block}{Contact Information}
+        \footnotesize
+        \textbf{\textcolor{MLIOTnavy}{Address:}}~403.1 BK.B6, HCMUT Campus 2\\[0.35em]
+        \textbf{\textcolor{MLIOTnavy}{Email:}}\\
+        mlandiotlab@gmail.com\\[0.35em]
+        \textbf{\textcolor{MLIOTnavy}{Website:}}~mliotlab.com\\[0.35em]
+        \textbf{\textcolor{MLIOTnavy}{Facebook:}}~facebook.com/hcmut.ml.iot.lab\\[0.35em]
+        \textbf{\textcolor{MLIOTnavy}{YouTube:}}~youtube.com/@mliotlab
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ------------------------------------------------------------
+%  SLIDE 3 – Introduction
+% ------------------------------------------------------------
+\begin{frame}{Đặt vấn đề và giải pháp}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \begin{block}{Tổng quan dự án \& bối cảnh thực tế}
+        \begin{itemize}
+          \item \textbf{Tên đề tài:} NotebookForge - 
+          Hệ thống Tự động Sinh và Kiểm định Chất lượng 
+          Notebook Thực hành Học máy bằng Hệ thống Đa tác nhân.
+          \item \textbf{Thách thức của người học AI/ML:} Người mới bắt 
+          đầu gặp khó khăn khi tìm kiếm bài tập thực hành 
+          cá nhân hóa theo đúng trình độ, thời lượng rảnh 
+          và mục tiêu cá nhân; tự học dễ nản vì thiếu lời giải chi tiết.
+          \item \textbf{Hạn chế của LLM hiện tại:} Notebook 
+          do ChatGPT/Claude thông thường sinh ra hay bị lỗi 
+          không chạy được (runtime error), dễ bị rò rỉ dữ liệu 
+          (data leakage), thiếu tính cấu trúc sư phạm, hoặc tự 
+          bị đắt thông tin lý thuyết không chuẩn xác (hallucination).
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.45\textwidth}
+      \begin{block}{Literature Review Highlights}
+        \begin{itemize}
+          \item Author et al.\ (Year): Key finding 1.\cite{ref1}
+          \item Author et al.\ (Year): Key finding 2.\cite{ref2}
+        \end{itemize}
+        \vspace{0.5em}
+        \textbf{\textcolor{MLIOTcoral}{Research Gap:}}
+        \textit{Describe gap identified.}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ------------------------------------------------------------
+%  SLIDE 4 – Giải pháp NotebookForge với 3 mục tiêu chính
+% ------------------------------------------------------------
+\begin{frame}{Đặt vấn đề và giải pháp}
+  Giải pháp \textbf{NotebookForge} được đặt ra với 3 mục tiêu chính:
+  \begin{methodcols}
+    \methodcol{\ding{202}~Cá nhân hóa lộ trình (Personalization)}{%
+      \begin{itemize}
+        \item Không sinh các bài học chung chung. 
+        \item Hệ thống đánh giá năng lực thực tế qua bộ Quiz 5 câu 
+        để xác định chính xác trình độ (\texttt{level\_final}) và dung lượng bài dựa theo thời lượng học do người dùng đăng ký (\texttt{duration\_minutes}).
+      \end{itemize}%
+    }
+    \methodcol{\ding{203}~Tự thực thi \& sửa lỗi (Sandbox \& Self-correction)}{%
+      \begin{itemize}
+        \item Code không chỉ nằm trên giấy. Tất cả notebook được đưa vào môi trường cách ly (Sandbox) để chạy thử (Run-all). 
+        \item Nếu phát hiện lỗi Python, agent sẽ đọc vết lỗi (Traceback log) và tự sửa code (Retry Loop) đến khi chạy thành công 100\%.
+      \end{itemize}%
+    }
+    \methodcol{\ding{204}~Tri thức neo giữ \& Kiểm định kép (Grounding \& Dual-Verification)}{%
+      \begin{itemize}
+        \item Nội dung lý thuyết được neo giữ vào Knowledge Base chuẩn (Scikit-Learn User Guide) để chống bịa đặt.
+        \item Đầu ra bắt buộc phải vượt qua bộ kiểm định kép: 8 Hard Rules (luật cứng kỹ thuật) và LLM Judge (chấm điểm chất lượng sư phạm).
+      \end{itemize}%
+    }
+  \end{methodcols}
+\end{frame}
+
+% ------------------------------------------------------------
+%  SLIDE 5 – Multi-agent
+% ------------------------------------------------------------
+\begin{frame}{Multi-agent Pipeline}
+  Sơ đồ pipeline tổng quan:
+  \begin{flushleft}
+      \begin{tikzpicture}[
+        node distance = 0.4cm and 0.45cm,
+        box/.style = {
+          rectangle, 
+          rounded corners=3pt, 
+          draw=structure.fg, 
+          fill=structure.fg!10, 
+          thick, 
+          minimum width=2.4cm, 
+          minimum height=1cm, 
+          align=center,
+          text width=2.2cm, 
+          font=\fontsize{8pt}{10pt}\selectfont\bfseries,
+        },
+        arrow/.style = {
+          -{Stealth[scale=0.8]}, 
+          thick, 
+          draw=structure.fg
+        }
+      ]
+        \node (obj1) [box] {Learner Profile};
+        \node (obj2) [box, right=of obj1] {Research Agent};
+        \node (obj3) [box, right=of obj2] {Curriculum Agent};
+        \node (obj4) [box, right=of obj3] {Notebook Generator};
+        \node (obj5) [box, right=of obj4] {Executor \& Verifier};
+
+        \draw [arrow] (obj1) -- (obj2);
+        \draw [arrow] (obj2) -- (obj3);
+        \draw [arrow] (obj3) -- (obj4);
+        \draw [arrow] (obj4) -- (obj5);
+      \end{tikzpicture}
+  \end{flushleft}
+  \begin{itemize}
+    \item Mỗi Agent đóng vai trò như một công nhân chuyên môn hóa trong dây chuyền sản xuất notebook tự động với các nhiệm vụ riêng biệt.
+  \end{itemize}
+\end{frame}
+
+% ------------------------------------------------------------
+%  SLIDE 6 – Frontend Layer
+% ------------------------------------------------------------
+\begin{frame}{Multi-agent Pipeline}
+  Thu thập yêu cầu \& đánh giá trình độ (Frontend Layer)
+  \begin{methodcols}
+    \methodcol{\ding{202}~Form cấu hình}{%
+      Người dùng chọn:
+        \begin{itemize}
+          \item Topic (Logistic Regression, Decision Tree, K-Means Clustering)
+          \item Level tự đánh giá (Beginner / Intermediate)
+          \item Thời lượng bài học (\texttt{duration\_minutes}: 60--120 phút)
+          \item Số lượng bài tập (1--5)
+        \end{itemize}
+      để xác định \texttt{level\_final} và \texttt{duration\_minutes}.
+    }
+    \methodcol{\ding{203}~Quiz 5 câu cho từng topic}{%
+      \begin{itemize}
+        \item Căn chỉnh trình độ thực tế. 
+        \item Nếu người dùng chọn "Intermediate" nhưng làm sai nhiều câu Quiz, hệ thống tự động hạ chỉ số \texttt{level\_final} về đúng năng lực thực tế để tránh bài học quá sức.
+      \end{itemize}%
+    }
+    \methodcol{\ding{204}~Cơ chế UI Fallback}{%
+      Giao diện tự phục hồi và hiển thị thông báo trạng thái mượt mà nếu Server backend xử lý chậm hoặc gặp sự cố mạng.
+    }
+  \end{methodcols}
+\end{frame}
+
+% ------------------------------------------------------------
+%  SLIDE 7 – Research Agent
+% ------------------------------------------------------------
+\begin{frame}{Multi-agent Pipeline}
+  Research Agent: Cơ sở kiến thức \& Truy xuất dữ liệu
+  \begin{itemize}
+    \item \textbf{Knowledge Base (.md):} Xây dựng bộ tri thức chuẩn hóa từ tài liệu chính thống (Scikit-Learn User Guide), đóng vai trò "sách giáo khoa" cố định cho AI tham chiếu.
+    \item \textbf{Luồng truy xuất 2 giai đoạn (Two-Stage Retrieval):}
+      \begin{itemize}
+        \item \textbf{Giai đoạn 1 (BM25 Retrieval):} Thuật toán tìm kiếm theo tần suất từ khóa chính xác để rút trích các đoạn văn bản lý thuyết liên quan từ Knowledge Base.
+        \item \textbf{Giai đoạn 2 (LLM Re-ranking):} LLM sắp xếp và chọn lọc lại các khái niệm dựa trên thời lượng \texttt{duration\_minutes} (nhập từ UI).
+        \begin{itemize}
+          \item Bài 30 phút: Giữ lại 2--3 khái niệm cốt lõi.
+          \item Bài 60 phút: Mở rộng thêm khái niệm chuyên sâu và bài tập nâng cao.
+        \end{itemize}
+      \end{itemize}
+    \item \textbf{Fallback Web Search (Wikipedia API):} Khi Knowledge Base nội bộ không phủ hết khái niệm, hệ thống tự gọi Wikipedia API và áp dụng bộ lọc token hit ratio $\ge 0.5$ (chỉ giữ bài viết có tỷ lệ trùng khớp từ khóa từ 50\% trở lên để loại bỏ thông tin rác).
+  \end{itemize}
+\end{frame}
+
+% ------------------------------------------------------------
+%  SLIDE 8 – Curriculum & Generator Agent
+% ------------------------------------------------------------
+\begin{frame}{Multi-agent Pipeline}
+  Curriculum \& Generator Agent: Sinh lộ trình \& Đóng gói Notebook
+  \begin{itemize}
+    \item \textbf{Curriculum Agent:} Phân tách luồng xử lý phù hợp cho Học có giám sát (Supervised) hoặc Không giám sát (Unsupervised).
+    \item \textbf{Cấu trúc Notebook chuẩn 4 khối:}
+      \begin{enumerate}
+        \item \textbf{Tổng quan bài học:} Mục tiêu, lý thuyết nền tảng rút trích từ ResearchBundle.
+        \item \textbf{Chuẩn bị dữ liệu \& EDA:} Nạp các bộ dữ liệu thực tế (Heart Failure, Red Wine Quality, Mall Customers...) và chèn sẵn các đoạn code trực quan hóa.
+        \item \textbf{Nội dung \& Bài tập thực hành:} Phân chia tập Train/Test đúng chuẩn sư phạm, tuyệt đối không tiền xử lý dữ liệu trước khi split để tránh rò rỉ dữ liệu (Data Leakage).
+        \item \textbf{Kiểm tra tự động:} Chèn sẵn các đoạn code dạng \texttt{assert} để người học tự kiểm tra đáp án.
+      \end{enumerate}
+  \end{itemize}
+\end{frame}
+
+% ------------------------------------------------------------
+%  SLIDE 9 – Executor, Verifier & Retry Loop
+% ------------------------------------------------------------
+\begin{frame}{Multi-agent Pipeline}
+  Executor, Verifier \& Vòng lặp Tự sửa lỗi
+  \begin{itemize}
+    \item \textbf{Executor Sandbox:} Môi trường chạy code ảo cách ly hoàn toàn, nhận file \texttt{.ipynb} và thực thi từ trên xuống dưới để bắt chính xác các lỗi runtime.
+    \item \textbf{Bộ kiểm định kép (Verifier):}
+      \begin{itemize}
+        \item \textbf{8 Hard Rules (Quy tắc cứng):} Kiểm tra lỗi kỹ thuật bằng code (0 Execution Error, đúng định dạng JSON Schema, không Data Leakage, chứa đủ cell Todo/Assert...).
+        \item \textbf{LLM Judge (Chấm điểm mềm):} Đánh giá chất lượng bài học trên 4 tiêu chí sư phạm (Khả năng thực thi, Độ chuẩn xác lý thuyết, Độ phù hợp trình độ, Tính logic sư phạm).
+      \end{itemize}
+    \item \textbf{Cơ chế Retry Loop:} Khi Verifier phát hiện lỗi, hệ thống không bỏ cuộc mà trích xuất vết lỗi dạng \texttt{[CELL n]... FIX:...} đưa lại cho Generator để sửa đúng ô code bị lỗi (tối đa 3 lần thử).
+  \end{itemize}
+\end{frame}
+
+% ------------------------------------------------------------
+%  SLIDE 10 – Demo
+% ------------------------------------------------------------
+\begin{frame}{Demo \& Evaluation}
+  \begin{block}{Minh họa vận hành hệ thống}
+    \begin{itemize}
+      \item Quá trình tương tác trên giao diện Frontend: Chọn topic, thực hiện bài Quiz căn chỉnh trình độ.
+      \item Minh họa quá trình sinh lộ trình tự động qua các Agent.
+      \item Trực quan hóa vòng lặp tự phát hiện lỗi runtime và tự động sửa code (Retry Loop) trong Executor Sandbox.
+      \item Sản phẩm đầu ra hoàn chỉnh: Notebook Jupyter đạt 100\% khả năng thực thi.
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+% ------------------------------------------------------------
+%  SLIDE 11 – Evaluation & Benchmark Metrics
+% ------------------------------------------------------------
+\begin{frame}{Demo \& Evaluation}
+  Kết quả Kỹ thuật \& Benchmark Metrics
+  \begin{itemize}
+    \item \textbf{Golden Set (Bộ dữ liệu chuẩn):} Tập hợp 20 trường hợp kiểm thử thiết kế sẵn đại diện cho 3 chủ đề và 2 cấp độ trình độ khác nhau để đánh giá toàn diện hệ thống.
+    \item \textbf{Các chỉ số đo lường chính:}
+      \begin{itemize}
+        \item \textbf{Execution Pass Rate:} Tỷ lệ Notebook mà 100\% các cell code chạy mượt mà từ trên xuống dưới, không phát sinh lỗi Python nào (0 Runtime Error).
+        \item \textbf{Final PASS Rate:} Tỷ lệ Notebook vượt qua cả 8 Hard Rules kỹ thuật VÀ đạt điểm chất lượng sư phạm từ LLM Judge $\ge 4/5$.
+        \item \textbf{Average LLM Rubric Score:} Điểm số chất lượng trung bình (thang điểm 5) do LLM Judge chấm dựa trên 4 tiêu chí sư phạm.
+        \item \textbf{Cost \& Time per Case:} Chi phí API trung bình cho mỗi bài học ($\le 0.30\$$/case) và thời gian trung bình để hoàn tất vòng sinh \& kiểm thử.
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+% ------------------------------------------------------------
+%  SLIDE 12 – Conclusion & Mentor Q&A
+% ------------------------------------------------------------
+\begin{frame}{Conclusion \& Mentor Q\&A}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Tóm tắt đóng góp}
+        \begin{itemize}
+          \item Đề xuất kiến trúc Multi-agent tự động sinh Notebook thực hành ML cá nhân hóa.
+          \item Tích hợp cơ chế kiểm định kép (Hard Rules + LLM Judge) đảm bảo độ chính xác kỹ thuật và giá trị sư phạm.
+          \item Xây dựng vòng lặp tự sửa lỗi (Retry Loop) trong môi trường Sandbox giúp duy trì tỷ lệ thực thi code thành công cao.
+        \end{itemize}
+      \end{block}
+    \end{column}
+    
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Kế hoạch hoàn thiện \& Q\&A}
+        \begin{itemize}
+          \item Mở rộng Knowledge Base sang các chủ đề Deep Learning và Computer Vision.
+          \item Tối ưu hóa thời gian sinh bài và chi phí gọi LLM API.
+          \item Thử nghiệm thực tế với nhóm người dùng sinh viên để thu thập feedback.
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ------------------------------------------------------------
+%  SLIDE 13 – Thank You / Acknowledgements
+% ------------------------------------------------------------
+\thankyouslide{%
+  \textit{The authors gratefully acknowledge Machine Learning \& IoT Lab, HCMUT for their support and guidance.}
+}
+
+% ============================================================
+\end{document}
+% ============================================================
