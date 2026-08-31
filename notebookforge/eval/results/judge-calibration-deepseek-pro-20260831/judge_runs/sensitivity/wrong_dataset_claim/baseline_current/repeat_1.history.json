@@ -1,0 +1,30 @@
+[
+  {
+    "attempt": 1,
+    "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\judge-calibration-deepseek-pro-20260831-wrong_dataset_claim.ipynb",
+    "decision": "PASS",
+    "average_score": 4.25,
+    "rule_checks": {
+      "has_instructions": true,
+      "has_todo": true,
+      "has_assert": true,
+      "no_hardcoded_answers": true,
+      "has_train_test_split": true,
+      "has_visualization": true,
+      "has_demo_per_module": true,
+      "min_cells_by_level": true
+    },
+    "llm_scores": {
+      "executability": 5.0,
+      "groundedness": 4.0,
+      "difficulty_fit": 4.0,
+      "pedagogical_order": 4.0
+    },
+    "execution_success": true,
+    "duration_seconds": 4.01,
+    "cost_this_attempt": 0.010147,
+    "judge_cost_usd": 0.010147,
+    "feedback": "[CELL 1] Mô tả dữ liệu không khớp với dữ liệu thực tế sử dụng (Heart Failure Prediction). FIX: Cập nhật mô tả dữ liệu thành Heart Failure Prediction với 918 dòng, 11 đặc trưng và biến mục tiêu HeartDisease. [CELL 11] Bài tập m1_ex1 chưa hoàn thành: z_m1 và p_m1 vẫn là None. FIX: Tính z_m1 = np.dot(w, x) + b và p_m1 = sigmoid(z_m1). [CELL 17] Demo ColumnTransformer sử dụng chỉ số cột giả định không khớp với dữ liệu thực tế. FIX: Sử dụng tên cột thực tế từ X_train hoặc giải thích rõ đây là ví dụ minh họa.",
+    "ungrounded_claims": []
+  }
+]

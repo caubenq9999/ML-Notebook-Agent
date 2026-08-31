@@ -1,0 +1,30 @@
+[
+  {
+    "attempt": 1,
+    "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\cli-4d40f588_attempt2.ipynb",
+    "decision": "PASS",
+    "average_score": 4.25,
+    "rule_checks": {
+      "has_instructions": true,
+      "has_todo": true,
+      "has_assert": true,
+      "no_hardcoded_answers": true,
+      "has_train_test_split": true,
+      "has_visualization": true,
+      "has_demo_per_module": true,
+      "min_cells_by_level": true
+    },
+    "llm_scores": {
+      "executability": 5.0,
+      "groundedness": 4.0,
+      "difficulty_fit": 4.0,
+      "pedagogical_order": 4.0
+    },
+    "execution_success": true,
+    "duration_seconds": 5.333,
+    "cost_this_attempt": 0.00096,
+    "judge_cost_usd": 0.00096,
+    "feedback": "[CELL 1] Mô tả dữ liệu nói 'đã được chuẩn hoá bằng StandardScaler' nhưng thực tế việc chuẩn hoá chỉ diễn ra sau khi chia train/test ở CELL 7. FIX: Sửa mô tả thành 'dữ liệu sẽ được chuẩn hoá sau khi chia train/test' hoặc thực hiện chuẩn hoá trước khi mô tả.",
+    "ungrounded_claims": []
+  }
+]

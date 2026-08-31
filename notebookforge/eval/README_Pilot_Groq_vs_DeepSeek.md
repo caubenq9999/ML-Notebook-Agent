@@ -119,3 +119,33 @@ Lưu ý: quality report cũ ghi `Vòng tốt nhất: #1` do tie-break trước �
 - [Notebook](../outputs/cli-deepseek-20260830-v2/notebook.ipynb)
 - [LearningPath](../outputs/cli-deepseek-20260830-v2/path.json)
 - [Quality report](../outputs/cli-deepseek-20260830-v2/quality_report.md)
+
+## 9. Ablation ban đầu: Verifier OFF + RAG OFF
+
+Đã chạy thêm session `ablation-ds-noverifier-norag-20260831` với cùng topic, level, constraints và dataset seed:
+
+- Chỉ chạy `Research → Curriculum → Notebook Generator → Executor`.
+- Ép `ResearchBundle.theory_chunks=[]` trước Curriculum.
+- Không gọi LLM Judge, không tạo feedback và không retry.
+- Hard rules chỉ được tính sau khi notebook hoàn tất, không tác động ngược vào quá trình sinh.
+
+| Chỉ số | DeepSeek đầy đủ, RAG thực tế rỗng | Verifier OFF + RAG OFF |
+|---|---:|---:|
+| Execution | 16/16, 0 lỗi | 16/16, 0 lỗi |
+| Hard rules | 8/8 | 8/8 hậu kiểm |
+| Tổng cell | 31 | 31 |
+| Module / bài tập | 5 / 4 | 5 / 4 |
+| Cost ước tính | $0.0285 | $0.014426 |
+| Runtime quan sát | khoảng 55 giây | 77.51 giây |
+| LLM rubric score | 4.25 | N/A — không gọi Judge |
+
+Trong mẫu đơn này, bỏ Verifier giảm khoảng `$0.014074`, tương đương `49.4%` cost. Runtime không giảm vì độ trễ sinh ngẫu nhiên và output của run ablation dài hơn; một mẫu không đủ để kết luận về latency.
+
+Notebook ablation dùng đúng Heart Failure Dataset và không xuất hiện Iris, Wine hoặc Mall Customers. Đây là tín hiệu ban đầu cho thấy prompt khóa dataset hoạt động, nhưng vẫn cần chạy Decision Tree/Red Wine để kiểm tra đúng lỗi từng xuất hiện.
+
+Run đầy đủ `cli-deepseek-20260830-v2` cũng có `theory_chunks=0`, nên cặp này mới giúp quan sát sơ bộ ảnh hưởng chi phí của Verifier; chưa đo được đóng góp của RAG. Muốn đo RAG phải chạy thêm ít nhất một session `RAG ON` sau khi cài embedding dependency.
+
+- [Báo cáo ablation](results/ablation-ds-noverifier-norag-20260831/README.md)
+- [Kết quả JSON](results/ablation-ds-noverifier-norag-20260831/ablation_result.json)
+- [Notebook đã thực thi](results/ablation-ds-noverifier-norag-20260831/notebook.ipynb)
+- [LearningPath](results/ablation-ds-noverifier-norag-20260831/path.json)

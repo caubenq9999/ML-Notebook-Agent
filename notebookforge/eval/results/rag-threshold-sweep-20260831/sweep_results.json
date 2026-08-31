@@ -1,0 +1,915 @@
+{
+  "experiment": "RAG semantic retrieval threshold sweep",
+  "llm_calls": 0,
+  "llm_cost_usd": 0,
+  "embedding_model": "paraphrase-multilingual-MiniLM-L12-v2",
+  "kb_entries": 5,
+  "indexed_chunks": 69,
+  "embedding_shape": [
+    69,
+    384
+  ],
+  "concepts": [
+    "sigmoid function",
+    "logit",
+    "log loss",
+    "LogisticRegression",
+    "Confusion Matrix",
+    "Precision",
+    "Recall",
+    "F1-Score",
+    "ROC-AUC",
+    "StandardScaler"
+  ],
+  "concept_source_map": {
+    "sigmoid function": "logreg_01",
+    "logit": "logreg_01",
+    "log loss": "logreg_01",
+    "logisticregression": "logreg_02",
+    "confusion matrix": "logreg_04",
+    "precision": "logreg_04",
+    "recall": "logreg_04",
+    "f1-score": "logreg_04",
+    "roc-auc": "logreg_04",
+    "standardscaler": "logreg_03"
+  },
+  "index_seconds": 13.351,
+  "total_seconds": 13.671,
+  "rows": [
+    {
+      "threshold": 0.3,
+      "covered": 9,
+      "total_concepts": 10,
+      "coverage_ratio": 0.9,
+      "missing": [
+        "F1-Score"
+      ],
+      "unique_chunks": 13,
+      "chunk_chars": 4148,
+      "modules_with_context": 4,
+      "total_modules": 5,
+      "module_context_chars": 2418,
+      "similarity_min": 0.3959,
+      "similarity_mean": 0.5306,
+      "similarity_max": 0.7258
+    },
+    {
+      "threshold": 0.35,
+      "covered": 9,
+      "total_concepts": 10,
+      "coverage_ratio": 0.9,
+      "missing": [
+        "F1-Score"
+      ],
+      "unique_chunks": 13,
+      "chunk_chars": 4148,
+      "modules_with_context": 4,
+      "total_modules": 5,
+      "module_context_chars": 2418,
+      "similarity_min": 0.3959,
+      "similarity_mean": 0.5306,
+      "similarity_max": 0.7258
+    },
+    {
+      "threshold": 0.4,
+      "covered": 9,
+      "total_concepts": 10,
+      "coverage_ratio": 0.9,
+      "missing": [
+        "F1-Score"
+      ],
+      "unique_chunks": 12,
+      "chunk_chars": 3706,
+      "modules_with_context": 4,
+      "total_modules": 5,
+      "module_context_chars": 2418,
+      "similarity_min": 0.4436,
+      "similarity_mean": 0.5418,
+      "similarity_max": 0.7258
+    },
+    {
+      "threshold": 0.45,
+      "covered": 9,
+      "total_concepts": 10,
+      "coverage_ratio": 0.9,
+      "missing": [
+        "F1-Score"
+      ],
+      "unique_chunks": 10,
+      "chunk_chars": 3328,
+      "modules_with_context": 4,
+      "total_modules": 5,
+      "module_context_chars": 2418,
+      "similarity_min": 0.4626,
+      "similarity_mean": 0.5608,
+      "similarity_max": 0.7258
+    },
+    {
+      "threshold": 0.5,
+      "covered": 7,
+      "total_concepts": 10,
+      "coverage_ratio": 0.7,
+      "missing": [
+        "log loss",
+        "Recall",
+        "F1-Score"
+      ],
+      "unique_chunks": 9,
+      "chunk_chars": 2531,
+      "modules_with_context": 4,
+      "total_modules": 5,
+      "module_context_chars": 2036,
+      "similarity_min": 0.5202,
+      "similarity_mean": 0.5718,
+      "similarity_max": 0.7258
+    },
+    {
+      "threshold": 0.55,
+      "covered": 5,
+      "total_concepts": 10,
+      "coverage_ratio": 0.5,
+      "missing": [
+        "logit",
+        "log loss",
+        "LogisticRegression",
+        "Recall",
+        "F1-Score"
+      ],
+      "unique_chunks": 6,
+      "chunk_chars": 1888,
+      "modules_with_context": 3,
+      "total_modules": 5,
+      "module_context_chars": 1693,
+      "similarity_min": 0.5559,
+      "similarity_mean": 0.5941,
+      "similarity_max": 0.7258
+    },
+    {
+      "threshold": 0.6,
+      "covered": 1,
+      "total_concepts": 10,
+      "coverage_ratio": 0.1,
+      "missing": [
+        "sigmoid function",
+        "logit",
+        "log loss",
+        "LogisticRegression",
+        "Confusion Matrix",
+        "Precision",
+        "Recall",
+        "F1-Score",
+        "StandardScaler"
+      ],
+      "unique_chunks": 1,
+      "chunk_chars": 503,
+      "modules_with_context": 1,
+      "total_modules": 5,
+      "module_context_chars": 503,
+      "similarity_min": 0.7258,
+      "similarity_mean": 0.7258,
+      "similarity_max": 0.7258
+    },
+    {
+      "threshold": 0.65,
+      "covered": 1,
+      "total_concepts": 10,
+      "coverage_ratio": 0.1,
+      "missing": [
+        "sigmoid function",
+        "logit",
+        "log loss",
+        "LogisticRegression",
+        "Confusion Matrix",
+        "Precision",
+        "Recall",
+        "F1-Score",
+        "StandardScaler"
+      ],
+      "unique_chunks": 1,
+      "chunk_chars": 503,
+      "modules_with_context": 1,
+      "total_modules": 5,
+      "module_context_chars": 503,
+      "similarity_min": 0.7258,
+      "similarity_mean": 0.7258,
+      "similarity_max": 0.7258
+    },
+    {
+      "threshold": 0.7,
+      "covered": 1,
+      "total_concepts": 10,
+      "coverage_ratio": 0.1,
+      "missing": [
+        "sigmoid function",
+        "logit",
+        "log loss",
+        "LogisticRegression",
+        "Confusion Matrix",
+        "Precision",
+        "Recall",
+        "F1-Score",
+        "StandardScaler"
+      ],
+      "unique_chunks": 1,
+      "chunk_chars": 503,
+      "modules_with_context": 1,
+      "total_modules": 5,
+      "module_context_chars": 503,
+      "similarity_min": 0.7258,
+      "similarity_mean": 0.7258,
+      "similarity_max": 0.7258
+    }
+  ],
+  "details": {
+    "0.30": [
+      {
+        "chunk_id": "logreg_01_c1",
+        "source_id": "logreg_01",
+        "concepts": [
+          "sigmoid function"
+        ],
+        "similarity": 0.556,
+        "chars": 208,
+        "preview": "$$\\sigma(z) = \\frac{1}{1 + e^{-z}}$$  Trong đó, $z$ là sự kết hợp tuyến tính giữa các đặc trưng (features) và trọng số (weights):  $$z = w_0 + w_1 x_1 + w_2 x_2 + ... + w_n x_n = \\mathbf{w}^T \\mathbf{x} + b$$"
+      },
+      {
+        "chunk_id": "logreg_01_c6",
+        "source_id": "logreg_01",
+        "concepts": [
+          "sigmoid function"
+        ],
+        "similarity": 0.5343,
+        "chars": 300,
+        "preview": "$$J(\\mathbf{w}, b) = -\\frac{1}{N} \\sum_{i=1}^{N} \\left[ y_i \\ln(\\hat{y}_i) + (1 - y_i) \\ln(1 - \\hat{y}_i) \\right]$$  Trong đó: * $N$: Số lượng mẫu dữ liệu. * $y_i \\in \\{0, 1\\}$: Nhãn thực tế của mẫu thứ $i$. * $\\hat{y}_i = \\sigma(\\mathbf{w}^T \\mathbf{x}_i + b)$: Xác suất dự đoán mẫu $i$ thuộc lớp 1."
+      },
+      {
+        "chunk_id": "logreg_01_c4",
+        "source_id": "logreg_01",
+        "concepts": [
+          "logit",
+          "log loss"
+        ],
+        "similarity": 0.5202,
+        "chars": 103,
+        "preview": "Ý nghĩa: Logistic Regression bản chất là một mô hình tuyến tính đối với **Log-Odds** của biến mục tiêu."
+      },
+      {
+        "chunk_id": "logreg_01_c0",
+        "source_id": "logreg_01",
+        "concepts": [
+          "logit",
+          "log loss"
+        ],
+        "similarity": 0.3959,
+        "chars": 442,
+        "preview": "Logistic Regression là mô hình học máy có giám sát (Supervised Learning) dùng cho bài toán phân loại (Classification). Khác với Linear Regression dự đoán giá trị liên tục $y \\in \\mathbb{R}$, Logistic Regression dự đoán xác suất $P(y=1\\vert{}\\mathbf{x}) \\in (0, 1)$ thuộc về lớp dương (positive class)"
+      },
+      {
+        "chunk_id": "logreg_02_c7",
+        "source_id": "logreg_02",
+        "concepts": [
+          "LogisticRegression"
+        ],
+        "similarity": 0.5266,
+        "chars": 240,
+        "preview": "pipeline = Pipeline([     ('scaler', StandardScaler()),     ('model', LogisticRegression(         penalty='l2',         C=1.0,         solver='lbfgs',         max_iter=1000,         class_weight='balanced',         random_state=42     )) ])"
+      },
+      {
+        "chunk_id": "logreg_02_c2",
+        "source_id": "logreg_02",
+        "concepts": [
+          "LogisticRegression"
+        ],
+        "similarity": 0.4626,
+        "chars": 797,
+        "preview": "Việc chọn thuật toán tối ưu (`solver`) phụ thuộc vào kích thước dữ liệu và loại `penalty` được chọn:  | Solver | L1 Penalty | L2 Penalty | ElasticNet | No Penalty | Quy mô dữ liệu phù hợp | | :--- | :---: | :---: | :---: | :---: | :--- | | `'lbfgs'` | Không | **Có** | Không | **Có** | Dữ liệu nhỏ đế"
+      },
+      {
+        "chunk_id": "logreg_04_c0",
+        "source_id": "logreg_04",
+        "concepts": [
+          "Confusion Matrix"
+        ],
+        "similarity": 0.5593,
+        "chars": 394,
+        "preview": "Ma trận nhầm lẫn (Confusion Matrix) là bảng thống kê số lượng dự đoán đúng và sai của mô hình phân loại nhị phân:  | | Dự đoán Negative ($y=0$) | Dự đoán Positive ($y=1$) | | :--- | :--- | :--- | | **Thực tế Negative ($y=0$)** | True Negative (**TN**) | False Positive (**FP**) *(Lỗi Type I)* | | **T"
+      },
+      {
+        "chunk_id": "logreg_04_c5",
+        "source_id": "logreg_04",
+        "concepts": [
+          "Confusion Matrix",
+          "Precision",
+          "Recall"
+        ],
+        "similarity": 0.5559,
+        "chars": 279,
+        "preview": "Trung bình điều hòa (Harmonic Mean) giữa Precision và Recall, giúp đánh giá sự cân bằng giữa hai chỉ số này:  $$ F_1 = 2 \\cdot \\frac{\\text{Precision} \\cdot \\text{Recall}} {\\text{Precision} + \\text{Recall}} = \\frac{2 \\cdot \\text{TP}} {2 \\cdot \\text{TP} + \\text{FP} + \\text{FN}} $$"
+      },
+      {
+        "chunk_id": "logreg_04_c2",
+        "source_id": "logreg_04",
+        "concepts": [
+          "Precision"
+        ],
+        "similarity": 0.4494,
+        "chars": 213,
+        "preview": "Tỉ lệ các mẫu được dự đoán đúng trên tổng số mẫu:  $$ \\text{Accuracy} = \\frac{\\text{TP} + \\text{TN}}{\\text{TP} + \\text{TN} + \\text{FP} + \\text{FN}} $$  *Hạn chế*: Mất tác dụng khi tập dữ liệu bị mất cân bằng nhãn."
+      },
+      {
+        "chunk_id": "logreg_04_c7",
+        "source_id": "logreg_04",
+        "concepts": [
+          "ROC-AUC"
+        ],
+        "similarity": 0.7258,
+        "chars": 503,
+        "preview": "* **ROC Curve (Receiver Operating Characteristic)**: Đồ thị biểu diễn mối tương quan giữa **True Positive Rate (Recall)** trên trục tung và **False Positive Rate ($\\text{FPR} = \\frac{\\text{FP}}{\\text{TN} + \\text{FP}}$)** trên trục hoành khi thay đổi ngưỡng quyết định từ $1.0$ về $0.0$.  * **ROC-AUC "
+      },
+      {
+        "chunk_id": "logreg_04_c8",
+        "source_id": "logreg_04",
+        "concepts": [
+          "ROC-AUC"
+        ],
+        "similarity": 0.5714,
+        "chars": 195,
+        "preview": "Khi tập dữ liệu bị mất cân bằng nhãn nghiêm trọng (lớp Positive chiếm tỉ lệ rất nhỏ), đường cong PR trực quan hơn ROC Curve vì FPR trong ROC Curve bị pha loãng bởi số lượng True Negative quá lớn."
+      },
+      {
+        "chunk_id": "logreg_03_c7",
+        "source_id": "logreg_03",
+        "concepts": [
+          "StandardScaler"
+        ],
+        "similarity": 0.5964,
+        "chars": 309,
+        "preview": "Sử dụng `StandardScaler` để đưa các thuộc tính liên tục về phân phối chuẩn có trung bình $\\mu = 0$ và độ lệch chuẩn $\\sigma = 1$:  $$ x' = \\frac{x - \\mu}{\\sigma} $$  Đối với dữ liệu chứa nhiều Outliers, sử dụng `RobustScaler` (dựa trên Median và Interquartile Range - IQR) để tránh làm lệch giá trị c"
+      },
+      {
+        "chunk_id": "logreg_03_c11",
+        "source_id": "logreg_03",
+        "concepts": [
+          "StandardScaler"
+        ],
+        "similarity": 0.4436,
+        "chars": 165,
+        "preview": "Dựa vào bài toán thực tế, thay vì cố định ngưỡng $0.5$, ta hạ thấp ngưỡng quyết định (ví dụ: xuống $0.3$) để ưu tiên tăng độ triệu hồi (Recall) cho lớp bệnh lý.  ---"
+      }
+    ],
+    "0.35": [
+      {
+        "chunk_id": "logreg_01_c1",
+        "source_id": "logreg_01",
+        "concepts": [
+          "sigmoid function"
+        ],
+        "similarity": 0.556,
+        "chars": 208,
+        "preview": "$$\\sigma(z) = \\frac{1}{1 + e^{-z}}$$  Trong đó, $z$ là sự kết hợp tuyến tính giữa các đặc trưng (features) và trọng số (weights):  $$z = w_0 + w_1 x_1 + w_2 x_2 + ... + w_n x_n = \\mathbf{w}^T \\mathbf{x} + b$$"
+      },
+      {
+        "chunk_id": "logreg_01_c6",
+        "source_id": "logreg_01",
+        "concepts": [
+          "sigmoid function"
+        ],
+        "similarity": 0.5343,
+        "chars": 300,
+        "preview": "$$J(\\mathbf{w}, b) = -\\frac{1}{N} \\sum_{i=1}^{N} \\left[ y_i \\ln(\\hat{y}_i) + (1 - y_i) \\ln(1 - \\hat{y}_i) \\right]$$  Trong đó: * $N$: Số lượng mẫu dữ liệu. * $y_i \\in \\{0, 1\\}$: Nhãn thực tế của mẫu thứ $i$. * $\\hat{y}_i = \\sigma(\\mathbf{w}^T \\mathbf{x}_i + b)$: Xác suất dự đoán mẫu $i$ thuộc lớp 1."
+      },
+      {
+        "chunk_id": "logreg_01_c4",
+        "source_id": "logreg_01",
+        "concepts": [
+          "logit",
+          "log loss"
+        ],
+        "similarity": 0.5202,
+        "chars": 103,
+        "preview": "Ý nghĩa: Logistic Regression bản chất là một mô hình tuyến tính đối với **Log-Odds** của biến mục tiêu."
+      },
+      {
+        "chunk_id": "logreg_01_c0",
+        "source_id": "logreg_01",
+        "concepts": [
+          "log loss"
+        ],
+        "similarity": 0.3959,
+        "chars": 442,
+        "preview": "Logistic Regression là mô hình học máy có giám sát (Supervised Learning) dùng cho bài toán phân loại (Classification). Khác với Linear Regression dự đoán giá trị liên tục $y \\in \\mathbb{R}$, Logistic Regression dự đoán xác suất $P(y=1\\vert{}\\mathbf{x}) \\in (0, 1)$ thuộc về lớp dương (positive class)"
+      },
+      {
+        "chunk_id": "logreg_02_c7",
+        "source_id": "logreg_02",
+        "concepts": [
+          "LogisticRegression"
+        ],
+        "similarity": 0.5266,
+        "chars": 240,
+        "preview": "pipeline = Pipeline([     ('scaler', StandardScaler()),     ('model', LogisticRegression(         penalty='l2',         C=1.0,         solver='lbfgs',         max_iter=1000,         class_weight='balanced',         random_state=42     )) ])"
+      },
+      {
+        "chunk_id": "logreg_02_c2",
+        "source_id": "logreg_02",
+        "concepts": [
+          "LogisticRegression"
+        ],
+        "similarity": 0.4626,
+        "chars": 797,
+        "preview": "Việc chọn thuật toán tối ưu (`solver`) phụ thuộc vào kích thước dữ liệu và loại `penalty` được chọn:  | Solver | L1 Penalty | L2 Penalty | ElasticNet | No Penalty | Quy mô dữ liệu phù hợp | | :--- | :---: | :---: | :---: | :---: | :--- | | `'lbfgs'` | Không | **Có** | Không | **Có** | Dữ liệu nhỏ đế"
+      },
+      {
+        "chunk_id": "logreg_04_c0",
+        "source_id": "logreg_04",
+        "concepts": [
+          "Confusion Matrix"
+        ],
+        "similarity": 0.5593,
+        "chars": 394,
+        "preview": "Ma trận nhầm lẫn (Confusion Matrix) là bảng thống kê số lượng dự đoán đúng và sai của mô hình phân loại nhị phân:  | | Dự đoán Negative ($y=0$) | Dự đoán Positive ($y=1$) | | :--- | :--- | :--- | | **Thực tế Negative ($y=0$)** | True Negative (**TN**) | False Positive (**FP**) *(Lỗi Type I)* | | **T"
+      },
+      {
+        "chunk_id": "logreg_04_c5",
+        "source_id": "logreg_04",
+        "concepts": [
+          "Confusion Matrix",
+          "Precision",
+          "Recall"
+        ],
+        "similarity": 0.5559,
+        "chars": 279,
+        "preview": "Trung bình điều hòa (Harmonic Mean) giữa Precision và Recall, giúp đánh giá sự cân bằng giữa hai chỉ số này:  $$ F_1 = 2 \\cdot \\frac{\\text{Precision} \\cdot \\text{Recall}} {\\text{Precision} + \\text{Recall}} = \\frac{2 \\cdot \\text{TP}} {2 \\cdot \\text{TP} + \\text{FP} + \\text{FN}} $$"
+      },
+      {
+        "chunk_id": "logreg_04_c2",
+        "source_id": "logreg_04",
+        "concepts": [
+          "Precision"
+        ],
+        "similarity": 0.4494,
+        "chars": 213,
+        "preview": "Tỉ lệ các mẫu được dự đoán đúng trên tổng số mẫu:  $$ \\text{Accuracy} = \\frac{\\text{TP} + \\text{TN}}{\\text{TP} + \\text{TN} + \\text{FP} + \\text{FN}} $$  *Hạn chế*: Mất tác dụng khi tập dữ liệu bị mất cân bằng nhãn."
+      },
+      {
+        "chunk_id": "logreg_04_c7",
+        "source_id": "logreg_04",
+        "concepts": [
+          "ROC-AUC"
+        ],
+        "similarity": 0.7258,
+        "chars": 503,
+        "preview": "* **ROC Curve (Receiver Operating Characteristic)**: Đồ thị biểu diễn mối tương quan giữa **True Positive Rate (Recall)** trên trục tung và **False Positive Rate ($\\text{FPR} = \\frac{\\text{FP}}{\\text{TN} + \\text{FP}}$)** trên trục hoành khi thay đổi ngưỡng quyết định từ $1.0$ về $0.0$.  * **ROC-AUC "
+      },
+      {
+        "chunk_id": "logreg_04_c8",
+        "source_id": "logreg_04",
+        "concepts": [
+          "ROC-AUC"
+        ],
+        "similarity": 0.5714,
+        "chars": 195,
+        "preview": "Khi tập dữ liệu bị mất cân bằng nhãn nghiêm trọng (lớp Positive chiếm tỉ lệ rất nhỏ), đường cong PR trực quan hơn ROC Curve vì FPR trong ROC Curve bị pha loãng bởi số lượng True Negative quá lớn."
+      },
+      {
+        "chunk_id": "logreg_03_c7",
+        "source_id": "logreg_03",
+        "concepts": [
+          "StandardScaler"
+        ],
+        "similarity": 0.5964,
+        "chars": 309,
+        "preview": "Sử dụng `StandardScaler` để đưa các thuộc tính liên tục về phân phối chuẩn có trung bình $\\mu = 0$ và độ lệch chuẩn $\\sigma = 1$:  $$ x' = \\frac{x - \\mu}{\\sigma} $$  Đối với dữ liệu chứa nhiều Outliers, sử dụng `RobustScaler` (dựa trên Median và Interquartile Range - IQR) để tránh làm lệch giá trị c"
+      },
+      {
+        "chunk_id": "logreg_03_c11",
+        "source_id": "logreg_03",
+        "concepts": [
+          "StandardScaler"
+        ],
+        "similarity": 0.4436,
+        "chars": 165,
+        "preview": "Dựa vào bài toán thực tế, thay vì cố định ngưỡng $0.5$, ta hạ thấp ngưỡng quyết định (ví dụ: xuống $0.3$) để ưu tiên tăng độ triệu hồi (Recall) cho lớp bệnh lý.  ---"
+      }
+    ],
+    "0.40": [
+      {
+        "chunk_id": "logreg_01_c1",
+        "source_id": "logreg_01",
+        "concepts": [
+          "sigmoid function"
+        ],
+        "similarity": 0.556,
+        "chars": 208,
+        "preview": "$$\\sigma(z) = \\frac{1}{1 + e^{-z}}$$  Trong đó, $z$ là sự kết hợp tuyến tính giữa các đặc trưng (features) và trọng số (weights):  $$z = w_0 + w_1 x_1 + w_2 x_2 + ... + w_n x_n = \\mathbf{w}^T \\mathbf{x} + b$$"
+      },
+      {
+        "chunk_id": "logreg_01_c6",
+        "source_id": "logreg_01",
+        "concepts": [
+          "sigmoid function"
+        ],
+        "similarity": 0.5343,
+        "chars": 300,
+        "preview": "$$J(\\mathbf{w}, b) = -\\frac{1}{N} \\sum_{i=1}^{N} \\left[ y_i \\ln(\\hat{y}_i) + (1 - y_i) \\ln(1 - \\hat{y}_i) \\right]$$  Trong đó: * $N$: Số lượng mẫu dữ liệu. * $y_i \\in \\{0, 1\\}$: Nhãn thực tế của mẫu thứ $i$. * $\\hat{y}_i = \\sigma(\\mathbf{w}^T \\mathbf{x}_i + b)$: Xác suất dự đoán mẫu $i$ thuộc lớp 1."
+      },
+      {
+        "chunk_id": "logreg_01_c4",
+        "source_id": "logreg_01",
+        "concepts": [
+          "logit",
+          "log loss"
+        ],
+        "similarity": 0.5202,
+        "chars": 103,
+        "preview": "Ý nghĩa: Logistic Regression bản chất là một mô hình tuyến tính đối với **Log-Odds** của biến mục tiêu."
+      },
+      {
+        "chunk_id": "logreg_02_c7",
+        "source_id": "logreg_02",
+        "concepts": [
+          "LogisticRegression"
+        ],
+        "similarity": 0.5266,
+        "chars": 240,
+        "preview": "pipeline = Pipeline([     ('scaler', StandardScaler()),     ('model', LogisticRegression(         penalty='l2',         C=1.0,         solver='lbfgs',         max_iter=1000,         class_weight='balanced',         random_state=42     )) ])"
+      },
+      {
+        "chunk_id": "logreg_02_c2",
+        "source_id": "logreg_02",
+        "concepts": [
+          "LogisticRegression"
+        ],
+        "similarity": 0.4626,
+        "chars": 797,
+        "preview": "Việc chọn thuật toán tối ưu (`solver`) phụ thuộc vào kích thước dữ liệu và loại `penalty` được chọn:  | Solver | L1 Penalty | L2 Penalty | ElasticNet | No Penalty | Quy mô dữ liệu phù hợp | | :--- | :---: | :---: | :---: | :---: | :--- | | `'lbfgs'` | Không | **Có** | Không | **Có** | Dữ liệu nhỏ đế"
+      },
+      {
+        "chunk_id": "logreg_04_c0",
+        "source_id": "logreg_04",
+        "concepts": [
+          "Confusion Matrix"
+        ],
+        "similarity": 0.5593,
+        "chars": 394,
+        "preview": "Ma trận nhầm lẫn (Confusion Matrix) là bảng thống kê số lượng dự đoán đúng và sai của mô hình phân loại nhị phân:  | | Dự đoán Negative ($y=0$) | Dự đoán Positive ($y=1$) | | :--- | :--- | :--- | | **Thực tế Negative ($y=0$)** | True Negative (**TN**) | False Positive (**FP**) *(Lỗi Type I)* | | **T"
+      },
+      {
+        "chunk_id": "logreg_04_c5",
+        "source_id": "logreg_04",
+        "concepts": [
+          "Confusion Matrix",
+          "Precision",
+          "Recall"
+        ],
+        "similarity": 0.5559,
+        "chars": 279,
+        "preview": "Trung bình điều hòa (Harmonic Mean) giữa Precision và Recall, giúp đánh giá sự cân bằng giữa hai chỉ số này:  $$ F_1 = 2 \\cdot \\frac{\\text{Precision} \\cdot \\text{Recall}} {\\text{Precision} + \\text{Recall}} = \\frac{2 \\cdot \\text{TP}} {2 \\cdot \\text{TP} + \\text{FP} + \\text{FN}} $$"
+      },
+      {
+        "chunk_id": "logreg_04_c2",
+        "source_id": "logreg_04",
+        "concepts": [
+          "Precision"
+        ],
+        "similarity": 0.4494,
+        "chars": 213,
+        "preview": "Tỉ lệ các mẫu được dự đoán đúng trên tổng số mẫu:  $$ \\text{Accuracy} = \\frac{\\text{TP} + \\text{TN}}{\\text{TP} + \\text{TN} + \\text{FP} + \\text{FN}} $$  *Hạn chế*: Mất tác dụng khi tập dữ liệu bị mất cân bằng nhãn."
+      },
+      {
+        "chunk_id": "logreg_04_c7",
+        "source_id": "logreg_04",
+        "concepts": [
+          "ROC-AUC"
+        ],
+        "similarity": 0.7258,
+        "chars": 503,
+        "preview": "* **ROC Curve (Receiver Operating Characteristic)**: Đồ thị biểu diễn mối tương quan giữa **True Positive Rate (Recall)** trên trục tung và **False Positive Rate ($\\text{FPR} = \\frac{\\text{FP}}{\\text{TN} + \\text{FP}}$)** trên trục hoành khi thay đổi ngưỡng quyết định từ $1.0$ về $0.0$.  * **ROC-AUC "
+      },
+      {
+        "chunk_id": "logreg_04_c8",
+        "source_id": "logreg_04",
+        "concepts": [
+          "ROC-AUC"
+        ],
+        "similarity": 0.5714,
+        "chars": 195,
+        "preview": "Khi tập dữ liệu bị mất cân bằng nhãn nghiêm trọng (lớp Positive chiếm tỉ lệ rất nhỏ), đường cong PR trực quan hơn ROC Curve vì FPR trong ROC Curve bị pha loãng bởi số lượng True Negative quá lớn."
+      },
+      {
+        "chunk_id": "logreg_03_c7",
+        "source_id": "logreg_03",
+        "concepts": [
+          "StandardScaler"
+        ],
+        "similarity": 0.5964,
+        "chars": 309,
+        "preview": "Sử dụng `StandardScaler` để đưa các thuộc tính liên tục về phân phối chuẩn có trung bình $\\mu = 0$ và độ lệch chuẩn $\\sigma = 1$:  $$ x' = \\frac{x - \\mu}{\\sigma} $$  Đối với dữ liệu chứa nhiều Outliers, sử dụng `RobustScaler` (dựa trên Median và Interquartile Range - IQR) để tránh làm lệch giá trị c"
+      },
+      {
+        "chunk_id": "logreg_03_c11",
+        "source_id": "logreg_03",
+        "concepts": [
+          "StandardScaler"
+        ],
+        "similarity": 0.4436,
+        "chars": 165,
+        "preview": "Dựa vào bài toán thực tế, thay vì cố định ngưỡng $0.5$, ta hạ thấp ngưỡng quyết định (ví dụ: xuống $0.3$) để ưu tiên tăng độ triệu hồi (Recall) cho lớp bệnh lý.  ---"
+      }
+    ],
+    "0.45": [
+      {
+        "chunk_id": "logreg_01_c1",
+        "source_id": "logreg_01",
+        "concepts": [
+          "sigmoid function"
+        ],
+        "similarity": 0.556,
+        "chars": 208,
+        "preview": "$$\\sigma(z) = \\frac{1}{1 + e^{-z}}$$  Trong đó, $z$ là sự kết hợp tuyến tính giữa các đặc trưng (features) và trọng số (weights):  $$z = w_0 + w_1 x_1 + w_2 x_2 + ... + w_n x_n = \\mathbf{w}^T \\mathbf{x} + b$$"
+      },
+      {
+        "chunk_id": "logreg_01_c6",
+        "source_id": "logreg_01",
+        "concepts": [
+          "sigmoid function"
+        ],
+        "similarity": 0.5343,
+        "chars": 300,
+        "preview": "$$J(\\mathbf{w}, b) = -\\frac{1}{N} \\sum_{i=1}^{N} \\left[ y_i \\ln(\\hat{y}_i) + (1 - y_i) \\ln(1 - \\hat{y}_i) \\right]$$  Trong đó: * $N$: Số lượng mẫu dữ liệu. * $y_i \\in \\{0, 1\\}$: Nhãn thực tế của mẫu thứ $i$. * $\\hat{y}_i = \\sigma(\\mathbf{w}^T \\mathbf{x}_i + b)$: Xác suất dự đoán mẫu $i$ thuộc lớp 1."
+      },
+      {
+        "chunk_id": "logreg_01_c4",
+        "source_id": "logreg_01",
+        "concepts": [
+          "logit",
+          "log loss"
+        ],
+        "similarity": 0.5202,
+        "chars": 103,
+        "preview": "Ý nghĩa: Logistic Regression bản chất là một mô hình tuyến tính đối với **Log-Odds** của biến mục tiêu."
+      },
+      {
+        "chunk_id": "logreg_02_c7",
+        "source_id": "logreg_02",
+        "concepts": [
+          "LogisticRegression"
+        ],
+        "similarity": 0.5266,
+        "chars": 240,
+        "preview": "pipeline = Pipeline([     ('scaler', StandardScaler()),     ('model', LogisticRegression(         penalty='l2',         C=1.0,         solver='lbfgs',         max_iter=1000,         class_weight='balanced',         random_state=42     )) ])"
+      },
+      {
+        "chunk_id": "logreg_02_c2",
+        "source_id": "logreg_02",
+        "concepts": [
+          "LogisticRegression"
+        ],
+        "similarity": 0.4626,
+        "chars": 797,
+        "preview": "Việc chọn thuật toán tối ưu (`solver`) phụ thuộc vào kích thước dữ liệu và loại `penalty` được chọn:  | Solver | L1 Penalty | L2 Penalty | ElasticNet | No Penalty | Quy mô dữ liệu phù hợp | | :--- | :---: | :---: | :---: | :---: | :--- | | `'lbfgs'` | Không | **Có** | Không | **Có** | Dữ liệu nhỏ đế"
+      },
+      {
+        "chunk_id": "logreg_04_c0",
+        "source_id": "logreg_04",
+        "concepts": [
+          "Confusion Matrix"
+        ],
+        "similarity": 0.5593,
+        "chars": 394,
+        "preview": "Ma trận nhầm lẫn (Confusion Matrix) là bảng thống kê số lượng dự đoán đúng và sai của mô hình phân loại nhị phân:  | | Dự đoán Negative ($y=0$) | Dự đoán Positive ($y=1$) | | :--- | :--- | :--- | | **Thực tế Negative ($y=0$)** | True Negative (**TN**) | False Positive (**FP**) *(Lỗi Type I)* | | **T"
+      },
+      {
+        "chunk_id": "logreg_04_c5",
+        "source_id": "logreg_04",
+        "concepts": [
+          "Precision",
+          "Recall"
+        ],
+        "similarity": 0.5559,
+        "chars": 279,
+        "preview": "Trung bình điều hòa (Harmonic Mean) giữa Precision và Recall, giúp đánh giá sự cân bằng giữa hai chỉ số này:  $$ F_1 = 2 \\cdot \\frac{\\text{Precision} \\cdot \\text{Recall}} {\\text{Precision} + \\text{Recall}} = \\frac{2 \\cdot \\text{TP}} {2 \\cdot \\text{TP} + \\text{FP} + \\text{FN}} $$"
+      },
+      {
+        "chunk_id": "logreg_04_c7",
+        "source_id": "logreg_04",
+        "concepts": [
+          "ROC-AUC"
+        ],
+        "similarity": 0.7258,
+        "chars": 503,
+        "preview": "* **ROC Curve (Receiver Operating Characteristic)**: Đồ thị biểu diễn mối tương quan giữa **True Positive Rate (Recall)** trên trục tung và **False Positive Rate ($\\text{FPR} = \\frac{\\text{FP}}{\\text{TN} + \\text{FP}}$)** trên trục hoành khi thay đổi ngưỡng quyết định từ $1.0$ về $0.0$.  * **ROC-AUC "
+      },
+      {
+        "chunk_id": "logreg_04_c8",
+        "source_id": "logreg_04",
+        "concepts": [
+          "ROC-AUC"
+        ],
+        "similarity": 0.5714,
+        "chars": 195,
+        "preview": "Khi tập dữ liệu bị mất cân bằng nhãn nghiêm trọng (lớp Positive chiếm tỉ lệ rất nhỏ), đường cong PR trực quan hơn ROC Curve vì FPR trong ROC Curve bị pha loãng bởi số lượng True Negative quá lớn."
+      },
+      {
+        "chunk_id": "logreg_03_c7",
+        "source_id": "logreg_03",
+        "concepts": [
+          "StandardScaler"
+        ],
+        "similarity": 0.5964,
+        "chars": 309,
+        "preview": "Sử dụng `StandardScaler` để đưa các thuộc tính liên tục về phân phối chuẩn có trung bình $\\mu = 0$ và độ lệch chuẩn $\\sigma = 1$:  $$ x' = \\frac{x - \\mu}{\\sigma} $$  Đối với dữ liệu chứa nhiều Outliers, sử dụng `RobustScaler` (dựa trên Median và Interquartile Range - IQR) để tránh làm lệch giá trị c"
+      }
+    ],
+    "0.50": [
+      {
+        "chunk_id": "logreg_01_c1",
+        "source_id": "logreg_01",
+        "concepts": [
+          "sigmoid function"
+        ],
+        "similarity": 0.556,
+        "chars": 208,
+        "preview": "$$\\sigma(z) = \\frac{1}{1 + e^{-z}}$$  Trong đó, $z$ là sự kết hợp tuyến tính giữa các đặc trưng (features) và trọng số (weights):  $$z = w_0 + w_1 x_1 + w_2 x_2 + ... + w_n x_n = \\mathbf{w}^T \\mathbf{x} + b$$"
+      },
+      {
+        "chunk_id": "logreg_01_c6",
+        "source_id": "logreg_01",
+        "concepts": [
+          "sigmoid function"
+        ],
+        "similarity": 0.5343,
+        "chars": 300,
+        "preview": "$$J(\\mathbf{w}, b) = -\\frac{1}{N} \\sum_{i=1}^{N} \\left[ y_i \\ln(\\hat{y}_i) + (1 - y_i) \\ln(1 - \\hat{y}_i) \\right]$$  Trong đó: * $N$: Số lượng mẫu dữ liệu. * $y_i \\in \\{0, 1\\}$: Nhãn thực tế của mẫu thứ $i$. * $\\hat{y}_i = \\sigma(\\mathbf{w}^T \\mathbf{x}_i + b)$: Xác suất dự đoán mẫu $i$ thuộc lớp 1."
+      },
+      {
+        "chunk_id": "logreg_01_c4",
+        "source_id": "logreg_01",
+        "concepts": [
+          "logit"
+        ],
+        "similarity": 0.5202,
+        "chars": 103,
+        "preview": "Ý nghĩa: Logistic Regression bản chất là một mô hình tuyến tính đối với **Log-Odds** của biến mục tiêu."
+      },
+      {
+        "chunk_id": "logreg_02_c7",
+        "source_id": "logreg_02",
+        "concepts": [
+          "LogisticRegression"
+        ],
+        "similarity": 0.5266,
+        "chars": 240,
+        "preview": "pipeline = Pipeline([     ('scaler', StandardScaler()),     ('model', LogisticRegression(         penalty='l2',         C=1.0,         solver='lbfgs',         max_iter=1000,         class_weight='balanced',         random_state=42     )) ])"
+      },
+      {
+        "chunk_id": "logreg_04_c0",
+        "source_id": "logreg_04",
+        "concepts": [
+          "Confusion Matrix"
+        ],
+        "similarity": 0.5593,
+        "chars": 394,
+        "preview": "Ma trận nhầm lẫn (Confusion Matrix) là bảng thống kê số lượng dự đoán đúng và sai của mô hình phân loại nhị phân:  | | Dự đoán Negative ($y=0$) | Dự đoán Positive ($y=1$) | | :--- | :--- | :--- | | **Thực tế Negative ($y=0$)** | True Negative (**TN**) | False Positive (**FP**) *(Lỗi Type I)* | | **T"
+      },
+      {
+        "chunk_id": "logreg_04_c5",
+        "source_id": "logreg_04",
+        "concepts": [
+          "Precision"
+        ],
+        "similarity": 0.5559,
+        "chars": 279,
+        "preview": "Trung bình điều hòa (Harmonic Mean) giữa Precision và Recall, giúp đánh giá sự cân bằng giữa hai chỉ số này:  $$ F_1 = 2 \\cdot \\frac{\\text{Precision} \\cdot \\text{Recall}} {\\text{Precision} + \\text{Recall}} = \\frac{2 \\cdot \\text{TP}} {2 \\cdot \\text{TP} + \\text{FP} + \\text{FN}} $$"
+      },
+      {
+        "chunk_id": "logreg_04_c7",
+        "source_id": "logreg_04",
+        "concepts": [
+          "ROC-AUC"
+        ],
+        "similarity": 0.7258,
+        "chars": 503,
+        "preview": "* **ROC Curve (Receiver Operating Characteristic)**: Đồ thị biểu diễn mối tương quan giữa **True Positive Rate (Recall)** trên trục tung và **False Positive Rate ($\\text{FPR} = \\frac{\\text{FP}}{\\text{TN} + \\text{FP}}$)** trên trục hoành khi thay đổi ngưỡng quyết định từ $1.0$ về $0.0$.  * **ROC-AUC "
+      },
+      {
+        "chunk_id": "logreg_04_c8",
+        "source_id": "logreg_04",
+        "concepts": [
+          "ROC-AUC"
+        ],
+        "similarity": 0.5714,
+        "chars": 195,
+        "preview": "Khi tập dữ liệu bị mất cân bằng nhãn nghiêm trọng (lớp Positive chiếm tỉ lệ rất nhỏ), đường cong PR trực quan hơn ROC Curve vì FPR trong ROC Curve bị pha loãng bởi số lượng True Negative quá lớn."
+      },
+      {
+        "chunk_id": "logreg_03_c7",
+        "source_id": "logreg_03",
+        "concepts": [
+          "StandardScaler"
+        ],
+        "similarity": 0.5964,
+        "chars": 309,
+        "preview": "Sử dụng `StandardScaler` để đưa các thuộc tính liên tục về phân phối chuẩn có trung bình $\\mu = 0$ và độ lệch chuẩn $\\sigma = 1$:  $$ x' = \\frac{x - \\mu}{\\sigma} $$  Đối với dữ liệu chứa nhiều Outliers, sử dụng `RobustScaler` (dựa trên Median và Interquartile Range - IQR) để tránh làm lệch giá trị c"
+      }
+    ],
+    "0.55": [
+      {
+        "chunk_id": "logreg_01_c1",
+        "source_id": "logreg_01",
+        "concepts": [
+          "sigmoid function"
+        ],
+        "similarity": 0.556,
+        "chars": 208,
+        "preview": "$$\\sigma(z) = \\frac{1}{1 + e^{-z}}$$  Trong đó, $z$ là sự kết hợp tuyến tính giữa các đặc trưng (features) và trọng số (weights):  $$z = w_0 + w_1 x_1 + w_2 x_2 + ... + w_n x_n = \\mathbf{w}^T \\mathbf{x} + b$$"
+      },
+      {
+        "chunk_id": "logreg_04_c0",
+        "source_id": "logreg_04",
+        "concepts": [
+          "Confusion Matrix"
+        ],
+        "similarity": 0.5593,
+        "chars": 394,
+        "preview": "Ma trận nhầm lẫn (Confusion Matrix) là bảng thống kê số lượng dự đoán đúng và sai của mô hình phân loại nhị phân:  | | Dự đoán Negative ($y=0$) | Dự đoán Positive ($y=1$) | | :--- | :--- | :--- | | **Thực tế Negative ($y=0$)** | True Negative (**TN**) | False Positive (**FP**) *(Lỗi Type I)* | | **T"
+      },
+      {
+        "chunk_id": "logreg_04_c5",
+        "source_id": "logreg_04",
+        "concepts": [
+          "Precision"
+        ],
+        "similarity": 0.5559,
+        "chars": 279,
+        "preview": "Trung bình điều hòa (Harmonic Mean) giữa Precision và Recall, giúp đánh giá sự cân bằng giữa hai chỉ số này:  $$ F_1 = 2 \\cdot \\frac{\\text{Precision} \\cdot \\text{Recall}} {\\text{Precision} + \\text{Recall}} = \\frac{2 \\cdot \\text{TP}} {2 \\cdot \\text{TP} + \\text{FP} + \\text{FN}} $$"
+      },
+      {
+        "chunk_id": "logreg_04_c7",
+        "source_id": "logreg_04",
+        "concepts": [
+          "ROC-AUC"
+        ],
+        "similarity": 0.7258,
+        "chars": 503,
+        "preview": "* **ROC Curve (Receiver Operating Characteristic)**: Đồ thị biểu diễn mối tương quan giữa **True Positive Rate (Recall)** trên trục tung và **False Positive Rate ($\\text{FPR} = \\frac{\\text{FP}}{\\text{TN} + \\text{FP}}$)** trên trục hoành khi thay đổi ngưỡng quyết định từ $1.0$ về $0.0$.  * **ROC-AUC "
+      },
+      {
+        "chunk_id": "logreg_04_c8",
+        "source_id": "logreg_04",
+        "concepts": [
+          "ROC-AUC"
+        ],
+        "similarity": 0.5714,
+        "chars": 195,
+        "preview": "Khi tập dữ liệu bị mất cân bằng nhãn nghiêm trọng (lớp Positive chiếm tỉ lệ rất nhỏ), đường cong PR trực quan hơn ROC Curve vì FPR trong ROC Curve bị pha loãng bởi số lượng True Negative quá lớn."
+      },
+      {
+        "chunk_id": "logreg_03_c7",
+        "source_id": "logreg_03",
+        "concepts": [
+          "StandardScaler"
+        ],
+        "similarity": 0.5964,
+        "chars": 309,
+        "preview": "Sử dụng `StandardScaler` để đưa các thuộc tính liên tục về phân phối chuẩn có trung bình $\\mu = 0$ và độ lệch chuẩn $\\sigma = 1$:  $$ x' = \\frac{x - \\mu}{\\sigma} $$  Đối với dữ liệu chứa nhiều Outliers, sử dụng `RobustScaler` (dựa trên Median và Interquartile Range - IQR) để tránh làm lệch giá trị c"
+      }
+    ],
+    "0.60": [
+      {
+        "chunk_id": "logreg_04_c7",
+        "source_id": "logreg_04",
+        "concepts": [
+          "ROC-AUC"
+        ],
+        "similarity": 0.7258,
+        "chars": 503,
+        "preview": "* **ROC Curve (Receiver Operating Characteristic)**: Đồ thị biểu diễn mối tương quan giữa **True Positive Rate (Recall)** trên trục tung và **False Positive Rate ($\\text{FPR} = \\frac{\\text{FP}}{\\text{TN} + \\text{FP}}$)** trên trục hoành khi thay đổi ngưỡng quyết định từ $1.0$ về $0.0$.  * **ROC-AUC "
+      }
+    ],
+    "0.65": [
+      {
+        "chunk_id": "logreg_04_c7",
+        "source_id": "logreg_04",
+        "concepts": [
+          "ROC-AUC"
+        ],
+        "similarity": 0.7258,
+        "chars": 503,
+        "preview": "* **ROC Curve (Receiver Operating Characteristic)**: Đồ thị biểu diễn mối tương quan giữa **True Positive Rate (Recall)** trên trục tung và **False Positive Rate ($\\text{FPR} = \\frac{\\text{FP}}{\\text{TN} + \\text{FP}}$)** trên trục hoành khi thay đổi ngưỡng quyết định từ $1.0$ về $0.0$.  * **ROC-AUC "
+      }
+    ],
+    "0.70": [
+      {
+        "chunk_id": "logreg_04_c7",
+        "source_id": "logreg_04",
+        "concepts": [
+          "ROC-AUC"
+        ],
+        "similarity": 0.7258,
+        "chars": 503,
+        "preview": "* **ROC Curve (Receiver Operating Characteristic)**: Đồ thị biểu diễn mối tương quan giữa **True Positive Rate (Recall)** trên trục tung và **False Positive Rate ($\\text{FPR} = \\frac{\\text{FP}}{\\text{TN} + \\text{FP}}$)** trên trục hoành khi thay đổi ngưỡng quyết định từ $1.0$ về $0.0$.  * **ROC-AUC "
+      }
+    ]
+  }
+}

@@ -1,0 +1,30 @@
+[
+  {
+    "attempt": 1,
+    "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\ablation-2x2-controlled12-th045-20260831-rag-shared_attempt1.ipynb",
+    "decision": "PASS",
+    "average_score": 4.25,
+    "rule_checks": {
+      "has_instructions": true,
+      "has_todo": true,
+      "has_assert": true,
+      "no_hardcoded_answers": true,
+      "has_train_test_split": true,
+      "has_visualization": true,
+      "has_demo_per_module": true,
+      "min_cells_by_level": true
+    },
+    "llm_scores": {
+      "executability": 5.0,
+      "groundedness": 4.0,
+      "difficulty_fit": 4.0,
+      "pedagogical_order": 4.0
+    },
+    "execution_success": true,
+    "duration_seconds": 20.175,
+    "cost_this_attempt": 0.009401,
+    "judge_cost_usd": 0.009401,
+    "feedback": "[CELL 8] Giải thích logit chưa đầy đủ: chỉ nêu log-odds là logarit của odds nhưng không đưa công thức logit(p) = ln(p/(1-p)) và mối liên hệ với sigmoid. FIX: thêm công thức logit và giải thích sigmoid là hàm ngược của logit. [CELL 12] Giới thiệu hyperparameter penalty, solver, class_weight nhưng không giải thích ý nghĩa và ảnh hưởng của từng tham số. FIX: thêm mô tả ngắn cho từng tham số, ví dụ penalty L1/L2, solver phù hợp, class_weight='balanced' xử lý mất cân bằng. [CELL 18] Giải thích ROC-AUC chưa rõ ràng: không nêu rõ AUC là xác suất mô hình xếp hạng mẫu positive cao hơn negative. FIX: bổ sung ý nghĩa xác suất của AUC.",
+    "ungrounded_claims": []
+  }
+]

@@ -1,0 +1,30 @@
+[
+  {
+    "attempt": 1,
+    "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\judge-calibration-deepseek-pro-20260831-runtime_error.ipynb",
+    "decision": "RETRY",
+    "average_score": 3.5,
+    "rule_checks": {
+      "has_instructions": true,
+      "has_todo": true,
+      "has_assert": true,
+      "no_hardcoded_answers": true,
+      "has_train_test_split": true,
+      "has_visualization": true,
+      "has_demo_per_module": true,
+      "min_cells_by_level": true
+    },
+    "llm_scores": {
+      "executability": 2.0,
+      "groundedness": 4.0,
+      "difficulty_fit": 4.0,
+      "pedagogical_order": 4.0
+    },
+    "execution_success": false,
+    "duration_seconds": 4.751,
+    "cost_this_attempt": 0.009862,
+    "judge_cost_usd": 0.009862,
+    "feedback": "[CELL 9] RuntimeError: CALIBRATION_INJECTED_RUNTIME_ERROR. FIX: correct the expression using the traceback, then rerun the notebook. [CELL 9] RuntimeError được inject khiến cell lý thuyết sigmoid/logit không chạy. FIX: loại bỏ dòng raise RuntimeError để demo chạy được.",
+    "ungrounded_claims": []
+  }
+]

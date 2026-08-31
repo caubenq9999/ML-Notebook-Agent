@@ -1,0 +1,30 @@
+[
+  {
+    "attempt": 1,
+    "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\judge-calibration-deepseek-pro-20260831-wrong_sigmoid_formula.ipynb",
+    "decision": "PASS",
+    "average_score": 3.75,
+    "rule_checks": {
+      "has_instructions": true,
+      "has_todo": true,
+      "has_assert": true,
+      "no_hardcoded_answers": true,
+      "has_train_test_split": true,
+      "has_visualization": true,
+      "has_demo_per_module": true,
+      "min_cells_by_level": true
+    },
+    "llm_scores": {
+      "executability": 5.0,
+      "groundedness": 2.0,
+      "difficulty_fit": 4.0,
+      "pedagogical_order": 4.0
+    },
+    "execution_success": true,
+    "duration_seconds": 4.164,
+    "cost_this_attempt": 0.010725,
+    "judge_cost_usd": 0.010725,
+    "feedback": "[CELL 8] Công thức sigmoid sai: viết $\\sigma(z) = \\frac{1}{1 - e^{-z}}$ thay vì $\\frac{1}{1 + e^{-z}}$. FIX: sửa dấu trừ thành dấu cộng trong mẫu số.\\n [CELL 11] Bài tập m1_ex1 chưa hoàn thành: z_m1 và p_m1 được gán None, không tính toán. FIX: tính z_m1 = np.dot(w, x) + b và p_m1 = sigmoid(z_m1).\\n [CELL 15] Bài tập m2_ex1 chưa hoàn thành: code đã được viết sẵn, không có TODO. FIX: thêm TODO hoặc để trống cho người học tự viết.\\n [CELL 21] Bài tập m4_ex1 chưa hoàn thành: code đã được viết sẵn, không có TODO. FIX: thêm TODO hoặc để trống cho người học tự viết.\\n [CELL 25] Bài tập m5_ex1 chưa hoàn thành: code đã được viết sẵn, không có TODO. FIX: thêm TODO hoặc để trống cho người học tự viết.",
+    "ungrounded_claims": []
+  }
+]

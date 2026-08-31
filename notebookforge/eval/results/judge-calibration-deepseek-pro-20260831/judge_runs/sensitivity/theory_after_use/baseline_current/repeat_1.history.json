@@ -1,0 +1,30 @@
+[
+  {
+    "attempt": 1,
+    "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\judge-calibration-deepseek-pro-20260831-theory_after_use.ipynb",
+    "decision": "PASS",
+    "average_score": 4.0,
+    "rule_checks": {
+      "has_instructions": true,
+      "has_todo": true,
+      "has_assert": true,
+      "no_hardcoded_answers": true,
+      "has_train_test_split": true,
+      "has_visualization": true,
+      "has_demo_per_module": true,
+      "min_cells_by_level": true
+    },
+    "llm_scores": {
+      "executability": 5.0,
+      "groundedness": 4.0,
+      "difficulty_fit": 4.0,
+      "pedagogical_order": 3.0
+    },
+    "execution_success": true,
+    "duration_seconds": 4.385,
+    "cost_this_attempt": 0.010298,
+    "judge_cost_usd": 0.010298,
+    "feedback": "[CELL 18] Module m1 (Sigmoid, Logit, Log Loss) được giới thiệu sau khi đã sử dụng LogisticRegression ở CELL 9 và 11. FIX: chuyển Module m1 lên trước Module m2 để người học hiểu nền tảng trước khi thực hành. [CELL 21] Bài tập m1_ex1 chưa hoàn thành: z_m1 và p_m1 vẫn là None. FIX: gán z_m1 = np.dot(w, x) + b và p_m1 = sigmoid(z_m1). [CELL 27] Kiểm tra m1_ex1 sẽ không pass vì z_m1 và p_m1 chưa được tính. FIX: hoàn thành bài tập m1_ex1 trước khi chạy cell kiểm tra.",
+    "ungrounded_claims": []
+  }
+]

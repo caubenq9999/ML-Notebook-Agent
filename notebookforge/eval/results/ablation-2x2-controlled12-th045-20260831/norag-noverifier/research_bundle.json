@@ -1,0 +1,140 @@
+{
+  "topic": "logistic_regression",
+  "sources": [
+    {
+      "source_id": "logreg_01",
+      "type": "kb_file",
+      "path_or_url": "https://scikit-learn.org/stable/modules/linear_model.html#logistic-regression",
+      "title": "Theoretical Foundations & Mathematical Formulation",
+      "retrieved_at": "2026-08-30T21:00:53.721408Z"
+    },
+    {
+      "source_id": "logreg_02",
+      "type": "kb_file",
+      "path_or_url": "https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html",
+      "title": "Scikit-Learn API, Hyperparameters & Solvers",
+      "retrieved_at": "2026-08-30T21:00:53.722411Z"
+    },
+    {
+      "source_id": "logreg_04",
+      "type": "kb_file",
+      "path_or_url": "https://scikit-learn.org/stable/modules/model_evaluation.html",
+      "title": "Classification Metrics, Diagnostics & Evaluation Protocols",
+      "retrieved_at": "2026-08-30T21:00:53.723920Z"
+    }
+  ],
+  "key_concepts": [
+    "sigmoid function",
+    "logit",
+    "log loss",
+    "LogisticRegression",
+    "penalty",
+    "solver",
+    "class_weight",
+    "Confusion Matrix",
+    "Precision",
+    "Recall",
+    "F1-Score",
+    "ROC-AUC"
+  ],
+  "citations": [
+    {
+      "concept": "sigmoid function",
+      "source_id": "logreg_01",
+      "quote": "Core Concept & Sigmoid Function",
+      "locator": "Theoretical Foundations & Mathematical Formulation"
+    },
+    {
+      "concept": "logit",
+      "source_id": "logreg_01",
+      "quote": "Odds Ratio & Logit Transformation",
+      "locator": "Theoretical Foundations & Mathematical Formulation"
+    },
+    {
+      "concept": "log loss",
+      "source_id": "logreg_01",
+      "quote": "Loss Function (Binary Cross-Entropy / Log Loss)",
+      "locator": "Theoretical Foundations & Mathematical Formulation"
+    },
+    {
+      "concept": "LogisticRegression",
+      "source_id": "logreg_02",
+      "quote": "Lớp chính được sử dụng trong Scikit-Learn là `sklearn.linear_model.LogisticRegression`.",
+      "locator": "Scikit-Learn API, Hyperparameters & Solvers"
+    },
+    {
+      "concept": "penalty",
+      "source_id": "logreg_02",
+      "quote": "| `penalty` | `str` | `'l2'` | Loại điều hòa: `'l1'`, `'l2'`, `'elasticnet'`, `None`.",
+      "locator": "Scikit-Learn API, Hyperparameters & Solvers"
+    },
+    {
+      "concept": "solver",
+      "source_id": "logreg_02",
+      "quote": "| `solver` | `str` | `'lbfgs'` | Thuật toán tối ưu hóa loss function: `'lbfgs'`, `'liblinear'`, `'saga'`, `'sag'`, `'newton-cg'`.",
+      "locator": "Scikit-Learn API, Hyperparameters & Solvers"
+    },
+    {
+      "concept": "class_weight",
+      "source_id": "logreg_02",
+      "quote": "| `class_weight`| `dict` / `str`| `None` | Xử lý mất cân bằng nhãn.",
+      "locator": "Scikit-Learn API, Hyperparameters & Solvers"
+    },
+    {
+      "concept": "Confusion Matrix",
+      "source_id": "logreg_04",
+      "quote": "Confusion Matrix Structure",
+      "locator": "Classification Metrics, Diagnostics & Evaluation Protocols"
+    },
+    {
+      "concept": "Precision",
+      "source_id": "logreg_04",
+      "quote": "Precision (Độ chính xác lớp Positive)",
+      "locator": "Classification Metrics, Diagnostics & Evaluation Protocols"
+    },
+    {
+      "concept": "Recall",
+      "source_id": "logreg_04",
+      "quote": "Recall / Sensitivity (Độ triệu hồi)",
+      "locator": "Classification Metrics, Diagnostics & Evaluation Protocols"
+    },
+    {
+      "concept": "F1-Score",
+      "source_id": "logreg_04",
+      "quote": null,
+      "locator": "Classification Metrics, Diagnostics & Evaluation Protocols"
+    },
+    {
+      "concept": "ROC-AUC",
+      "source_id": "logreg_04",
+      "quote": "ROC Curve & ROC-AUC",
+      "locator": "Classification Metrics, Diagnostics & Evaluation Protocols"
+    }
+  ],
+  "theory_chunks": [],
+  "unresolved_concepts": [],
+  "prerequisites": [
+    "Đại số tuyến tính",
+    "Python cơ bản"
+  ],
+  "common_pitfalls": [
+    "Rò rỉ dữ liệu",
+    "Quá khớp"
+  ],
+  "generated_at": "2026-08-30T21:00:53.766171Z",
+  "schema_version": "2.0.0",
+  "grounded_concepts": [
+    "sigmoid function",
+    "logit",
+    "log loss",
+    "LogisticRegression",
+    "penalty",
+    "solver",
+    "class_weight",
+    "Confusion Matrix",
+    "Precision",
+    "Recall",
+    "F1-Score",
+    "ROC-AUC"
+  ]
+}

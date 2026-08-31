@@ -1,0 +1,30 @@
+[
+  {
+    "attempt": 1,
+    "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\ablation-2x2-controlled12-th045-20260831-norag-shared_attempt1.ipynb",
+    "decision": "PASS",
+    "average_score": 4.25,
+    "rule_checks": {
+      "has_instructions": true,
+      "has_todo": true,
+      "has_assert": true,
+      "no_hardcoded_answers": true,
+      "has_train_test_split": true,
+      "has_visualization": true,
+      "has_demo_per_module": true,
+      "min_cells_by_level": true
+    },
+    "llm_scores": {
+      "executability": 5.0,
+      "groundedness": 4.0,
+      "difficulty_fit": 4.0,
+      "pedagogical_order": 4.0
+    },
+    "execution_success": true,
+    "duration_seconds": 4.42,
+    "cost_this_attempt": 0.008534,
+    "judge_cost_usd": 0.008534,
+    "feedback": "[CELL 13] Sử dụng X_train chưa được chuẩn hóa trong khi mục tiêu module m3 là dùng StandardScaler. FIX: dùng X_train_scaled và X_test_scaled cho mô hình LogisticRegression. [CELL 19] Sử dụng X_test chưa chuẩn hóa cho đánh giá, không nhất quán với mô hình đã huấn luyện trên dữ liệu chuẩn hóa. FIX: dùng X_test_scaled. [CELL 16] Giải thích 'dữ liệu đã được chuẩn hóa sẵn bằng StandardScaler trước khi chia train/test' không chính xác vì thực tế chuẩn hóa sau khi chia. FIX: sửa lại mô tả cho đúng thứ tự.",
+    "ungrounded_claims": []
+  }
+]

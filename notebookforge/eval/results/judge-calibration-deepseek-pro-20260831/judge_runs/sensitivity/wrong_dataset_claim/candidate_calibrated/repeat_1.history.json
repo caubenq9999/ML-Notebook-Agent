@@ -1,0 +1,30 @@
+[
+  {
+    "attempt": 1,
+    "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\judge-calibration-deepseek-pro-20260831-wrong_dataset_claim.ipynb",
+    "decision": "PASS",
+    "average_score": 3.5,
+    "rule_checks": {
+      "has_instructions": true,
+      "has_todo": true,
+      "has_assert": true,
+      "no_hardcoded_answers": true,
+      "has_train_test_split": true,
+      "has_visualization": true,
+      "has_demo_per_module": true,
+      "min_cells_by_level": true
+    },
+    "llm_scores": {
+      "executability": 5.0,
+      "groundedness": 2.0,
+      "difficulty_fit": 4.0,
+      "pedagogical_order": 3.0
+    },
+    "execution_success": true,
+    "duration_seconds": 4.01,
+    "cost_this_attempt": 0.009961,
+    "judge_cost_usd": 0.009961,
+    "feedback": "[CELL 1] Mô tả dataset là Iris nhưng code load Heart Failure Prediction. FIX: sửa mô tả thành Heart Failure Prediction hoặc đổi code để load Iris. [CELL 3] Code load Heart Failure Prediction nhưng tiêu đề notebook nói về Heart Failure Prediction, không khớp với mô tả Iris ở CELL 1. FIX: thống nhất dataset. [CELL 8] Lý thuyết sigmoid, logit, log loss được trình bày sau khi đã sử dụng dữ liệu và tiền xử lý, gây lộn xộn thứ tự. FIX: chuyển module lý thuyết lên trước phần tiền xử lý.",
+    "ungrounded_claims": []
+  }
+]

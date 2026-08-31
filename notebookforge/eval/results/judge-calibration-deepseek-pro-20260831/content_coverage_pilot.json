@@ -1,0 +1,83 @@
+[
+  {
+    "case": "groq_4d40f588",
+    "notebook": "notebookforge\\eval\\results\\judge-calibration-deepseek-pro-20260831\\notebooks\\groq.ipynb",
+    "model": "deepseek-v4-pro",
+    "prompt": "candidate_content_coverage",
+    "judge_calls": 1,
+    "scores": {
+      "groundedness": 3,
+      "difficulty_fit": 3,
+      "pedagogical_order": 3,
+      "content_completeness": 2,
+      "learning_coverage": 2,
+      "covered_concepts": [
+        "sigmoid function",
+        "log loss",
+        "LogisticRegression",
+        "penalty",
+        "solver",
+        "ROC-AUC"
+      ],
+      "shallow_concepts": [
+        "logit",
+        "class_weight",
+        "Confusion Matrix",
+        "Precision",
+        "Recall",
+        "F1-Score"
+      ],
+      "missing_concepts": [],
+      "feedback": "[CELL 8] Phần lý thuyết chỉ liệt kê công thức mà không giải thích trực giác hay liên hệ với code. FIX: thêm giải thích ý nghĩa của sigmoid, logit, log loss và cách chúng được dùng trong mô hình. [CELL 13] Module m2 chỉ nêu tên penalty và solver mà không giải thích tác dụng hay cách chọn. FIX: thêm giải thích về regularization và các solver phù hợp. [CELL 18] Module m3 không giải thích tại sao cần chuẩn hoá dữ liệu cho Logistic Regression. FIX: thêm lý do và ảnh hưởng của scaling. [CELL 20] Module m4 chỉ tính log loss và vẽ ROC mà không diễn giải ý nghĩa của các chỉ số. FIX: thêm giải thích về log loss và ROC-AUC, cách đọc kết quả.",
+      "ungrounded_claims": [],
+      "concept_partition_valid": true,
+      "average": 2.6
+    },
+    "usage": {
+      "input_tokens": 8303,
+      "output_tokens": 355,
+      "cost_usd": 0.012366,
+      "api_calls": 1
+    }
+  },
+  {
+    "case": "deepseek_20260830_v2",
+    "notebook": "notebookforge\\eval\\results\\judge-calibration-deepseek-pro-20260831\\notebooks\\deepseek.ipynb",
+    "model": "deepseek-v4-pro",
+    "prompt": "candidate_content_coverage",
+    "judge_calls": 1,
+    "scores": {
+      "groundedness": 4,
+      "difficulty_fit": 4,
+      "pedagogical_order": 4,
+      "content_completeness": 3,
+      "learning_coverage": 4,
+      "covered_concepts": [
+        "sigmoid function",
+        "logit",
+        "log loss",
+        "LogisticRegression",
+        "penalty",
+        "solver",
+        "class_weight",
+        "Confusion Matrix",
+        "Precision",
+        "Recall",
+        "F1-Score",
+        "ROC-AUC"
+      ],
+      "shallow_concepts": [],
+      "missing_concepts": [],
+      "feedback": "[CELL 8] Phần lý thuyết về sigmoid, logit, log loss có công thức nhưng thiếu giải thích trực giác và liên hệ với code demo. FIX: Thêm ví dụ cụ thể về ý nghĩa của logit và log loss, và giải thích tại sao log loss phạt nặng khi dự đoán sai tự tin. [CELL 12] Phần giải thích về penalty, solver, class_weight còn sơ sài, chưa nêu rõ ảnh hưởng của từng tham số đến mô hình. FIX: Bổ sung ví dụ minh họa hoặc bảng so sánh các solver và penalty, giải thích khi nào dùng class_weight='balanced'. [CELL 16] Phần tiền xử lý dữ liệu chỉ nêu công thức và mô tả ngắn, chưa giải thích tại sao cần chuẩn hóa cho logistic regression và cách One-Hot Encoding tránh giả định thứ tự. FIX: Thêm giải thích về ảnh hưởng của scale đến gradient descent và ví dụ cụ thể về One-Hot Encoding. [CELL 18] Các metric được liệt kê công thức nhưng thiếu diễn giải ý nghĩa trong bối cảnh bài toán bệnh tim. FIX: Thêm ví dụ về hậu quả của false positive và false negative trong chẩn đoán bệnh tim, và giải thích khi nào nên ưu tiên precision hay recall.",
+      "ungrounded_claims": [],
+      "concept_partition_valid": true,
+      "average": 3.8
+    },
+    "usage": {
+      "input_tokens": 11884,
+      "output_tokens": 513,
+      "cost_usd": 0.017718,
+      "api_calls": 1
+    }
+  }
+]

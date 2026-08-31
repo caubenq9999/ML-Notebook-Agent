@@ -1,0 +1,354 @@
+[
+  {
+    "session_id": "eval-gs-001",
+    "attempt": 1,
+    "notebook_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\eval-gs-001_attempt1.ipynb",
+    "execution_success": false,
+    "hard_rules_passed": 8,
+    "hard_rules_total": 8,
+    "decision": "RETRY",
+    "scores": {
+      "groundedness": 4,
+      "difficulty_fit": 4,
+      "pedagogical_order": 4,
+      "content_completeness": 3,
+      "learning_coverage": 5
+    },
+    "average_score": 4.0,
+    "raw_llm_learning_coverage": 4,
+    "covered_concepts": [
+      "sigmoid function",
+      "logit",
+      "log loss",
+      "LogisticRegression",
+      "penalty",
+      "solver",
+      "class_weight",
+      "Confusion Matrix",
+      "Precision",
+      "Recall",
+      "F1-Score",
+      "ROC-AUC",
+      "StandardScaler",
+      "One-Hot Encoding",
+      "SimpleImputer"
+    ],
+    "shallow_concepts": [
+      "Decision Threshold Tuning"
+    ],
+    "missing_concepts": [],
+    "feedback": "[CELL 18] Decision Threshold Tuning chỉ được giới thiệu lý thuyết mà không có code demo hoặc bài tập. FIX: Thêm ví dụ thay đổi ngưỡng và đánh giá ảnh hưởng lên Precision/Recall.",
+    "ungrounded_claims": [],
+    "usage": {
+      "input_tokens": 12644,
+      "output_tokens": 243,
+      "cost_usd": 0.017652,
+      "api_calls": 1
+    }
+  },
+  {
+    "session_id": "eval-gs-001",
+    "attempt": 2,
+    "notebook_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\eval-gs-001_attempt2.ipynb",
+    "execution_success": true,
+    "hard_rules_passed": 7,
+    "hard_rules_total": 8,
+    "decision": "RETRY",
+    "scores": {
+      "groundedness": 4,
+      "difficulty_fit": 4,
+      "pedagogical_order": 4,
+      "content_completeness": 3,
+      "learning_coverage": 5
+    },
+    "average_score": 4.0,
+    "raw_llm_learning_coverage": 4,
+    "covered_concepts": [
+      "sigmoid function",
+      "logit",
+      "log loss",
+      "LogisticRegression",
+      "penalty",
+      "solver",
+      "class_weight",
+      "Confusion Matrix",
+      "Precision",
+      "Recall",
+      "F1-Score",
+      "ROC-AUC",
+      "StandardScaler",
+      "One-Hot Encoding",
+      "SimpleImputer",
+      "Decision Threshold Tuning"
+    ],
+    "shallow_concepts": [],
+    "missing_concepts": [],
+    "feedback": "[CELL 8] Phần lý thuyết về Logit và Log Loss chỉ trình bày công thức mà không giải thích trực giác hoặc liên hệ với code. FIX: Thêm giải thích ý nghĩa của log-odds và tại sao log loss được sử dụng, kèm ví dụ minh họa. [CELL 12] Phần giới thiệu LogisticRegression liệt kê tham số nhưng không giải thích chi tiết tác động của từng tham số đến mô hình. FIX: Bổ sung giải thích về penalty, solver, class_weight và khi nào nên dùng loại nào. [CELL 16] Phần tiền xử lý dữ liệu có giải thích nhưng chưa nêu rõ tại sao cần chuẩn hóa cho Logistic Regression cụ thể. FIX: Thêm lý do vì sao Logistic Regression nhạy cảm với scale của features.",
+    "ungrounded_claims": [],
+    "usage": {
+      "input_tokens": 12625,
+      "output_tokens": 398,
+      "cost_usd": 0.016771,
+      "api_calls": 1
+    }
+  },
+  {
+    "session_id": "eval-gs-006",
+    "attempt": 1,
+    "notebook_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\eval-gs-006_attempt1.ipynb",
+    "execution_success": true,
+    "hard_rules_passed": 8,
+    "hard_rules_total": 8,
+    "decision": "PASS",
+    "scores": {
+      "groundedness": 4,
+      "difficulty_fit": 4,
+      "pedagogical_order": 4,
+      "content_completeness": 3,
+      "learning_coverage": 5
+    },
+    "average_score": 4.0,
+    "raw_llm_learning_coverage": 4,
+    "covered_concepts": [
+      "sigmoid function",
+      "logit",
+      "log loss",
+      "L2 Regularization",
+      "LogisticRegression",
+      "solver",
+      "class_weight",
+      "One-vs-Rest (OvR)",
+      "Multinomial (Softmax)",
+      "StandardScaler",
+      "One-Hot Encoding",
+      "Confusion Matrix",
+      "Precision",
+      "Recall",
+      "F1-Score",
+      "ROC-AUC"
+    ],
+    "shallow_concepts": [
+      "Decision Threshold Tuning"
+    ],
+    "missing_concepts": [],
+    "feedback": "[CELL 22] Phần Decision Threshold Tuning chỉ được nhắc đến trong mục tiêu và bài tập m4_ex2 nhưng không có giải thích lý thuyết hay demo. FIX: Thêm một cell markdown giải thích cách thay đổi ngưỡng ảnh hưởng đến Precision/Recall và một cell code demo điều chỉnh ngưỡng trên dữ liệu thực tế.",
+    "ungrounded_claims": [],
+    "usage": {
+      "input_tokens": 13049,
+      "output_tokens": 293,
+      "cost_usd": 0.016915,
+      "api_calls": 1
+    }
+  },
+  {
+    "session_id": "eval-gs-008",
+    "attempt": 1,
+    "notebook_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\eval-gs-008_attempt1.ipynb",
+    "execution_success": false,
+    "hard_rules_passed": 8,
+    "hard_rules_total": 8,
+    "decision": "RETRY",
+    "scores": {
+      "groundedness": 3,
+      "difficulty_fit": 4,
+      "pedagogical_order": 4,
+      "content_completeness": 3,
+      "learning_coverage": 5
+    },
+    "average_score": 3.8,
+    "raw_llm_learning_coverage": 4,
+    "covered_concepts": [
+      "Entropy",
+      "Information Gain",
+      "DecisionTreeClassifier",
+      "max_depth",
+      "min_samples_split",
+      "min_samples_leaf",
+      "Overfitting",
+      "plot_tree",
+      "export_text"
+    ],
+    "shallow_concepts": [],
+    "missing_concepts": [],
+    "feedback": "[CELL 13] Sử dụng X_train, y_train từ dataset chính nhưng comment nói 'dùng để demo' và không giải thích vì sao chọn tham số. FIX: Làm rõ mục đích demo và giải thích ảnh hưởng của từng tham số đến cây. [CELL 16] Phần tiền xử lý chỉ nêu lý thuyết, không có code demo xử lý categorical. FIX: Thêm ví dụ minh họa Label Encoding hoặc One-Hot Encoding. [CELL 22] Overfitting được giải thích nhưng chưa có biểu đồ so sánh train/test score theo độ sâu. FIX: Thêm biểu đồ để trực quan hóa overfitting.",
+    "ungrounded_claims": [],
+    "usage": {
+      "input_tokens": 10610,
+      "output_tokens": 314,
+      "cost_usd": 0.013779,
+      "api_calls": 1
+    }
+  },
+  {
+    "session_id": "eval-gs-008",
+    "attempt": 2,
+    "notebook_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\eval-gs-008_attempt2.ipynb",
+    "execution_success": false,
+    "hard_rules_passed": 7,
+    "hard_rules_total": 8,
+    "decision": "RETRY",
+    "scores": {
+      "groundedness": 4,
+      "difficulty_fit": 4,
+      "pedagogical_order": 4,
+      "content_completeness": 3,
+      "learning_coverage": 5
+    },
+    "average_score": 4.0,
+    "raw_llm_learning_coverage": 4,
+    "covered_concepts": [
+      "Entropy",
+      "Information Gain",
+      "DecisionTreeClassifier",
+      "max_depth",
+      "min_samples_split",
+      "min_samples_leaf",
+      "Overfitting",
+      "plot_tree",
+      "export_text"
+    ],
+    "shallow_concepts": [],
+    "missing_concepts": [],
+    "feedback": "[CELL 8] Phần lý thuyết về Entropy và Information Gain có công thức nhưng thiếu giải thích trực quan về ý nghĩa của các đại lượng và cách chúng được sử dụng trong quá trình xây dựng cây. FIX: Thêm ví dụ cụ thể minh họa cách tính Entropy và Information Gain trên một tập dữ liệu nhỏ, và giải thích tại sao thuộc tính có Information Gain cao nhất được chọn. [CELL 12] Phần lý thuyết về DecisionTreeClassifier liệt kê các tham số nhưng không giải thích rõ ràng tác động của từng tham số đến mô hình. FIX: Bổ sung giải thích chi tiết về cách max_depth, min_samples_split, min_samples_leaf ảnh hưởng đến độ phức tạp và khả năng overfitting của cây. [CELL 16] Phần lý thuyết về tiền xử lý dữ liệu nêu rằng Decision Tree không yêu cầu scaling nhưng không giải thích lý do tại sao. FIX: Thêm giải thích rằng Decision Tree dựa trên so sánh ngưỡng nên không nhạy cảm với thang đo của đặc trưng. [CELL 18] Phần lý thuyết về plot_tree và export_text chỉ đưa ra code mẫu mà không giải thích ý nghĩa của các tham số và cách đọc cây. FIX: Thêm hướng dẫn cách diễn giải cây quyết định từ biểu đồ và văn bản, ví dụ như cách đọc điều kiện phân chia, số mẫu, và lớp chiếm đa số. [CELL 22] Phần lý thuyết về overfitting nêu các cách khắc phục nhưng không giải thích cơ chế hoạt động của ccp_alpha. FIX: Bổ sung giải thích về Cost Complexity Pruning và cách nó cắt tỉa cây để giảm overfitting.",
+    "ungrounded_claims": [],
+    "usage": {
+      "input_tokens": 11408,
+      "output_tokens": 620,
+      "cost_usd": 0.014411,
+      "api_calls": 1
+    }
+  },
+  {
+    "session_id": "eval-gs-012",
+    "attempt": 1,
+    "notebook_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\eval-gs-012_attempt1.ipynb",
+    "execution_success": true,
+    "hard_rules_passed": 8,
+    "hard_rules_total": 8,
+    "decision": "PASS",
+    "scores": {
+      "groundedness": 4,
+      "difficulty_fit": 4,
+      "pedagogical_order": 4,
+      "content_completeness": 3,
+      "learning_coverage": 5
+    },
+    "average_score": 4.0,
+    "raw_llm_learning_coverage": 4,
+    "covered_concepts": [
+      "CART Algorithm",
+      "Gini Impurity",
+      "Entropy",
+      "Information Gain",
+      "DecisionTreeClassifier",
+      "max_depth",
+      "min_samples_split",
+      "min_samples_leaf",
+      "class_weight",
+      "Feature Importance (Gini Importance)",
+      "plot_tree",
+      "export_text",
+      "Overfitting",
+      "Cost-Complexity Pruning (ccp_alpha)"
+    ],
+    "shallow_concepts": [],
+    "missing_concepts": [],
+    "feedback": "[CELL 8] Phần lý thuyết về CART, Gini, Entropy, Information Gain có giải thích và công thức nhưng chưa có ví dụ minh họa cụ thể trước khi sang code. FIX: Thêm một ví dụ nhỏ tính toán tay hoặc minh họa trực quan để học viên hiểu rõ hơn. [CELL 14] Phần lý thuyết về hyperparameter chỉ liệt kê định nghĩa ngắn, chưa giải thích ảnh hưởng cụ thể đến overfitting/underfitting. FIX: Bổ sung giải thích chi tiết hơn về tác động của từng hyperparameter và ví dụ. [CELL 18] Phần lý thuyết về scale invariance và encoding có giải thích nhưng chưa có ví dụ minh họa. FIX: Thêm demo hoặc hình ảnh minh họa để làm rõ khái niệm. [CELL 20] Phần lý thuyết về plot_tree và export_text chỉ đưa code mẫu, chưa giải thích ý nghĩa các tham số và cách đọc cây. FIX: Thêm giải thích về cách đọc cây và ý nghĩa các tham số trong plot_tree. [CELL 24] Phần lý thuyết về overfitting và pruning có giải thích nhưng chưa có ví dụ minh họa trước khi code. FIX: Thêm ví dụ hoặc biểu đồ minh họa overfitting và hiệu quả của pruning.",
+    "ungrounded_claims": [],
+    "usage": {
+      "input_tokens": 14127,
+      "output_tokens": 546,
+      "cost_usd": 0.01934,
+      "api_calls": 1
+    }
+  },
+  {
+    "session_id": "eval-gs-015",
+    "attempt": 1,
+    "notebook_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\eval-gs-015_attempt1.ipynb",
+    "execution_success": true,
+    "hard_rules_passed": 8,
+    "hard_rules_total": 8,
+    "decision": "PASS",
+    "scores": {
+      "groundedness": 4,
+      "difficulty_fit": 4,
+      "pedagogical_order": 4,
+      "content_completeness": 3,
+      "learning_coverage": 5
+    },
+    "average_score": 4.0,
+    "raw_llm_learning_coverage": 4,
+    "covered_concepts": [
+      "Unsupervised Learning",
+      "Centroids",
+      "Euclidean Distance",
+      "WCSS (Inertia)",
+      "Lloyd's Algorithm",
+      "n_clusters",
+      "init",
+      "n_init",
+      "max_iter",
+      "tol",
+      "Elbow Method",
+      "Silhouette Coefficient"
+    ],
+    "shallow_concepts": [
+      "Cluster Visualization"
+    ],
+    "missing_concepts": [],
+    "feedback": "[CELL 15] Biểu đồ so sánh dữ liệu chưa chuẩn hóa và đã chuẩn hóa không được diễn giải ý nghĩa. FIX: Thêm nhận xét về sự khác biệt khoảng cách và tác động đến K-Means. [CELL 21] Biểu đồ Elbow và Silhouette không được phân tích để xác định K tối ưu. FIX: Thêm giải thích cách đọc biểu đồ và chọn K. [CELL 6] Phần lý thuyết về Unsupervised Learning và K-Means còn sơ sài, thiếu trực giác và ví dụ minh họa. FIX: Bổ sung giải thích chi tiết hơn về mục tiêu của clustering và cách K-Means hoạt động.",
+    "ungrounded_claims": [],
+    "usage": {
+      "input_tokens": 11817,
+      "output_tokens": 357,
+      "cost_usd": 0.013909,
+      "api_calls": 1
+    }
+  },
+  {
+    "session_id": "eval-gs-018",
+    "attempt": 1,
+    "notebook_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\eval-gs-018_attempt1.ipynb",
+    "execution_success": true,
+    "hard_rules_passed": 8,
+    "hard_rules_total": 8,
+    "decision": "PASS",
+    "scores": {
+      "groundedness": 4,
+      "difficulty_fit": 4,
+      "pedagogical_order": 4,
+      "content_completeness": 3,
+      "learning_coverage": 5
+    },
+    "average_score": 4.0,
+    "raw_llm_learning_coverage": 4,
+    "covered_concepts": [
+      "Unsupervised Learning",
+      "Centroids",
+      "Euclidean Distance",
+      "WCSS (Inertia)",
+      "Lloyd's Algorithm",
+      "K-Means++ Initialization",
+      "n_clusters",
+      "init",
+      "n_init",
+      "max_iter",
+      "tol",
+      "StandardScaler",
+      "Elbow Method",
+      "Silhouette Coefficient",
+      "Cluster Visualization"
+    ],
+    "shallow_concepts": [],
+    "missing_concepts": [],
+    "feedback": "[CELL 6] Phần lý thuyết về K-Means++ chỉ mô tả chung chung, không giải thích chi tiết cách chọn centroid ban đầu. FIX: Bổ sung công thức hoặc mô tả từng bước của thuật toán K-Means++. [CELL 14] Phần lý thuyết về StandardScaler không đề cập đến ảnh hưởng của outlier và vai trò của PCA như đã nêu trong mục tiêu. FIX: Thêm giải thích về outlier và PCA hoặc điều chỉnh mục tiêu cho phù hợp. [CELL 16] Phần lý thuyết về Elbow Method và Silhouette Coefficient không giải thích cách diễn giải kết quả và chọn K tối ưu. FIX: Bổ sung hướng dẫn cụ thể về cách xác định điểm khuỷu tay và ngưỡng silhouette. [CELL 20] Phần lý thuyết về Cluster Visualization chỉ mô tả cách vẽ, không giải thích ý nghĩa của việc trực quan hóa trong đánh giá chất lượng phân cụm. FIX: Thêm phân tích về cách nhận biết cụm tốt/xấu từ biểu đồ.",
+    "ungrounded_claims": [],
+    "usage": {
+      "input_tokens": 12503,
+      "output_tokens": 481,
+      "cost_usd": 0.015305,
+      "api_calls": 1
+    }
+  }
+]

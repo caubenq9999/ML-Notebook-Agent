@@ -1,0 +1,30 @@
+[
+  {
+    "attempt": 1,
+    "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\cli-deepseek-20260830-v2_attempt1.ipynb",
+    "decision": "PASS",
+    "average_score": 4.25,
+    "rule_checks": {
+      "has_instructions": true,
+      "has_todo": true,
+      "has_assert": true,
+      "no_hardcoded_answers": true,
+      "has_train_test_split": true,
+      "has_visualization": true,
+      "has_demo_per_module": true,
+      "min_cells_by_level": true
+    },
+    "llm_scores": {
+      "executability": 5.0,
+      "groundedness": 4.0,
+      "difficulty_fit": 4.0,
+      "pedagogical_order": 4.0
+    },
+    "execution_success": true,
+    "duration_seconds": 4.163,
+    "cost_this_attempt": 0.009842,
+    "judge_cost_usd": 0.009842,
+    "feedback": "[CELL 11] Bài tập m1_ex1 chưa hoàn thành: z_m1 và p_m1 được gán None, dẫn đến kết quả in ra là None. FIX: tính z_m1 = np.dot(w, x) + b và p_m1 = sigmoid(z_m1) trước khi in.",
+    "ungrounded_claims": []
+  }
+]

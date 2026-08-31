@@ -1,0 +1,30 @@
+[
+  {
+    "attempt": 1,
+    "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\judge-calibration-deepseek-pro-20260831-wrong_sigmoid_formula.ipynb",
+    "decision": "PASS",
+    "average_score": 3.75,
+    "rule_checks": {
+      "has_instructions": true,
+      "has_todo": true,
+      "has_assert": true,
+      "no_hardcoded_answers": true,
+      "has_train_test_split": true,
+      "has_visualization": true,
+      "has_demo_per_module": true,
+      "min_cells_by_level": true
+    },
+    "llm_scores": {
+      "executability": 5.0,
+      "groundedness": 2.0,
+      "difficulty_fit": 4.0,
+      "pedagogical_order": 4.0
+    },
+    "execution_success": true,
+    "duration_seconds": 4.164,
+    "cost_this_attempt": 0.010353,
+    "judge_cost_usd": 0.010353,
+    "feedback": "[CELL 8] Công thức sigmoid viết sai: mẫu số phải là 1 + e^{-z}, không phải 1 - e^{-z}. FIX: sửa thành \\sigma(z) = \\frac{1}{1 + e^{-z}}. [CELL 13] Sử dụng X_train, X_test chưa được impute (chứa NaN) trong pipeline StandardScaler, gây lỗi khi fit. FIX: dùng X_train_scaled, X_test_scaled đã impute và scale, hoặc đưa imputer vào pipeline. [CELL 17] ColumnTransformer demo không áp dụng lên dữ liệu thật, chỉ là ví dụ giả định, không minh họa đúng quy trình tiền xử lý đã làm ở CELL 7. FIX: áp dụng preprocessor lên df hoặc X, y để minh họa thực tế.",
+    "ungrounded_claims": []
+  }
+]

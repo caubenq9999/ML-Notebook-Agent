@@ -1,0 +1,20 @@
+[
+  {
+    "prompt": "baseline_current",
+    "critical_detection_rate": 0.6,
+    "false_pass_rate": 0.8,
+    "score_tuple_repeat_rate": 1.0,
+    "mean_unique_feedbacks": 2.5,
+    "mean_judge_cost_usd": 0.0065,
+    "mean_latency_seconds": 4.2305
+  },
+  {
+    "prompt": "candidate_calibrated",
+    "critical_detection_rate": 1.0,
+    "false_pass_rate": 0.8,
+    "score_tuple_repeat_rate": 1.0,
+    "mean_unique_feedbacks": 3,
+    "mean_judge_cost_usd": 0.0069,
+    "mean_latency_seconds": 3.9843
+  }
+]

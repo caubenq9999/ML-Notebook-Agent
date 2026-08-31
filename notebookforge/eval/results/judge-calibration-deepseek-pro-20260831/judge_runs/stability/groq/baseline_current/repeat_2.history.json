@@ -1,0 +1,30 @@
+[
+  {
+    "attempt": 1,
+    "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\cli-4d40f588_attempt2.ipynb",
+    "decision": "PASS",
+    "average_score": 4.25,
+    "rule_checks": {
+      "has_instructions": true,
+      "has_todo": true,
+      "has_assert": true,
+      "no_hardcoded_answers": true,
+      "has_train_test_split": true,
+      "has_visualization": true,
+      "has_demo_per_module": true,
+      "min_cells_by_level": true
+    },
+    "llm_scores": {
+      "executability": 5.0,
+      "groundedness": 4.0,
+      "difficulty_fit": 4.0,
+      "pedagogical_order": 4.0
+    },
+    "execution_success": true,
+    "duration_seconds": 5.333,
+    "cost_this_attempt": 0.001122,
+    "judge_cost_usd": 0.001122,
+    "feedback": "[CELL 14] Thiếu giải thích về các siêu tham số penalty và solver trước khi sử dụng. FIX: Thêm giải thích ngắn gọn về ý nghĩa của penalty='l2' và solver='lbfgs' trước cell này. [CELL 19] Lặp lại việc chuẩn hóa dữ liệu đã thực hiện ở CELL 7, gây dư thừa. FIX: Sử dụng lại X_train_scaled và X_test_scaled đã tạo ở CELL 7 thay vì fit lại scaler.",
+    "ungrounded_claims": []
+  }
+]

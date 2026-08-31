@@ -1,0 +1,30 @@
+[
+  {
+    "attempt": 1,
+    "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\judge-calibration-deepseek-pro-20260831-data_leakage.ipynb",
+    "decision": "PASS",
+    "average_score": 4.25,
+    "rule_checks": {
+      "has_instructions": true,
+      "has_todo": true,
+      "has_assert": true,
+      "no_hardcoded_answers": true,
+      "has_train_test_split": true,
+      "has_visualization": true,
+      "has_demo_per_module": true,
+      "min_cells_by_level": true
+    },
+    "llm_scores": {
+      "executability": 5.0,
+      "groundedness": 4.0,
+      "difficulty_fit": 4.0,
+      "pedagogical_order": 4.0
+    },
+    "execution_success": true,
+    "duration_seconds": 4.002,
+    "cost_this_attempt": 0.010308,
+    "judge_cost_usd": 0.010308,
+    "feedback": "[CELL 7] Data leakage: fit imputer và scaler trên toàn bộ dữ liệu (train+test) trước khi transform. FIX: chỉ fit trên X_train, sau đó transform X_test bằng các tham số đã fit từ X_train. [CELL 11] Bài tập m1_ex1 chưa hoàn thành: z_m1 và p_m1 vẫn là None. FIX: tính z_m1 = np.dot(w, x) + b và p_m1 = sigmoid(z_m1). [CELL 25] Bài tập m5_ex1 dùng X_test làm validation set, không đúng yêu cầu 'tập validation'. FIX: tách một phần dữ liệu train làm validation set hoặc dùng cross-validation để chọn ngưỡng.",
+    "ungrounded_claims": []
+  }
+]

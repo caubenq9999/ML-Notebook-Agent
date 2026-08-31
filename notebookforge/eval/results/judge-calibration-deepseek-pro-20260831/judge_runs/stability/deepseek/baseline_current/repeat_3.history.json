@@ -1,0 +1,30 @@
+[
+  {
+    "attempt": 1,
+    "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\cli-deepseek-20260830-v2_attempt1.ipynb",
+    "decision": "PASS",
+    "average_score": 4.25,
+    "rule_checks": {
+      "has_instructions": true,
+      "has_todo": true,
+      "has_assert": true,
+      "no_hardcoded_answers": true,
+      "has_train_test_split": true,
+      "has_visualization": true,
+      "has_demo_per_module": true,
+      "min_cells_by_level": true
+    },
+    "llm_scores": {
+      "executability": 5.0,
+      "groundedness": 4.0,
+      "difficulty_fit": 4.0,
+      "pedagogical_order": 4.0
+    },
+    "execution_success": true,
+    "duration_seconds": 4.163,
+    "cost_this_attempt": 0.001791,
+    "judge_cost_usd": 0.001791,
+    "feedback": "[CELL 11] Bài tập m1_ex1 chưa hoàn thành: z_m1 và p_m1 được gán None, không tính toán. FIX: tính z_m1 = np.dot(w, x) + b và p_m1 = sigmoid(z_m1). [CELL 15] Bài tập m2_ex1 chưa hoàn thành: model_m2 chưa được huấn luyện (fit) trước khi dự đoán. FIX: thêm model_m2.fit(X_train, y_train) trước khi gọi score và predict_proba. [CELL 21] Bài tập m4_ex1 chưa hoàn thành: các biến metric chưa được tính toán. FIX: tính cm_m4, precision_m4, recall_m4, f1_m4, roc_auc_m4 bằng các hàm tương ứng từ sklearn.metrics. [CELL 25] Bài tập m5_ex1 chưa hoàn thành: best_threshold và best_f1 chưa được xác định. FIX: tìm ngưỡng tối ưu bằng cách duyệt thresholds_m5 và chọn ngưỡng có F1 cao nhất.",
+    "ungrounded_claims": []
+  }
+]

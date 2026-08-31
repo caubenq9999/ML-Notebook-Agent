@@ -1,0 +1,115 @@
+{
+  "topic": "logistic_regression",
+  "level": 1,
+  "session_id": "ablation-2x2-controlled12-th045-20260831-norag-verifier",
+  "modules": [
+    {
+      "module_id": "m1",
+      "title": "Lý thuyết nền tảng: Sigmoid, Logit và Log Loss",
+      "objective": "Hiểu được bản chất của logistic regression: cách chuyển tổ hợp tuyến tính thành xác suất qua sigmoid, khái niệm logit (odds ratio) và hàm mất mát log loss dùng để tối ưu.",
+      "concepts": [
+        "sigmoid function",
+        "logit",
+        "log loss"
+      ],
+      "estimated_minutes": 16,
+      "planned_exercises": [
+        {
+          "exercise_id": "m1_ex1",
+          "title": "Tính xác suất từ sigmoid",
+          "prompt": "Cho một điểm dữ liệu có tổ hợp tuyến tính z = 2.5. Hãy tính xác suất dự đoán bằng công thức sigmoid và giải thích ý nghĩa của giá trị này.",
+          "type": "code",
+          "difficulty": 1,
+          "concepts": [
+            "sigmoid function"
+          ],
+          "has_starter_code": true,
+          "expected_check": "assert abs(sigmoid(2.5) - 0.9241) < 0.01"
+        }
+      ],
+      "source_ids": [],
+      "theory_context": {}
+    },
+    {
+      "module_id": "m2",
+      "title": "Cài đặt LogisticRegression trong scikit-learn",
+      "objective": "Nắm được cách sử dụng class LogisticRegression: các tham số chính (penalty, solver, class_weight) và phương thức fit/predict/predict_proba.",
+      "concepts": [
+        "LogisticRegression",
+        "penalty",
+        "solver",
+        "class_weight"
+      ],
+      "estimated_minutes": 16,
+      "planned_exercises": [
+        {
+          "exercise_id": "m2_ex1",
+          "title": "Huấn luyện mô hình LogisticRegression",
+          "prompt": "Sử dụng LogisticRegression từ scikit-learn, huấn luyện trên dữ liệu X_train, y_train (đã có sẵn). In ra accuracy trên tập test và xác suất dự đoán cho 3 mẫu đầu tiên.",
+          "type": "code",
+          "difficulty": 1,
+          "concepts": [
+            "LogisticRegression",
+            "penalty",
+            "solver",
+            "class_weight"
+          ],
+          "has_starter_code": true,
+          "expected_check": "assert hasattr(model, 'predict_proba') and model.coef_ is not None"
+        }
+      ],
+      "source_ids": [],
+      "theory_context": {}
+    },
+    {
+      "module_id": "m3",
+      "title": "Tiền xử lý dữ liệu: StandardScaler",
+      "objective": "Hiểu vì sao cần chuẩn hóa dữ liệu (StandardScaler) cho logistic regression và cách hệ thống đã tự động xử lý bước này.",
+      "concepts": [
+        "StandardScaler"
+      ],
+      "estimated_minutes": 11,
+      "planned_exercises": [],
+      "source_ids": [],
+      "theory_context": {}
+    },
+    {
+      "module_id": "m4",
+      "title": "Đánh giá mô hình phân loại",
+      "objective": "Sử dụng các metric đánh giá: Confusion Matrix, Precision, Recall, F1-Score, ROC-AUC để đánh giá chất lượng mô hình logistic regression.",
+      "concepts": [
+        "Confusion Matrix",
+        "Precision",
+        "Recall",
+        "F1-Score",
+        "ROC-AUC"
+      ],
+      "estimated_minutes": 17,
+      "planned_exercises": [
+        {
+          "exercise_id": "m4_ex1",
+          "title": "Tính các metric đánh giá",
+          "prompt": "Dùng classification_report và roc_auc_score từ scikit-learn để tính Precision, Recall, F1-Score và ROC-AUC cho mô hình đã huấn luyện ở module 2. In ra kết quả.",
+          "type": "code",
+          "difficulty": 1,
+          "concepts": [
+            "Confusion Matrix",
+            "Precision",
+            "Recall",
+            "F1-Score",
+            "ROC-AUC"
+          ],
+          "has_starter_code": true,
+          "expected_check": "assert 'roc_auc' in globals() and roc_auc > 0.5"
+        }
+      ],
+      "source_ids": [],
+      "theory_context": {}
+    }
+  ],
+  "notes": "Lộ trình tập trung vào logistic regression cho người mới bắt đầu, bám sát pipeline: lý thuyết -> cài đặt -> tiền xử lý -> đánh giá. Bỏ qua giai đoạn common pitfalls vì key_concepts không có khái niệm liên quan.",
+  "generated_at": "2026-08-31T06:45:50.092410Z",
+  "schema_version": "2.0.0",
+  "total_estimated_minutes": 60,
+  "total_planned_exercises": 3
+}

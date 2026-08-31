@@ -1,0 +1,58 @@
+[
+  {
+    "case": "groq",
+    "prompt": "baseline_current",
+    "repeats": 3,
+    "average_mean": 4.25,
+    "average_std": 0.0,
+    "average_min": 4.25,
+    "average_max": 4.25,
+    "score_tuple_exact_repeat": true,
+    "unique_score_tuples": 1,
+    "unique_feedbacks": 2,
+    "mean_latency_seconds": 4.3753,
+    "mean_cost_usd": 0.0025
+  },
+  {
+    "case": "groq",
+    "prompt": "candidate_calibrated",
+    "repeats": 3,
+    "average_mean": 4.25,
+    "average_std": 0.0,
+    "average_min": 4.25,
+    "average_max": 4.25,
+    "score_tuple_exact_repeat": true,
+    "unique_score_tuples": 1,
+    "unique_feedbacks": 3,
+    "mean_latency_seconds": 3.3587,
+    "mean_cost_usd": 0.0033
+  },
+  {
+    "case": "deepseek",
+    "prompt": "baseline_current",
+    "repeats": 3,
+    "average_mean": 4.25,
+    "average_std": 0.0,
+    "average_min": 4.25,
+    "average_max": 4.25,
+    "score_tuple_exact_repeat": true,
+    "unique_score_tuples": 1,
+    "unique_feedbacks": 3,
+    "mean_latency_seconds": 3.6683,
+    "mean_cost_usd": 0.0042
+  },
+  {
+    "case": "deepseek",
+    "prompt": "candidate_calibrated",
+    "repeats": 3,
+    "average_mean": 4.25,
+    "average_std": 0.0,
+    "average_min": 4.25,
+    "average_max": 4.25,
+    "score_tuple_exact_repeat": true,
+    "unique_score_tuples": 1,
+    "unique_feedbacks": 3,
+    "mean_latency_seconds": 4.4883,
+    "mean_cost_usd": 0.0051
+  }
+]

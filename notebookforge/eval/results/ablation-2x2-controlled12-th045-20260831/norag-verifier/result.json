@@ -1,0 +1,236 @@
+{
+  "condition": "norag-verifier",
+  "controlled_design": {
+    "canonical_concepts": [
+      "sigmoid function",
+      "logit",
+      "log loss",
+      "LogisticRegression",
+      "penalty",
+      "solver",
+      "class_weight",
+      "Confusion Matrix",
+      "Precision",
+      "Recall",
+      "F1-Score",
+      "ROC-AUC"
+    ],
+    "canonical_concept_count": 12,
+    "shared_arm": "norag",
+    "shared_initial_notebook_sha256": "17daf2ec36c70f95563ea2ac9284ea83fb44a84a7c93db3ab85e0eb18ba2746c",
+    "selected_notebook_sha256": "17daf2ec36c70f95563ea2ac9284ea83fb44a84a7c93db3ab85e0eb18ba2746c",
+    "research_llm_reranking_skipped": true
+  },
+  "rag_enabled": false,
+  "rag_threshold": null,
+  "verifier_enabled_in_generation": true,
+  "research": {
+    "theory_chunks": 0,
+    "covered_concepts": []
+  },
+  "learning_path": {
+    "modules": 4,
+    "modules_with_context": 0,
+    "context_chars": 0
+  },
+  "attempts_used": 1,
+  "selected_attempt": 1,
+  "execution": {
+    "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\ablation-2x2-controlled12-th045-20260831-norag-shared_attempt1.ipynb",
+    "attempt": 1,
+    "success": true,
+    "total_cells": 13,
+    "executed_cells": 13,
+    "errors": [],
+    "duration_seconds": 4.42,
+    "timeout_hit": false,
+    "executed_nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\ablation-2x2-controlled12-th045-20260831-norag-shared_attempt1.executed.ipynb",
+    "cost_this_attempt": 0.009989,
+    "executed_at": "2026-08-31T06:46:24.959800Z",
+    "schema_version": "2.0.0",
+    "failed_cell_count": 0,
+    "failed_cell_index": null
+  },
+  "inloop_report": {
+    "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\ablation-2x2-controlled12-th045-20260831-norag-shared_attempt1.ipynb",
+    "attempt": 1,
+    "rule_checks": {
+      "has_instructions": true,
+      "has_todo": true,
+      "has_assert": true,
+      "no_hardcoded_answers": true,
+      "has_train_test_split": true,
+      "has_visualization": true,
+      "has_demo_per_module": true,
+      "min_cells_by_level": true,
+      "num_passed": 8,
+      "num_rules": 8,
+      "all_passed": true
+    },
+    "llm_scores": {
+      "executability": 5.0,
+      "groundedness": 4.0,
+      "difficulty_fit": 4.0,
+      "pedagogical_order": 4.0,
+      "average": 4.25
+    },
+    "decision": "PASS",
+    "feedback": "[CELL 13] Sử dụng X_train chưa được chuẩn hóa trong khi mục tiêu module m3 là dùng StandardScaler. FIX: dùng X_train_scaled và X_test_scaled cho mô hình LogisticRegression. [CELL 19] Sử dụng X_test chưa chuẩn hóa cho đánh giá, không nhất quán với mô hình đã huấn luyện trên dữ liệu chuẩn hóa. FIX: dùng X_test_scaled. [CELL 16] Giải thích 'dữ liệu đã được chuẩn hóa sẵn bằng StandardScaler trước khi chia train/test' không chính xác vì thực tế chuẩn hóa sau khi chia. FIX: sửa lại mô tả cho đúng thứ tự.",
+    "ungrounded_claims": [],
+    "notes": null,
+    "verified_at": "2026-08-31T06:46:45.996135Z",
+    "schema_version": "2.0.0",
+    "average_score": 4.25,
+    "is_passing": true
+  },
+  "posthoc_report": {
+    "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\ablation-2x2-controlled12-th045-20260831-norag-shared_attempt1.ipynb",
+    "attempt": 1,
+    "rule_checks": {
+      "has_instructions": true,
+      "has_todo": true,
+      "has_assert": true,
+      "no_hardcoded_answers": true,
+      "has_train_test_split": true,
+      "has_visualization": true,
+      "has_demo_per_module": true,
+      "min_cells_by_level": true,
+      "num_passed": 8,
+      "num_rules": 8,
+      "all_passed": true
+    },
+    "llm_scores": {
+      "executability": 5.0,
+      "groundedness": 4.0,
+      "difficulty_fit": 4.0,
+      "pedagogical_order": 4.0,
+      "average": 4.25
+    },
+    "decision": "PASS",
+    "feedback": "[CELL 13] Sử dụng X_train chưa được chuẩn hóa trong khi notebook đã tạo X_train_scaled. FIX: dùng X_train_scaled và X_test_scaled để huấn luyện và dự đoán, hoặc giải thích rõ lý do dùng dữ liệu gốc. [CELL 19] Sử dụng X_test chưa chuẩn hóa cho dự đoán, không nhất quán với X_train_scaled. FIX: dùng X_test_scaled. [CELL 16] Giải thích 'dữ liệu đã được chuẩn hóa sẵn bằng StandardScaler trước khi chia train/test' mâu thuẫn với code ở CELL 7 (chia train/test trước rồi mới fit scaler). FIX: sửa lại mô tả cho đúng thứ tự: chia train/test, sau đó fit scaler trên train và transform cả train/test.",
+    "ungrounded_claims": [],
+    "notes": null,
+    "verified_at": "2026-08-31T06:46:50.777146Z",
+    "schema_version": "2.0.0",
+    "average_score": 4.25,
+    "is_passing": true
+  },
+  "shared_base_usage": {
+    "calls": 2,
+    "input_tokens": 10141,
+    "output_tokens": 5821,
+    "cost_usd": 0.010619
+  },
+  "branch_usage": {
+    "calls": 1,
+    "input_tokens": 7707,
+    "output_tokens": 246,
+    "cost_usd": 0.008534
+  },
+  "simulated_condition_usage": {
+    "calls": 3,
+    "input_tokens": 17848,
+    "output_tokens": 6067,
+    "cost_usd": 0.019153
+  },
+  "posthoc_usage": {
+    "calls": 1,
+    "input_tokens": 7707,
+    "output_tokens": 273,
+    "cost_usd": 0.001455
+  },
+  "shared_base_calls": [
+    {
+      "model": "deepseek-v4-flash",
+      "input_tokens": 6414,
+      "output_tokens": 1099,
+      "cost_usd": 0.002746,
+      "api_calls": 1,
+      "finish_reason": "stop"
+    },
+    {
+      "model": "deepseek-v4-flash",
+      "input_tokens": 3727,
+      "output_tokens": 4722,
+      "cost_usd": 0.007873,
+      "api_calls": 1,
+      "finish_reason": "stop"
+    }
+  ],
+  "branch_calls": [
+    {
+      "model": "deepseek-v4-pro",
+      "input_tokens": 7707,
+      "output_tokens": 246,
+      "cost_usd": 0.008534,
+      "api_calls": 1,
+      "finish_reason": "stop"
+    }
+  ],
+  "posthoc_calls": [
+    {
+      "model": "deepseek-v4-pro",
+      "input_tokens": 7707,
+      "output_tokens": 273,
+      "cost_usd": 0.001455,
+      "api_calls": 1,
+      "finish_reason": "stop"
+    }
+  ],
+  "attempts": [
+    {
+      "attempt": 1,
+      "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\ablation-2x2-controlled12-th045-20260831-norag-shared_attempt1.ipynb",
+      "notebook_sha256": "17daf2ec36c70f95563ea2ac9284ea83fb44a84a7c93db3ab85e0eb18ba2746c",
+      "execution": {
+        "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\ablation-2x2-controlled12-th045-20260831-norag-shared_attempt1.ipynb",
+        "attempt": 1,
+        "success": true,
+        "total_cells": 13,
+        "executed_cells": 13,
+        "errors": [],
+        "duration_seconds": 4.42,
+        "timeout_hit": false,
+        "executed_nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\ablation-2x2-controlled12-th045-20260831-norag-shared_attempt1.executed.ipynb",
+        "cost_this_attempt": 0.008534,
+        "executed_at": "2026-08-31T06:46:24.959800Z",
+        "schema_version": "2.0.0",
+        "failed_cell_count": 0,
+        "failed_cell_index": null
+      },
+      "report": {
+        "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\ablation-2x2-controlled12-th045-20260831-norag-shared_attempt1.ipynb",
+        "attempt": 1,
+        "rule_checks": {
+          "has_instructions": true,
+          "has_todo": true,
+          "has_assert": true,
+          "no_hardcoded_answers": true,
+          "has_train_test_split": true,
+          "has_visualization": true,
+          "has_demo_per_module": true,
+          "min_cells_by_level": true,
+          "num_passed": 8,
+          "num_rules": 8,
+          "all_passed": true
+        },
+        "llm_scores": {
+          "executability": 5.0,
+          "groundedness": 4.0,
+          "difficulty_fit": 4.0,
+          "pedagogical_order": 4.0,
+          "average": 4.25
+        },
+        "decision": "PASS",
+        "feedback": "[CELL 13] Sử dụng X_train chưa được chuẩn hóa trong khi mục tiêu module m3 là dùng StandardScaler. FIX: dùng X_train_scaled và X_test_scaled cho mô hình LogisticRegression. [CELL 19] Sử dụng X_test chưa chuẩn hóa cho đánh giá, không nhất quán với mô hình đã huấn luyện trên dữ liệu chuẩn hóa. FIX: dùng X_test_scaled. [CELL 16] Giải thích 'dữ liệu đã được chuẩn hóa sẵn bằng StandardScaler trước khi chia train/test' không chính xác vì thực tế chuẩn hóa sau khi chia. FIX: sửa lại mô tả cho đúng thứ tự.",
+        "ungrounded_claims": [],
+        "notes": null,
+        "verified_at": "2026-08-31T06:46:45.996135Z",
+        "schema_version": "2.0.0",
+        "average_score": 4.25,
+        "is_passing": true
+      }
+    }
+  ],
+  "wall_seconds_excluding_shared_base": 9.627
+}

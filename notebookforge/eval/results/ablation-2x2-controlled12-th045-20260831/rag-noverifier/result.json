@@ -1,0 +1,174 @@
+{
+  "condition": "rag-noverifier",
+  "controlled_design": {
+    "canonical_concepts": [
+      "sigmoid function",
+      "logit",
+      "log loss",
+      "LogisticRegression",
+      "penalty",
+      "solver",
+      "class_weight",
+      "Confusion Matrix",
+      "Precision",
+      "Recall",
+      "F1-Score",
+      "ROC-AUC"
+    ],
+    "canonical_concept_count": 12,
+    "shared_arm": "rag",
+    "shared_initial_notebook_sha256": "0817c9d6cad96ddbea0b5f33837f770a33020e904f1616faf64f71dad1b6d1c7",
+    "selected_notebook_sha256": "0817c9d6cad96ddbea0b5f33837f770a33020e904f1616faf64f71dad1b6d1c7",
+    "research_llm_reranking_skipped": true
+  },
+  "rag_enabled": true,
+  "rag_threshold": 0.45,
+  "verifier_enabled_in_generation": false,
+  "research": {
+    "theory_chunks": 9,
+    "covered_concepts": [
+      "Confusion Matrix",
+      "LogisticRegression",
+      "Precision",
+      "ROC-AUC",
+      "Recall",
+      "log loss",
+      "logit",
+      "sigmoid function"
+    ]
+  },
+  "learning_path": {
+    "modules": 4,
+    "modules_with_context": 3,
+    "context_chars": 2109
+  },
+  "attempts_used": 1,
+  "selected_attempt": 1,
+  "execution": {
+    "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\ablation-2x2-controlled12-th045-20260831-rag-shared_attempt1.ipynb",
+    "attempt": 1,
+    "success": true,
+    "total_cells": 13,
+    "executed_cells": 13,
+    "errors": [],
+    "duration_seconds": 20.175,
+    "timeout_hit": false,
+    "executed_nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\ablation-2x2-controlled12-th045-20260831-rag-shared_attempt1.executed.ipynb",
+    "cost_this_attempt": 0.012477,
+    "executed_at": "2026-08-31T06:45:41.703957Z",
+    "schema_version": "2.0.0",
+    "failed_cell_count": 0,
+    "failed_cell_index": null
+  },
+  "inloop_report": null,
+  "posthoc_report": {
+    "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\ablation-2x2-controlled12-th045-20260831-rag-shared_attempt1.ipynb",
+    "attempt": 1,
+    "rule_checks": {
+      "has_instructions": true,
+      "has_todo": true,
+      "has_assert": true,
+      "no_hardcoded_answers": true,
+      "has_train_test_split": true,
+      "has_visualization": true,
+      "has_demo_per_module": true,
+      "min_cells_by_level": true,
+      "num_passed": 8,
+      "num_rules": 8,
+      "all_passed": true
+    },
+    "llm_scores": {
+      "executability": 5.0,
+      "groundedness": 4.0,
+      "difficulty_fit": 4.0,
+      "pedagogical_order": 4.0,
+      "average": 4.25
+    },
+    "decision": "PASS",
+    "feedback": "[CELL 8] Giải thích logit chưa đầy đủ: chỉ nêu logit là log-odds mà không đưa công thức logit = ln(p/(1-p)) và mối liên hệ với sigmoid. FIX: thêm công thức logit và giải thích sigmoid là hàm ngược của logit. [CELL 12] Giới thiệu các hyperparameter penalty, solver, class_weight nhưng không giải thích ý nghĩa và tác động của từng tham số. FIX: thêm mô tả ngắn gọn về từng hyperparameter và khi nào nên dùng. [CELL 18] Giải thích ROC-AUC chưa rõ ràng: không nêu rõ AUC là diện tích dưới đường cong ROC và ý nghĩa của giá trị AUC. FIX: thêm định nghĩa AUC và giải thích ý nghĩa của các giá trị AUC (0.5, 1.0).",
+    "ungrounded_claims": [],
+    "notes": null,
+    "verified_at": "2026-08-31T06:46:41.161911Z",
+    "schema_version": "2.0.0",
+    "average_score": 4.25,
+    "is_passing": true
+  },
+  "shared_base_usage": {
+    "calls": 2,
+    "input_tokens": 11837,
+    "output_tokens": 6574,
+    "cost_usd": 0.010941
+  },
+  "branch_usage": {
+    "calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cost_usd": 0
+  },
+  "simulated_condition_usage": {
+    "calls": 2,
+    "input_tokens": 11837,
+    "output_tokens": 6574,
+    "cost_usd": 0.010941
+  },
+  "posthoc_usage": {
+    "calls": 1,
+    "input_tokens": 8229,
+    "output_tokens": 281,
+    "cost_usd": 0.001522
+  },
+  "shared_base_calls": [
+    {
+      "model": "deepseek-v4-flash",
+      "input_tokens": 7029,
+      "output_tokens": 1170,
+      "cost_usd": 0.001693,
+      "api_calls": 1,
+      "finish_reason": "stop"
+    },
+    {
+      "model": "deepseek-v4-flash",
+      "input_tokens": 4808,
+      "output_tokens": 5404,
+      "cost_usd": 0.009249,
+      "api_calls": 1,
+      "finish_reason": "stop"
+    }
+  ],
+  "branch_calls": [],
+  "posthoc_calls": [
+    {
+      "model": "deepseek-v4-pro",
+      "input_tokens": 8229,
+      "output_tokens": 281,
+      "cost_usd": 0.001522,
+      "api_calls": 1,
+      "finish_reason": "stop"
+    }
+  ],
+  "attempts": [
+    {
+      "attempt": 1,
+      "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\ablation-2x2-controlled12-th045-20260831-rag-shared_attempt1.ipynb",
+      "notebook_sha256": "0817c9d6cad96ddbea0b5f33837f770a33020e904f1616faf64f71dad1b6d1c7",
+      "execution": {
+        "nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\ablation-2x2-controlled12-th045-20260831-rag-shared_attempt1.ipynb",
+        "attempt": 1,
+        "success": true,
+        "total_cells": 13,
+        "executed_cells": 13,
+        "errors": [],
+        "duration_seconds": 20.175,
+        "timeout_hit": false,
+        "executed_nb_path": "D:\\MLIoT\\final_project\\main\\ML-Notebook-Agent\\notebookforge\\output_notebooks\\ablation-2x2-controlled12-th045-20260831-rag-shared_attempt1.executed.ipynb",
+        "cost_this_attempt": 0.010955,
+        "executed_at": "2026-08-31T06:45:41.703957Z",
+        "schema_version": "2.0.0",
+        "failed_cell_count": 0,
+        "failed_cell_index": null
+      },
+      "report": null
+    }
+  ],
+  "wall_seconds_excluding_shared_base": 5.129
+}
