@@ -267,14 +267,14 @@
 %  SLIDE 8 – Curriculum & Generator Agent
 % ------------------------------------------------------------
 \begin{frame}{Multi-agent Pipeline}
-  Curriculum \& Generator Agent: Sinh lộ trình \& Đóng gói Notebook
+  Curriculum \& Generator Agent: Sinh lộ trình học \& Đóng gói Notebook
   \begin{itemize}
-    \item \textbf{Curriculum Agent:} Phân tách luồng xử lý phù hợp cho Học có giám sát (Supervised) hoặc Không giám sát (Unsupervised).
+    \item \textbf{Curriculum Agent:} Sinh lộ trình học, phù hợp riêng cho từng dạng: Học có giám sát (Supervised) hoặc Học không có giám sát (Unsupervised).
     \item \textbf{Cấu trúc Notebook chuẩn 4 khối:}
       \begin{enumerate}
-        \item \textbf{Tổng quan bài học:} Mục tiêu, lý thuyết nền tảng rút trích từ ResearchBundle.
-        \item \textbf{Chuẩn bị dữ liệu \& EDA:} Nạp các bộ dữ liệu thực tế (Heart Failure, Red Wine Quality, Mall Customers...) và chèn sẵn các đoạn code trực quan hóa.
-        \item \textbf{Nội dung \& Bài tập thực hành:} Phân chia tập Train/Test đúng chuẩn sư phạm, tuyệt đối không tiền xử lý dữ liệu trước khi split để tránh rò rỉ dữ liệu (Data Leakage).
+        \item \textbf{Tổng quan bài học:} Giới thiệu về Topic và dataset (Tên, Nguồn, Kích thước, Biến mục tiêu, Đặc tả)
+        \item \textbf{Chuẩn bị dữ liệu:} Nạp dữ liệu với bộ dataset tương ứng (Heart Failure, Red Wine Quality, Mall Customers) và chèn sẵn code prepocessing, EDA, split train/test(Supervised).
+        \item \textbf{Nội dung \& Bài tập thực hành:} Giới thiệu kiến thức nền tảng, code demo giải mẫu bài tập, nêu các yêu cầu bài tập dựa trên lộ trình học.
         \item \textbf{Kiểm tra tự động:} Chèn sẵn các đoạn code dạng \texttt{assert} để người học tự kiểm tra đáp án.
       \end{enumerate}
   \end{itemize}
