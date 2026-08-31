@@ -27,7 +27,7 @@
 }
 
 % ============================================================
-%  PAPER METADATA – fill these in
+%  PAPER METADATA
 % ============================================================
 \title[NotebookForge]{%
   \textbf{\Large NotebookForge}\\[0.2em]
@@ -126,7 +126,7 @@
           do ChatGPT/Claude thông thường sinh ra hay bị lỗi 
           không chạy được (runtime error), dễ bị rò rỉ dữ liệu 
           (data leakage), thiếu tính cấu trúc sư phạm, hoặc tự 
-          bị đắt thông tin lý thuyết không chuẩn xác (hallucination).
+          bị đặt thông tin lý thuyết không chuẩn xác (hallucination).
         \end{itemize}
       \end{block}
     \end{column}
@@ -147,7 +147,7 @@
 % ------------------------------------------------------------
 %  SLIDE 4 – Giải pháp NotebookForge với 3 mục tiêu chính
 % ------------------------------------------------------------
-\begin{frame}{Đặt vấn đề và giải pháp}
+\begin{frame}[fragile]{Đặt vấn đề và giải pháp}
   Giải pháp \textbf{NotebookForge} được đặt ra với 3 mục tiêu chính:
   \begin{methodcols}
     \methodcol{\ding{202}~Cá nhân hóa lộ trình (Personalization)}{%
@@ -175,7 +175,7 @@
 % ------------------------------------------------------------
 %  SLIDE 5 – Multi-agent
 % ------------------------------------------------------------
-\begin{frame}{Multi-agent Pipeline}
+\begin{frame}[fragile]{Multi-agent Pipeline}
   Sơ đồ pipeline tổng quan:
   \begin{flushleft}
       \begin{tikzpicture}[
@@ -218,7 +218,7 @@
 % ------------------------------------------------------------
 %  SLIDE 6 – Frontend Layer
 % ------------------------------------------------------------
-\begin{frame}{Multi-agent Pipeline}
+\begin{frame}[fragile]{Multi-agent Pipeline}
   Thu thập yêu cầu \& đánh giá trình độ (Frontend Layer)
   \begin{methodcols}
     \methodcol{\ding{202}~Form cấu hình}{%
@@ -244,36 +244,33 @@
 \end{frame}
 
 % ------------------------------------------------------------
-%  SLIDE 7 – Research Agent
+%  SLIDE 7 – Research Agent & RAG (ResearchBundle)
 % ------------------------------------------------------------
-\begin{frame}{Multi-agent Pipeline}
-  Research Agent: Cơ sở kiến thức \& Truy xuất dữ liệu
+\begin{frame}[fragile]{Multi-agent Pipeline}
+  Research Agent: Quy trình RAG \& Đóng gói ResearchBundle
   \begin{itemize}
-    \item \textbf{Knowledge Base (.md):} Xây dựng bộ tri thức chuẩn hóa từ tài liệu chính thống (Scikit-Learn User Guide), đóng vai trò "sách giáo khoa" cố định cho AI tham chiếu.
-    \item \textbf{Luồng truy xuất 2 giai đoạn (Two-Stage Retrieval):}
+    \item \textbf{Knowledge Base (.md):} Kho tri thức chuẩn hóa từ tài liệu chính thống (Scikit-Learn User Guide), đóng vai trò "sách giáo khoa" tham chiếu chống bịa đặt (hallucination).
+    \item \textbf{Kiến trúc RAG 2 giai đoạn (Two-Stage RAG):}
       \begin{itemize}
-        \item \textbf{Giai đoạn 1 (BM25 Retrieval):} Thuật toán tìm kiếm theo tần suất từ khóa chính xác để rút trích các đoạn văn bản lý thuyết liên quan từ Knowledge Base.
-        \item \textbf{Giai đoạn 2 (LLM Re-ranking):} LLM sắp xếp và chọn lọc lại các khái niệm dựa trên thời lượng \texttt{duration\_minutes} (nhập từ UI).
-        \begin{itemize}
-          \item Bài 30 phút: Giữ lại 2--3 khái niệm cốt lõi.
-          \item Bài 60 phút: Mở rộng thêm khái niệm chuyên sâu và bài tập nâng cao.
-        \end{itemize}
+        \item \textbf{Giai đoạn 1 (BM25 Retrieval):} Truy xuất chính xác các đoạn văn bản lý thuyết, công thức và code mẫu liên quan từ Knowledge Base.
+        \item \textbf{Giai đoạn 2 (LLM Re-ranking):} Tự động sắp xếp, lọc bớt khái niệm dựa trên thời lượng \texttt{duration\_minutes} và trình độ \texttt{level\_final}.
       \end{itemize}
-    \item \textbf{Fallback Web Search (Wikipedia API):} Khi Knowledge Base nội bộ không phủ hết khái niệm, hệ thống tự gọi Wikipedia API và áp dụng bộ lọc token hit ratio $\ge 0.5$ (chỉ giữ bài viết có tỷ lệ trùng khớp từ khóa từ 50\% trở lên để loại bỏ thông tin rác).
+    \item \textbf{Fallback Web Search (Wikipedia API):} Khi Knowledge Base không phủ hết khái niệm, hệ thống gọi Wikipedia API với bộ lọc token hit ratio $\ge 0.5$ để lấy thông tin bổ trợ.
+    \item \textbf{Đầu ra - ResearchBundle:} Tổng hợp nội dung đã RAG (Lý thuyết, Code mẫu, Mẹo thực hành) thành một gói thông tin cấu trúc để cung cấp trực tiếp cho Curriculum Agent.
   \end{itemize}
 \end{frame}
 
 % ------------------------------------------------------------
 %  SLIDE 8 – Curriculum & Generator Agent
 % ------------------------------------------------------------
-\begin{frame}{Multi-agent Pipeline}
+\begin{frame}[fragile]{Multi-agent Pipeline}
   Curriculum \& Generator Agent: Sinh lộ trình học \& Đóng gói Notebook
   \begin{itemize}
-    \item \textbf{Curriculum Agent:} Sinh lộ trình học, phù hợp riêng cho từng dạng: Học có giám sát (Supervised) hoặc Học không có giám sát (Unsupervised).
+    \item \textbf{Curriculum Agent:} Sinh lộ trình học dựa trên \texttt{ResearchBundle}, phù hợp riêng cho từng dạng: Học có giám sát (Supervised) hoặc Học không có giám sát (Unsupervised).
     \item \textbf{Cấu trúc Notebook chuẩn 4 khối:}
       \begin{enumerate}
         \item \textbf{Tổng quan bài học:} Giới thiệu về Topic và dataset (Tên, Nguồn, Kích thước, Biến mục tiêu, Đặc tả)
-        \item \textbf{Chuẩn bị dữ liệu:} Nạp dữ liệu với bộ dataset tương ứng (Heart Failure, Red Wine Quality, Mall Customers) và chèn sẵn code prepocessing, EDA, split train/test(Supervised).
+        \item \textbf{Chuẩn bị dữ liệu:} Nạp dữ liệu với bộ dataset tương ứng (Heart Failure, Red Wine Quality, Mall Customers) và chèn sẵn code preprocessing, EDA, split train/test (Supervised).
         \item \textbf{Nội dung \& Bài tập thực hành:} Giới thiệu kiến thức nền tảng, code demo giải mẫu bài tập, nêu các yêu cầu bài tập dựa trên lộ trình học.
         \item \textbf{Kiểm tra tự động:} Chèn sẵn các đoạn code dạng \texttt{assert} để người học tự kiểm tra đáp án.
       \end{enumerate}
@@ -283,7 +280,7 @@
 % ------------------------------------------------------------
 %  SLIDE 9 – Executor, Verifier & Retry Loop
 % ------------------------------------------------------------
-\begin{frame}{Multi-agent Pipeline}
+\begin{frame}[fragile]{Multi-agent Pipeline}
   Executor, Verifier \& Vòng lặp Tự sửa lỗi
   \begin{itemize}
     \item \textbf{Executor Sandbox:} Môi trường chạy code ảo cách ly hoàn toàn, nhận file \texttt{.ipynb} và thực thi từ trên xuống dưới để bắt chính xác các lỗi runtime.
@@ -299,7 +296,7 @@
 % ------------------------------------------------------------
 %  SLIDE 10 – Demo
 % ------------------------------------------------------------
-\begin{frame}{Demo \& Evaluation}
+\begin{frame}[fragile]{Demo \& Evaluation}
   \begin{block}{Minh họa vận hành hệ thống}
     \begin{itemize}
       \item Quá trình tương tác trên giao diện Frontend: Chọn topic, thực hiện bài Quiz căn chỉnh trình độ.
@@ -311,19 +308,23 @@
 \end{frame}
 
 % ------------------------------------------------------------
-%  SLIDE 11 – Evaluation & Benchmark Metrics
+%  SLIDE 11 – Evaluation, Benchmark & Ablation Study
 % ------------------------------------------------------------
-\begin{frame}{Demo \& Evaluation}
-  Kết quả Kỹ thuật \& Benchmark Metrics
+\begin{frame}[fragile]{Demo \& Evaluation}
+  Kết quả Kỹ thuật, Benchmark Metrics \& Ablation Study
   \begin{itemize}
-    \item \textbf{Golden Set (Bộ dữ liệu chuẩn):} Tập hợp 20 trường hợp kiểm thử thiết kế sẵn đại diện cho 3 chủ đề và 2 cấp độ trình độ khác nhau để đánh giá toàn diện hệ thống.
-    \item \textbf{Các chỉ số đo lường chính:}
+    \item \textbf{Thử nghiệm trên 6 Test Cases tiêu biểu:} Nhằm tối ưu hóa chi phí API mà vẫn đảm bảo tính đại diện, 6 bài thử nghiệm được thiết kế phủ đều 3 chủ đề (Logistic Regression, Decision Tree, K-Means) trên 2 cấp độ trình độ khác nhau.
+    \item \textbf{Chỉ số đánh giá chính (Evaluation Metrics):}
       \begin{itemize}
-        \item \textbf{Execution Pass Rate:} Tỷ lệ Notebook mà 100\% các cell code chạy mượt mà từ trên xuống dưới, không phát sinh lỗi Python nào (0 Runtime Error).
-        \item \textbf{Final PASS Rate:} Tỷ lệ Notebook vượt qua cả 8 Hard Rules kỹ thuật VÀ đạt điểm chất lượng sư phạm từ LLM Judge $\ge 4/5$.
-        \item \textbf{Average LLM Rubric Score:} Điểm số chất lượng trung bình (thang điểm 5) do LLM Judge chấm dựa trên 4 tiêu chí sư phạm.
-        \item \textbf{LLM Judge Agreement (Cohen's Kappa):} Đạt $\kappa \ge 0.70$ (Substantial Agreement), đảm bảo độ đồng thuận cao giữa điểm đánh giá của LLM Judge và chuyên gia (Human Benchmark).
-        \item \textbf{Cost \& Time per Case:} Chi phí API trung bình cho mỗi bài học ($\le 0.30\$$/case) và thời gian trung bình để hoàn tất vòng sinh \& kiểm thử.
+        \item \textbf{Execution Pass Rate:} Tỷ lệ Notebook chạy thành công 100\% từ trên xuống dưới, không gặp bất kỳ lỗi Python runtime nào.
+        \item \textbf{Final Pass Rate:} Tỷ lệ Notebook vượt qua cả 8 Hard Rules kỹ thuật VÀ đạt điểm LLM Judge $\ge 4/5$.
+        \item \textbf{LLM Judge Agreement:} Độ đồng thuận cao với chuyên gia human benchmark ($\kappa \ge 0.70$).
+      \end{itemize}
+    \item \textbf{Kết quả Ablation Study (Đánh giá vai trò từng thành phần):}
+      \begin{itemize}
+        \item \textbf{Thiếu RAG ResearchBundle:} Tỷ lệ bịa đặt kiến thức (hallucination) tăng, lý thuyết rời rạc không bám sát chuẩn Scikit-Learn.
+        \item \textbf{Thiếu Retry Loop (Sandbox):} Tỷ lệ Execution Pass Rate giảm mạnh do không khắc phục được các lỗi runtime nhỏ phát sinh lúc sinh code.
+        \item \textbf{Thiếu Hard Rules / LLM Judge:} Notebook dễ vi phạm lỗi Data Leakage hoặc thiếu cấu trúc bài tập chuẩn sư phạm.
       \end{itemize}
   \end{itemize}
 \end{frame}
@@ -331,7 +332,7 @@
 % ------------------------------------------------------------
 %  SLIDE 12 – Conclusion & Mentor Q&A
 % ------------------------------------------------------------
-\begin{frame}{Conclusion \& Mentor Q\&A}
+\begin{frame}[fragile]{Conclusion \& Mentor Q\&A}
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
       \begin{block}{Tóm tắt đóng góp}

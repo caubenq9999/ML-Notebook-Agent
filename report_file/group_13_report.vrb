@@ -1,0 +1,22 @@
+\frametitle{Conclusion \& Mentor Q\&A}
+\begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Tóm tắt đóng góp}
+        \begin{itemize}
+          \item Đề xuất kiến trúc Multi-agent tự động sinh Notebook thực hành ML cá nhân hóa.
+          \item Tích hợp cơ chế kiểm định kép (Hard Rules + LLM Judge) đảm bảo độ chính xác kỹ thuật và giá trị sư phạm.
+          \item Xây dựng vòng lặp tự sửa lỗi (Retry Loop) trong môi trường Sandbox giúp duy trì tỷ lệ thực thi code thành công cao.
+        \end{itemize}
+      \end{block}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Kế hoạch hoàn thiện \& Q\&A}
+        \begin{itemize}
+          \item Mở rộng Knowledge Base sang các chủ đề Deep Learning và Computer Vision.
+          \item Tối ưu hóa thời gian sinh bài và chi phí gọi LLM API.
+          \item Thử nghiệm thực tế với nhóm người dùng sinh viên để thu thập feedback.
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
