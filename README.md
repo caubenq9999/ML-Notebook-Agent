@@ -281,6 +281,48 @@ streamlit run notebookforge/ui/streamlit_app.py
 
 Fallback chỉ phục vụ kiểm tra UI/demo dự phòng, không phải kết quả benchmark.
 
+### Deploy miễn phí trên Streamlit Community Cloud
+
+Bản cloud dùng entrypoint riêng và gọi `main.generate()` trực tiếp trong
+cùng process, do đó không cần khởi chạy FastAPI hay port 8000:
+
+```text
+notebookforge/ui/streamlit_cloud_app.py
+```
+
+Kiểm tra bản cloud trên máy local:
+
+```powershell
+$env:APP_PASSWORD="demo-local"
+streamlit run notebookforge/ui/streamlit_cloud_app.py
+```
+
+Các bước deploy:
+
+1. Push code lên GitHub, nhưng không push `.env` hoặc
+   `.streamlit/secrets.toml`.
+2. Mở <https://share.streamlit.io>, chọn **Create app** và kết nối repo.
+3. Chọn branch cần deploy và Main file path là
+   `notebookforge/ui/streamlit_cloud_app.py`.
+4. Trong **Advanced settings**, chọn Python 3.11.
+5. Mở **App settings > Secrets**, copy mẫu từ
+   `.streamlit/secrets.example.toml`, sau đó thay `APP_PASSWORD` và API key
+   bằng giá trị thật.
+6. Deploy và chờ `requirements.txt` cài xong. Lần Research đầu có thể
+   chậm hơn do tải embedding model.
+
+Cloud entrypoint mặc định yêu cầu `APP_PASSWORD` để tránh người lạ
+dùng hết API credit. Chỉ khi chủ động đặt secret sau thì app mới cho
+phép truy cập công khai không cần mật khẩu:
+
+```toml
+NOTEBOOKFORGE_ALLOW_PUBLIC = true
+```
+
+Mỗi cloud instance chỉ chạy một job sinh notebook tại một thời điểm để
+giảm nguy cơ hết RAM. Artifact trên Community Cloud là tạm thời; người
+dùng nên tải notebook xuống ngay sau khi run hoàn tất.
+
 ## 6. Gọi API thủ công
 
 Sau khi FastAPI chạy, tạo job mock để kiểm tra contract và cơ chế polling:

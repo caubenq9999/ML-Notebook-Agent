@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import sys
 import textwrap
+import threading
 import time
 import uuid
 
@@ -14,7 +15,8 @@ import streamlit as st
 
 # Thêm thư mục gốc (notebookforge) vào sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-FASTAPI_URL = "http://localhost:8000"  # Server FastAPI
+FASTAPI_URL = os.getenv("NOTEBOOKFORGE_FASTAPI_URL", "http://localhost:8000")
+PIPELINE_MODE = os.getenv("NOTEBOOKFORGE_DEPLOY_MODE", "api").strip().lower()
 ALLOW_MOCK_FALLBACK = os.getenv(
     "NOTEBOOKFORGE_UI_ALLOW_MOCK_FALLBACK", "0"
 ).strip().lower() in {"1", "true", "yes"}
@@ -23,6 +25,13 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
 from ui.report_adapter import normalize_report_payload
+from ui.pipeline_runner import DirectPipelineError, run_pipeline_direct
+
+
+@st.cache_resource
+def _generation_lock() -> threading.Lock:
+    """One cloud instance only has enough memory for one notebook job at a time."""
+    return threading.Lock()
 
 # ---------------------------------------------------------
 # DATABASE QUIZ MẪU
@@ -396,6 +405,18 @@ def run_pipeline_via_fastapi(profile_data: dict) -> tuple[dict, dict] | None:
         return fallback_result(profile_data)
 
 
+def run_pipeline_in_process(profile_data: dict) -> tuple[dict, dict] | None:
+    """Cloud mode: run the pipeline directly, without localhost FastAPI."""
+    try:
+        return run_pipeline_direct(profile_data)
+    except DirectPipelineError as error:
+        st.error(f"❌ Pipeline không tạo được notebook: {error}")
+        return fallback_result(profile_data)
+    except Exception as error:  # noqa: BLE001 - surface cloud failures in UI
+        st.error(f"❌ Lỗi pipeline trên cloud: {type(error).__name__}: {error}")
+        return fallback_result(profile_data)
+
+
 def execute_pipeline_with_progress(profile, timeout_seconds=600):
     """Chạy pipeline với giao diện cập nhật 5 bước tiến trình và xử lý Timeout."""
     steps = [
@@ -424,7 +445,33 @@ def execute_pipeline_with_progress(profile, timeout_seconds=600):
         progress_bar = st.progress(0)
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            future = executor.submit(run_pipeline_via_fastapi, profile)
+            if PIPELINE_MODE == "direct":
+                job_lock = _generation_lock()
+                if not job_lock.acquire(blocking=False):
+                    status.update(
+                        label="⏳ **Hệ thống đang xử lý một notebook khác.**",
+                        state="error",
+                        expanded=True,
+                    )
+                    st.warning("Vui lòng chờ job hiện tại hoàn tất rồi thử lại.")
+                    return None
+
+                def direct_job():
+                    try:
+                        return run_pipeline_in_process(profile)
+                    finally:
+                        job_lock.release()
+
+                future = executor.submit(direct_job)
+            elif PIPELINE_MODE == "api":
+                future = executor.submit(run_pipeline_via_fastapi, profile)
+            else:
+                status.update(
+                    label=f"❌ **Deploy mode không hợp lệ: {PIPELINE_MODE}**",
+                    state="error",
+                )
+                st.error("Chỉ hỗ trợ NOTEBOOKFORGE_DEPLOY_MODE=api hoặc direct.")
+                return None
 
             start_time = time.time()
             current_step = 0

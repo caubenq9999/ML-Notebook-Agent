@@ -5,6 +5,7 @@ __pycache__/
 
 # Bí mật - TUYỆT ĐỐI không commit
 .env
+.streamlit/secrets.toml
 
 # Sản phẩm sinh ra lúc chạy
 outputs/
