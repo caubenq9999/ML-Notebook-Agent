@@ -828,7 +828,9 @@ if "notebook_dict" in st.session_state and st.session_state.notebook_dict:
                 else:
                     st.info("Không tìm thấy dữ liệu điểm đánh giá.")
 
-                # 3. Hiển thị Status và Feedback bên ngoài bảng (nếu có)
+                # 3. Chỉ hiển thị thông tin tổng quan cho người dùng cuối.
+                # Feedback của Verifier là dữ liệu nội bộ dành cho retry/debug
+                # và đã được ghi vào pipeline logs, không đưa lên giao diện.
                 if "status" in report_data:
                     st.caption(
                         "**Trạng thái (Status):**"
@@ -842,11 +844,6 @@ if "notebook_dict" in st.session_state and st.session_state.notebook_dict:
                 total_cost = report_data.get("total_cost_usd")
                 if total_cost is not None:
                     st.caption(f"**Tổng chi phí:** ${float(total_cost):.4f}")
-
-                if report_data.get("feedback"):
-                    st.markdown(
-                        f"**Nhận xét (Feedback):** {report_data['feedback']}"
-                    )
 
             elif isinstance(report_data, str):
                 st.markdown(report_data)

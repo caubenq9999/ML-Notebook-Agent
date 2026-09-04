@@ -443,6 +443,8 @@ def generate(
             f"(rules {report.rule_checks.num_passed}/{report.rule_checks.num_rules}), "
             f"tổng tiền ${tracker.total_usd:.4f}"
         )
+        if report.feedback:
+            _log(f"      verifier_feedback={report.feedback}")
 
         # Audit trail - Huy dùng cho quality_report.md
         result.retry_history.append(
