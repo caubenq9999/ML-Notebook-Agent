@@ -646,7 +646,7 @@ with st.expander("Tùy chỉnh Notebook", expanded=True):
         )
     with c2:
         num_exercises = st.slider(
-            "Số bài tập thực hành:", min_value=1, max_value=5, value=3
+            "Số bài tập thực hành:", min_value=3, max_value=5, value=3
         )
 
 # --- PHASE 2: QUIZ 5 CÂU ---
